@@ -1,6 +1,6 @@
 {
   "name": "nw-skills",
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "New Ward skills: Michael Ezehi's agent skills and slash commands for engineering, design and writing.",
   "author": {
     "name": "Michael Ezehi",
@@ -16,13 +16,6 @@
     "writing"
   ],
   "skills": [
-    "./skills/engineering/app-user-journey",
-    "./skills/engineering/build-speed",
-    "./skills/engineering/convex-backup-cron",
-    "./skills/engineering/og",
-    "./skills/engineering/qa-cases",
-    "./skills/engineering/unlazy",
-    "./skills/engineering/vercel-react-best-practices",
     "./skills/design/apple-design",
     "./skills/design/brandkit",
     "./skills/design/click-burst",
@@ -48,6 +41,14 @@
     "./skills/design/the-broadside",
     "./skills/design/the-stripe-modal",
     "./skills/design/ui-ux-pro-max",
+    "./skills/engineering/app-user-journey",
+    "./skills/engineering/build-speed",
+    "./skills/engineering/convex-backup-cron",
+    "./skills/engineering/og",
+    "./skills/engineering/own-goal",
+    "./skills/engineering/qa-cases",
+    "./skills/engineering/unlazy",
+    "./skills/engineering/vercel-react-best-practices",
     "./skills/writing/humanizer",
     "./skills/writing/rnd",
     "./skills/writing/unslop",

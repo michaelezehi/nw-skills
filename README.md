@@ -29,7 +29,7 @@ Copy any folder under `skills/<category>/` into `~/.claude/skills/`, and any fil
 
 Several skills point at `~/.claude/skills/unlazy/scripts/gate-check.mjs` and `~/.claude/skills/unslop/SKILL.md`. Install unlazy and unslop first if you take only a few.
 
-## Skills (36)
+## Skills (37)
 
 ### Engineering
 
@@ -39,6 +39,7 @@ Several skills point at `~/.claude/skills/unlazy/scripts/gate-check.mjs` and `~/
 | [`build-speed`](skills/engineering/build-speed/SKILL.md) | Audit and fix any project's build + deploy pipeline for speed, kill cache-busting, move builds off the deploy box into CI, wire registry pull mode, and prove every... | Original |
 | [`convex-backup-cron`](skills/engineering/convex-backup-cron/SKILL.md) | Install a 4x-daily production backup cron for Convex + DigitalOcean Spaces projects. | Original |
 | [`og`](skills/engineering/og/SKILL.md) | Install a dynamic Open Graph / Twitter social card route into a Next.js project. | Original |
+| [`own-goal`](skills/engineering/own-goal/SKILL.md) | Run a goal or a whole PRD to completion: a verifiable completion condition worked in a loop until met, with an accountability record and a /reviewer gate. | Original |
 | [`qa-cases`](skills/engineering/qa-cases/SKILL.md) | Generate a shareable QA test case .md document for the current project. | Original |
 | [`unlazy`](skills/engineering/unlazy/SKILL.md) | Anti-laziness execution discipline, required on every task sized L or XL (the /prd-ch scale) and run on request for anything smaller. | Modified from [Leonxlnx/unlazy](https://github.com/Leonxlnx/unlazy) |
 | [`vercel-react-best-practices`](skills/engineering/vercel-react-best-practices/SKILL.md) | React and Next.js performance optimization guidelines from Vercel Engineering. | Modified from [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) |
@@ -87,9 +88,34 @@ Several skills point at `~/.claude/skills/unlazy/scripts/gate-check.mjs` and `~/
 | Command | What it does |
 |---|---|
 | `/cf` | Force-continue a context-exhausted session. |
+| `/ch` | Handoff continuity mode: numbered task list, accountability record with every question and decision, optional HTML summary. |
+| `/fd-ch` | Frontend design run with reconnaissance, a quality gate and an accountability record, built on the frontend-design skill. |
+| `/pr` | Read every PR review comment, fix what is actionable, and reply to each one. |
 | `/prd-ch` | Create a PRD fast and well. |
-| `/reviewer` | Full audit and fix pass on the current task's changes, using any review skills installed on your machine (never Greptile or CodeRabbit). |
 | `/research` | Deep research on any topic. |
+| `/reviewer` | Full audit and fix pass on the current task's changes, using any review skills installed on your machine (never Greptile or CodeRabbit). |
+
+## Handoff hooks (optional)
+
+`/ch`, `/fd-ch` and `/prd-ch` hand work over to a fresh session when context runs low. That needs three hooks in `hooks/`:
+
+- `context-monitor.sh` warns at about 70 and 90 percent context use.
+- `precompact.sh` writes `.claude/handoffs/current.md` (todos and modified files) before compaction.
+- `session-start.sh` feeds that handoff back in when the next session starts.
+
+They are not switched on by installing the plugin. To use them, copy the scripts to `~/.claude/hooks/` and add this to `~/.claude/settings.json`:
+
+```json
+{
+  "hooks": {
+    "PostToolUse": [{ "hooks": [{ "type": "command", "command": "~/.claude/hooks/context-monitor.sh" }] }],
+    "PreCompact": [{ "hooks": [{ "type": "command", "command": "~/.claude/hooks/precompact.sh" }] }],
+    "SessionStart": [{ "hooks": [{ "type": "command", "command": "~/.claude/hooks/session-start.sh" }] }]
+  }
+}
+```
+
+Without them the commands still run; you just lose the automatic handoff.
 
 ## Licence
 

@@ -12,7 +12,4 @@ These skills started from other people's work and carry my changes. The upstream
 | ui-ux-pro-max | [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | MIT |
 | vercel-react-best-practices | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) | MIT (per skill) |
 | writing-clearly-and-concisely | [softaworks/agent-toolkit](https://github.com/softaworks/agent-toolkit) | MIT |
-| video-shotcraft | [Vincentwei1021/video-shotcraft](https://github.com/Vincentwei1021/video-shotcraft) | Apache-2.0 |
-| remotion-best-practices, remotion-captions, remotion-create, remotion-docs, remotion-interactivity, remotion-maps, remotion-markup, remotion-render, remotion-saas, remotion-upgrade, mediabunny | [remotion-dev/skills](https://github.com/remotion-dev/skills) | No licence file upstream; credited to Remotion |
 
-Media files (mp3, mp4) from upstream skills are left out of this repo to keep it small and to avoid redistributing licensed music.

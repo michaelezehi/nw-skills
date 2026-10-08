@@ -1,0 +1,95 @@
+/* ============================================
+   PAGE GRADIENT — themed ambient bloom
+   Mirrors perspiva's body gradient. Apply `.gradient-page-bg` to any wrapper
+   that should host the soft warm bloom in the bottom-right + a faint white
+   wash on top. The pseudo elements are pinned to the viewport so the gradient
+   stays in place while content scrolls. Append this block to your project's
+   globals.css (or equivalent global stylesheet).
+   ============================================ */
+.gradient-page-bg {
+  position: relative;
+  isolation: isolate;
+}
+
+.gradient-page-bg::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  overflow: hidden;
+  /* {{THEME_PAGE_OVERLAY_START}} */
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 255, 255, 1) 0%,
+      rgba(255, 255, 255, 1) 60%,
+      rgba(255, 253, 247, 0.98) 82%,
+      rgba(255, 252, 240, 0.94) 100%
+    );
+  /* {{THEME_PAGE_OVERLAY_END}} */
+  animation: stripe-page-overlay-in 0.7s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+.gradient-page-bg::after {
+  content: "";
+  position: fixed;
+  left: -8%;
+  right: -8%;
+  bottom: 0;
+  z-index: -1;
+  height: min(24rem, 34vh);
+  pointer-events: none;
+  /* {{THEME_PAGE_BLOOM_START}} */
+  background:
+    radial-gradient(
+      58rem 28rem at 100% 100%,
+      rgba(245, 158, 11, 0.1) 0%,
+      rgba(250, 204, 21, 0.05) 28%,
+      transparent 68%
+    ),
+    radial-gradient(
+      64rem 30rem at 76% 100%,
+      rgba(217, 119, 6, 0.06) 0%,
+      rgba(202, 138, 4, 0.035) 36%,
+      transparent 72%
+    ),
+    radial-gradient(
+      48rem 24rem at 44% 100%,
+      rgba(245, 158, 11, 0.04) 0%,
+      transparent 66%
+    );
+  /* {{THEME_PAGE_BLOOM_END}} */
+  clip-path: polygon(30% 38%, 100% 0, 100% 100%, 0 100%, 0 66%);
+  mask-image: linear-gradient(
+    158deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.08) 22%,
+    rgba(0, 0, 0, 0.72) 44%,
+    #000 100%
+  );
+  -webkit-mask-image: linear-gradient(
+    158deg,
+    transparent 0%,
+    rgba(0, 0, 0, 0.08) 22%,
+    rgba(0, 0, 0, 0.72) 44%,
+    #000 100%
+  );
+}
+
+@keyframes stripe-page-overlay-in {
+  from {
+    opacity: 0;
+    transform: translate3d(4rem, 4rem, 0);
+  }
+  to {
+    opacity: 1;
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .gradient-page-bg::before {
+    animation: none;
+  }
+}

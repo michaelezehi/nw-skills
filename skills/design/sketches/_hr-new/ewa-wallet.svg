@@ -1,0 +1,6 @@
+<path d="M22 38 h48 a8 8 0 0 1 8 8 v20 a8 8 0 0 1 -8 8 h-48 a8 8 0 0 1 -8 -8 v-20 a8 8 0 0 1 8 -8 z" fill="{HERO}" stroke="{INK}"/>
+<circle cx="58" cy="56" r="6" fill="{PAPER}" stroke="{INK}"/>
+<ellipse cx="74" cy="48" rx="10" ry="4" fill="{PAPER}" stroke="{INK}"/>
+<path d="M74 44 v8" stroke="{INK}" stroke-width="2"/>
+<path d="M68 72 q12 -8 18 -18" stroke="{ACCENT}" stroke-width="2.6" stroke-dasharray="3 4"/>
+<circle cx="86" cy="52" r="5" fill="{HERO}" stroke="{INK}"/>

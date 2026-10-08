@@ -1,0 +1,7 @@
+<rect x="18" y="24" width="64" height="56" rx="6" fill="{PAPER}" stroke="{INK}"/>
+<path d="M18 40 h64" stroke="{INK}"/>
+<path d="M32 18 v12 M68 18 v12" stroke="{INK}"/>
+<rect x="26" y="48" width="14" height="14" rx="3" fill="{HERO}" stroke="{INK}"/>
+<rect x="46" y="48" width="14" height="14" rx="3" fill="{PAPER}" stroke="{FAINT}"/>
+<rect x="66" y="48" width="8" height="14" rx="2" fill="{PAPER}" stroke="{FAINT}"/>
+<rect x="26" y="66" width="14" height="10" rx="2" fill="{PAPER}" stroke="{FAINT}"/>

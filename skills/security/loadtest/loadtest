@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# loadtest — wrapper over the tracked load-test harness's bootstrapper.
+set -uo pipefail
+HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+HARNESS="$(bash "$HERE/harness-dir.sh" loadtest)" || exit 1
+# The bootstrapper copies the harness into whatever project it is run in, so it
+# must read from the tracked copy, not from this skill directory.
+export LOADTEST_SKILL_DIR="${LOADTEST_SKILL_DIR:-$HARNESS/loadtest}"
+exec bash "$HARNESS/loadtest/loadtest" "$@"

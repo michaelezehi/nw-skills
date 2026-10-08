@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke="#0f172a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+  <!-- a shareable page, hand-drawn -->
+  <path d="M24 14 q-3 36 1 72 q26 3 50 0 q4 -36 1 -64 l-10 -9 q-21 -2 -42 1Z"/>
+  <path d="M66 13 l0 10 l10 0" />
+  <!-- the one hero element: the approve tick -->
+  <rect x="33" y="30" width="13" height="13" rx="4" fill="#fde047"/>
+  <path d="M36 37 l3.5 3.5 l6 -8" stroke-width="2.6"/>
+  <!-- spec lines -->
+  <path d="M53 36 h14 M33 54 h33 M33 64 h26 M33 74 h31" stroke="#94a3b8"/>
+</svg>

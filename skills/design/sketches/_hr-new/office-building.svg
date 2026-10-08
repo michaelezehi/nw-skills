@@ -1,0 +1,8 @@
+<path d="M24 34 h52 v46 h-52 z" fill="{PAPER}" stroke="{INK}"/>
+<path d="M36 34 v-8 h28 v8" stroke="{INK}"/>
+<path d="M32 34 h40" stroke="{INK}" stroke-width="3.2"/>
+<rect x="32" y="46" width="10" height="10" rx="1" fill="{FAINT}" stroke="{INK}"/>
+<rect x="50" y="46" width="10" height="10" rx="1" fill="{HERO}" stroke="{INK}"/>
+<rect x="32" y="62" width="10" height="10" rx="1" fill="{FAINT}" stroke="{INK}"/>
+<rect x="50" y="62" width="10" height="10" rx="1" fill="{FAINT}" stroke="{INK}"/>
+<path d="M44 80 h16" stroke="{HERO}" stroke-width="3.2"/>

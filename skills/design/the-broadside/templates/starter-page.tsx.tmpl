@@ -1,0 +1,129 @@
+'use client';
+
+import {
+  BroadsideContainer,
+  BroadsideSlide,
+  EditorialFrame,
+  EditorialOverlay,
+  EditorialSplit,
+  EditorialCardsSide,
+  EditorialScatter,
+  EditorialPagination,
+  AccentDot,
+} from '{{IMPORT_PATH}}';
+
+// Starter story — 4 slides showing 4 different layout variants. Replace
+// the imageSrc paths and copy with your own. Each slide is independent.
+
+export default function StoryPage() {
+  return (
+    <BroadsideContainer
+      accent="primary"
+      closeHref="/"
+      signInHref="/login"
+      signUpHref="/signup"
+    >
+      {/* 1. Overlay — dramatic open */}
+      <BroadsideSlide>
+        <EditorialFrame>
+          <EditorialOverlay
+            eyebrow="For Companies"
+            headline={
+              <>
+                Hire by
+                <br />
+                proof.
+              </>
+            }
+            intro={<p>Every hire arrives as a record — not a hunch.</p>}
+            imageSrc="/path/to/photo-1.webp"
+            imageObjectPosition="55% 30%"
+            pagination={<EditorialPagination current={1} total={4} />}
+            cards={[
+              { kind: 'dark', eyebrow: '01 / 04', title: 'A hire, grounded in evidence.' },
+              { kind: 'red', eyebrow: 'Hire', title: 'See a sample dossier' },
+              {
+                kind: 'light',
+                eyebrow: 'Get started',
+                title: 'Priced like software. Guaranteed like a contract.',
+                body: 'Match score, video, structured interview, signed PDF — every hire.',
+                cta: { label: 'See sample', href: '/sample' },
+              },
+            ]}
+          />
+        </EditorialFrame>
+      </BroadsideSlide>
+
+      {/* 2. Split — text left, image right */}
+      <BroadsideSlide>
+        <EditorialFrame>
+          <EditorialSplit
+            imageSide="right"
+            eyebrow="The cost"
+            headline={
+              <>
+                $140,000<AccentDot />
+              </>
+            }
+            intro={<p>Six months in, you still won't know if it was the right call.</p>}
+            imageSrc="/path/to/photo-2.webp"
+            pagination={<EditorialPagination current={2} total={4} />}
+            cards={[
+              { kind: 'red', eyebrow: 'No score', title: 'Nothing objective to compare on.' },
+              { kind: 'dark', eyebrow: 'No video', title: 'Every first impression is unrepeatable.' },
+              { kind: 'light', eyebrow: 'No record', title: 'No audit trail when month four arrives.' },
+            ]}
+          />
+        </EditorialFrame>
+      </BroadsideSlide>
+
+      {/* 3. CardsSide — text+image stacked left, cards stacked right */}
+      <BroadsideSlide>
+        <EditorialFrame>
+          <EditorialCardsSide
+            eyebrow="What lands"
+            headline={
+              <>
+                Four artefacts.
+                <br />
+                One signed record<AccentDot />
+              </>
+            }
+            intro={<p>Match · Video · Interview · Dossier.</p>}
+            imageSrc="/path/to/photo-3.webp"
+            pagination={<EditorialPagination current={3} total={4} />}
+            cards={[
+              { kind: 'red', eyebrow: '01', title: 'AI match score', body: 'Per candidate, per role.' },
+              { kind: 'dark', eyebrow: '02', title: 'Async video', body: 'Watch on your schedule.' },
+              { kind: 'light', eyebrow: '03 · 04', title: 'Interview · Dossier', body: 'Same questions, same scoring rubric.' },
+            ]}
+          />
+        </EditorialFrame>
+      </BroadsideSlide>
+
+      {/* 4. Scatter — asymmetric */}
+      <BroadsideSlide>
+        <EditorialFrame>
+          <EditorialScatter
+            eyebrow="Take action"
+            headline={
+              <>
+                Stop posting jobs.
+                <br />
+                Start receiving dossiers<AccentDot />
+              </>
+            }
+            intro={<p>A hiring record you can defend, for every role.</p>}
+            imageSrc="/path/to/photo-4.webp"
+            pagination={<EditorialPagination current={4} total={4} />}
+            cards={[
+              { kind: 'red', eyebrow: 'Register', title: 'See a sample dossier' },
+              { kind: 'dark', eyebrow: 'Watch', title: '60-second walkthrough' },
+              { kind: 'light', eyebrow: 'Talk to us', title: 'Book a 30-min review' },
+            ]}
+          />
+        </EditorialFrame>
+      </BroadsideSlide>
+    </BroadsideContainer>
+  );
+}

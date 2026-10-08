@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{{TOPIC}} · R&amp;D · {{PROJECT}}</title>
+<style>
+:root{--ink:#0f172a;--body:#475569;--faint:#94a3b8;--line:#f1f5f9;--line-2:#e2e8f0;
+--paper:#fff;--panel:#f8fafc;--hero:{{HERO}};--hero-soft:{{HERO_SOFT}};--hero-deep:{{HERO_DEEP}}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font:inherit;cursor:pointer}
+header{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.88);
+backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.hwrap{max-width:1480px;margin:0 auto;padding:13px 24px;display:flex;
+align-items:center;justify-content:space-between}
+.mark{font-size:13px;font-weight:600}
+.mark .proj{font-size:11px;font-weight:400;text-transform:uppercase;letter-spacing:.16em;color:var(--faint)}
+main{max-width:1480px;margin:0 auto;padding:48px 24px 128px}
+.grid{display:grid;grid-template-columns:220px minmax(0,1fr);gap:48px}
+@media(max-width:980px){.grid{grid-template-columns:1fr}aside{display:none}.mpick{display:block!important}}
+aside .sticky{position:sticky;top:84px}
+.railbtn{display:flex;align-items:center;gap:8px;width:100%;border:0;background:none;
+text-align:left;border-radius:8px;padding:7px 10px;font-size:12.5px;color:var(--body)}
+.railbtn:hover{background:var(--panel)}
+.railbtn.on{background:var(--hero-soft);font-weight:600;color:var(--ink)}
+.railbtn .n{flex:0 0 20px;height:20px;border-radius:999px;background:var(--panel);
+display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:var(--faint)}
+.railbtn.on .n{background:var(--hero);color:var(--ink)}
+.railbtn.ov{font-weight:600}
+.railbtn.ov.on{background:var(--ink);color:#fff}
+.mpick{display:none;margin-bottom:24px}
+.mpick select{width:100%;border:1px solid var(--line-2);border-radius:8px;padding:9px 12px;font:inherit;font-size:13px}
+.eyebrow{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.18em;color:var(--faint);margin:0}
+h1{margin:14px 0 0;font-size:clamp(36px,5vw,50px);font-weight:700;letter-spacing:-.02em;line-height:1.08}
+h1 .sub{display:block;font-weight:400;color:var(--faint)}
+.lede{margin:18px 0 0;max-width:64ch;font-size:16.5px;color:var(--body)}
+.summary{margin-top:24px;max-width:64ch;border:1px solid var(--line-2);background:var(--panel);
+border-radius:12px;padding:18px 20px}
+.summary h4,.duo h4{margin:0 0 8px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--faint)}
+.summary p{margin:0;font-size:14px;color:var(--ink)}
+.duo{margin-top:22px;display:grid;gap:16px;grid-template-columns:repeat(auto-fit,minmax(290px,1fr))}
+.duo>div{border:1px solid var(--line-2);border-radius:12px;padding:18px 20px}
+.duo>div.warn{border-color:var(--hero);background:var(--hero-soft)}
+.duo>div.warn h4{color:var(--hero-deep)}
+.duo p{margin:0;font-size:13.5px;color:var(--body)}
+.idx{margin-top:32px;display:grid;gap:8px;grid-template-columns:repeat(auto-fit,minmax(300px,1fr))}
+.idx a{display:flex;align-items:center;gap:12px;border:1px solid var(--line-2);
+border-radius:10px;padding:10px 14px}
+.idx a:hover{border-color:var(--hero);background:var(--hero-soft)}
+.idx .n{flex:0 0 24px;height:24px;border-radius:999px;background:var(--panel);
+display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--body)}
+.idx a:hover .n{background:var(--hero);color:var(--ink)}
+.idx b{display:block;font-size:13.5px}
+.idx span.i{display:block;font-size:12px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ctas{margin-top:32px;display:flex;gap:12px;flex-wrap:wrap}
+.cta{border-radius:9px;padding:10px 18px;font-size:13px;font-weight:600}
+.cta.pri{background:var(--ink);color:#fff}.cta.pri:hover{opacity:.85}
+.cta.hero{border:1px solid var(--hero);background:var(--hero-soft);color:var(--ink)}
+.cta.sec{border:1px solid var(--line-2);color:var(--body)}.cta.sec:hover{border-color:var(--ink);color:var(--ink)}
+/* slide */
+.slide{display:grid;gap:44px;grid-template-columns:minmax(0,5fr) minmax(0,6fr)}
+@media(max-width:1180px){.slide{grid-template-columns:1fr}}
+.sketchcol{align-self:start}
+.sk svg{width:100%;height:auto}figure.sk{margin:0}
+.scap{margin-top:10px;text-align:center;font-size:11.5px;color:var(--faint)}
+.snum{font-size:12px;font-weight:700;color:var(--hero-deep)}
+.slide h2{margin:6px 0 0;font-size:34px;font-weight:700;letter-spacing:-.015em;line-height:1.12}
+.term{margin:10px 0 0;font-size:13px;color:var(--faint);font-style:italic}
+.intent{margin:16px 0 0;font-size:17px;font-weight:600}
+.context{margin:12px 0 0;font-size:14.5px;color:var(--body)}
+.bl{margin:22px 0 0}
+.bl h4,.rec h4{margin:0 0 10px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.14em;color:var(--faint)}
+.bl ul{margin:0;padding:0;list-style:none}
+.bl li{position:relative;padding:5px 0 5px 26px;font-size:14px;color:var(--ink)}
+.bl li::before{content:'✓';position:absolute;left:0;top:5px;width:17px;height:17px;border-radius:5px;
+background:var(--hero);color:var(--ink);font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.rec{margin-top:24px;border-radius:12px;background:var(--hero-soft);padding:18px 20px}
+.rec h4{color:var(--hero-deep)}
+.rec p{margin:0;font-size:14px;color:var(--ink)}
+.open{margin-top:14px;font-size:12.5px;color:var(--faint)}
+.demolink{display:inline-flex;margin-top:20px}
+.pager{margin-top:48px;border-top:1px solid var(--line);padding-top:18px;
+display:flex;align-items:center;justify-content:space-between}
+.pager button{border-radius:9px;padding:8px 16px;font-size:12.5px;font-weight:600}
+.pager .back{border:1px solid var(--line-2);background:#fff;color:var(--body)}
+.pager .next{border:0;background:var(--ink);color:#fff}
+.pager button:disabled{opacity:.35;cursor:default}
+.pager .pos{font-size:12px;color:var(--faint)}
+.extra{margin-top:36px}
+</style>
+</head>
+<body>
+<header><div class="hwrap">
+  <a class="mark" href="../index.html">R&amp;D <span class="proj">{{PROJECT}}</span></a>
+</div></header>
+<main><div class="grid">
+  <aside><div class="sticky" id="rail"></div></aside>
+  <div>
+    <div class="mpick"><select id="mpick" onchange="go(this.value)"></select></div>
+    <div id="stage"></div>
+    <div class="pager">
+      <button class="back" id="prevBtn">← Back</button>
+      <span class="pos" id="pos"></span>
+      <button class="next" id="nextBtn">Next →</button>
+    </div>
+  </div>
+</div></main>
+
+<script>
+/* ════ DATA — replace everything in this block ════ */
+const EXEC_SUMMARY = `{{EXEC_SUMMARY}}`;
+const SCREENS = [/* { id, n, name, term?, intent, context, build:[], rec, open? } — anatomy.md */];
+const SKETCHES = {/* screenId: '<figure class="sk">…</figure>' */};
+const SKETCH_CAPTIONS = {/* screenId: 'caption under the wireframe' */};
+const EXTRAS = {/* screenId: '<interactive form mock HTML>' (optional, at most 1–2) */};
+const FLOWS_WITH_DEMO = new Set([/* screen ids that have demo scenes */]);
+const HAS_CONSENSUS = false;          // true → show "Open the votable spec"
+const CONSENSUS_HREF = '../{{CONSENSUS_SLUG}}/index.html';
+/* ════ end DATA ════ */
+
+const SLUGS=['intro',...SCREENS.map(s=>s.id)];
+const readHash=()=>{const h=location.hash.replace(/^#/,'');return SLUGS.includes(h)?h:'intro';};
+function go(s){location.hash=s;scrollTo({top:0,behavior:'smooth'});}
+
+function intro(){
+  return `<p class="eyebrow">{{PROJECT}} · R&amp;D · {{TOPIC}}</p>
+  <h1>What we&rsquo;re building<span class="sub">screen by screen.</span></h1>
+  <p class="lede">{{INTRO_LEDE}}</p>
+  <div class="summary"><h4>In one paragraph</h4><p>${EXEC_SUMMARY}</p></div>
+  <div class="duo">
+    <div><h4>How to read this</h4><p>Step through the screens with the arrows or the
+    list. Each is a self-contained brief — wireframe on the left; build scope and the
+    technical call on the right. Share the link to any single screen (the address bar
+    tracks where you are).</p></div>
+    <div class="warn"><h4>Before we build</h4><p>{{BEFORE_WE_BUILD}}</p></div>
+  </div>
+  <div class="idx">${SCREENS.map(s=>`<a href="#${s.id}"><span class="n">${s.n}</span>
+    <span style="min-width:0"><b>${s.name}</b><span class="i">${s.intent}</span></span></a>`).join('')}</div>
+  <div class="ctas">
+    <a class="cta pri" href="#${SCREENS[0]?.id||''}">Start the flow →</a>
+    ${FLOWS_WITH_DEMO.size?'<a class="cta hero" href="demo/index.html">Walk the interactive demo →</a>':''}
+    ${HAS_CONSENSUS?`<a class="cta sec" href="${CONSENSUS_HREF}">Open the votable spec</a>`:''}
+  </div>`;
+}
+function slide(s){
+  return `<div class="slide">
+    <div class="sketchcol">${SKETCHES[s.id]||''}
+      ${SKETCH_CAPTIONS[s.id]?`<p class="scap">${SKETCH_CAPTIONS[s.id]}</p>`:''}</div>
+    <div>
+      <span class="snum">Screen ${s.n} / ${SCREENS.length}</span>
+      <h2>${s.name}</h2>
+      ${s.term?`<p class="term">${s.term}</p>`:''}
+      <p class="intent">${s.intent}</p>
+      <p class="context">${s.context}</p>
+      <div class="bl"><h4>What we&rsquo;re building</h4>
+        <ul>${s.build.map(b=>`<li>${b}</li>`).join('')}</ul></div>
+      <div class="rec"><h4>Technical call</h4><p>${s.rec}</p></div>
+      ${s.open?`<p class="open">Resolves: ${s.open}</p>`:''}
+      ${FLOWS_WITH_DEMO.has(s.id)?`<a class="cta hero demolink" href="demo/index.html#${s.id}">Open the interactive demo →</a>`:''}
+    </div>
+  </div>
+  ${EXTRAS[s.id]?`<div class="extra">${EXTRAS[s.id]}</div>`:''}`;
+}
+function render(){
+  const slug=readHash(), idx=SLUGS.indexOf(slug);
+  const s=SCREENS.find(x=>x.id===slug);
+  document.getElementById('stage').innerHTML=s?slide(s):intro();
+  document.getElementById('rail').innerHTML=
+    `<button class="railbtn ov ${slug==='intro'?'on':''}" onclick="go('intro')">Overview</button>`+
+    SCREENS.map(x=>`<button class="railbtn ${slug===x.id?'on':''}" onclick="go('${x.id}')">
+      <span class="n">${x.n}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${x.name}</span></button>`).join('');
+  const mp=document.getElementById('mpick');
+  mp.innerHTML=`<option value="intro">Overview</option>`+
+    SCREENS.map(x=>`<option value="${x.id}">${x.n}. ${x.name}</option>`).join('');
+  mp.value=slug;
+  const prev=idx>0?SLUGS[idx-1]:null, next=idx<SLUGS.length-1?SLUGS[idx+1]:null;
+  const pb=document.getElementById('prevBtn'), nb=document.getElementById('nextBtn');
+  pb.disabled=!prev; nb.disabled=!next;
+  pb.onclick=()=>prev&&go(prev); nb.onclick=()=>next&&go(next);
+  document.getElementById('pos').textContent=idx===0?'Overview':`${idx} / ${SCREENS.length}`;
+}
+addEventListener('hashchange',render);
+render();
+</script>
+</body>
+</html>

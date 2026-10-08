@@ -1,0 +1,268 @@
+import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { ImageResponse } from 'next/og';
+import type { NextRequest } from 'next/server';
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic';
+
+const MAX_INPUT_LENGTH = 256;
+
+function clampInput(raw: string | null | undefined, fallback: string): string {
+  const value = (raw ?? fallback).trim();
+  return value.length <= MAX_INPUT_LENGTH ? value : value.slice(0, MAX_INPUT_LENGTH);
+}
+
+let cachedBarlowRegular: ArrayBuffer | null = null;
+let cachedBarlowSemibold: ArrayBuffer | null = null;
+let cachedBarlowBold: ArrayBuffer | null = null;
+let cachedAnton: ArrayBuffer | null = null;
+let cachedLogoDataUrl: string | null = null;
+
+function loadLocalFont(file: string): ArrayBuffer {
+  const fontPath = join(process.cwd(), '{{FONT_DIR}}', file);
+  const buf = readFileSync(fontPath);
+  return buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength);
+}
+
+function getFonts(): {
+  barlowRegular: ArrayBuffer;
+  barlowSemibold: ArrayBuffer;
+  barlowBold: ArrayBuffer;
+  anton: ArrayBuffer;
+} {
+  if (!cachedBarlowRegular) cachedBarlowRegular = loadLocalFont('Barlow-Regular.ttf');
+  if (!cachedBarlowSemibold) cachedBarlowSemibold = loadLocalFont('Barlow-SemiBold.ttf');
+  if (!cachedBarlowBold) cachedBarlowBold = loadLocalFont('Barlow-Bold.ttf');
+  if (!cachedAnton) cachedAnton = loadLocalFont('Anton-Regular.ttf');
+  return {
+    barlowRegular: cachedBarlowRegular,
+    barlowSemibold: cachedBarlowSemibold,
+    barlowBold: cachedBarlowBold,
+    anton: cachedAnton,
+  };
+}
+
+{{LOGO_LOAD_BLOCK}}
+
+function fitTitle(title: string): { fontSize: number; lineHeight: number } {
+  const len = title.length;
+  if (len <= 22) return { fontSize: 148, lineHeight: 0.95 };
+  if (len <= 38) return { fontSize: 116, lineHeight: 0.98 };
+  if (len <= 58) return { fontSize: 92, lineHeight: 1.02 };
+  if (len <= 80) return { fontSize: 76, lineHeight: 1.05 };
+  return { fontSize: 62, lineHeight: 1.08 };
+}
+
+export async function GET(request: NextRequest): Promise<Response> {
+  try {
+    const { searchParams } = new URL(request.url);
+    const rawTitle = clampInput(searchParams.get('title'), '{{BRAND}}');
+    // Strip "<title> | <brand>" suffix without re-introducing regex specials.
+    const brandSuffix = ' | {{BRAND}}';
+    const title = rawTitle.toLowerCase().endsWith(brandSuffix.toLowerCase())
+      ? rawTitle.slice(0, -brandSuffix.length).trimEnd()
+      : rawTitle;
+    const eyebrow = clampInput(searchParams.get('eyebrow'), '{{EYEBROW_DEFAULT}}');
+    const footnote = clampInput(searchParams.get('footnote'), '{{FOOTNOTE_DEFAULT}}');
+    const { barlowRegular, barlowSemibold, barlowBold, anton } = getFonts();
+    {{LOGO_LOAD_CALL}}
+    const { fontSize, lineHeight } = fitTitle(title);
+
+    const INK = '{{INK}}';
+    const PAPER = '{{PAPER}}';
+    const SIGNAL = '{{SIGNAL}}';
+    const SIGNAL_DEEP = '{{SIGNAL_DEEP}}';
+    const MUTED = '{{MUTED}}';
+    const RULE = '{{RULE}}';
+
+    const imageResponse = new ImageResponse(
+      (
+        <div
+          style={{
+            width: '100%',
+            height: '100%',
+            display: 'flex',
+            background: INK,
+            position: 'relative',
+            fontFamily: '"Barlow", system-ui, sans-serif',
+            color: PAPER,
+          }}
+        >
+          {/* Bottom-right deep accent wedge */}
+          <div
+            style={{
+              position: 'absolute',
+              bottom: -260,
+              right: -300,
+              width: 720,
+              height: 720,
+              background: SIGNAL_DEEP,
+              transform: 'rotate(22deg)',
+              display: 'flex',
+            }}
+          />
+          {/* Top-right primary accent slash */}
+          <div
+            style={{
+              position: 'absolute',
+              top: -320,
+              right: -260,
+              width: 720,
+              height: 720,
+              background: SIGNAL,
+              transform: 'rotate(22deg)',
+              display: 'flex',
+            }}
+          />
+
+          {/* Content */}
+          <div
+            style={{
+              position: 'relative',
+              display: 'flex',
+              flexDirection: 'column',
+              width: '100%',
+              height: '100%',
+              padding: '56px 72px',
+            }}
+          >
+            {/* Header row */}
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'center',
+                fontSize: 18,
+                letterSpacing: 4,
+                textTransform: 'uppercase',
+                fontWeight: 600,
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                {{LOGO_IMG}}
+                <span style={{ color: PAPER }}>{{BRAND}}</span>
+              </div>
+              <span style={{ color: MUTED }}>{eyebrow}</span>
+            </div>
+
+            {/* Title block */}
+            <div
+              style={{
+                display: 'flex',
+                flexDirection: 'column',
+                flex: 1,
+                justifyContent: 'center',
+                marginTop: 16,
+                maxWidth: 860,
+              }}
+            >
+              {/* Accent badge */}
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 14,
+                  marginBottom: 26,
+                  fontSize: 18,
+                  letterSpacing: 5,
+                  textTransform: 'uppercase',
+                  fontWeight: 700,
+                  color: SIGNAL,
+                }}
+              >
+                <span
+                  style={{
+                    width: 56,
+                    height: 4,
+                    background: SIGNAL,
+                    display: 'flex',
+                  }}
+                />
+                <span>{{BRAND_BADGE}}</span>
+              </div>
+
+              {/* Headline */}
+              <div
+                style={{
+                  display: 'flex',
+                  fontFamily: '"Anton", "Barlow", sans-serif',
+                  fontSize,
+                  lineHeight,
+                  fontWeight: 400,
+                  color: PAPER,
+                  letterSpacing: -1,
+                  textTransform: 'uppercase',
+                }}
+              >
+                {title}
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div style={{ display: 'flex', flexDirection: 'column' }}>
+              <div
+                style={{
+                  height: 1,
+                  background: RULE,
+                  width: '100%',
+                  display: 'flex',
+                  marginBottom: 18,
+                }}
+              />
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center',
+                  fontSize: 18,
+                  letterSpacing: 3,
+                  textTransform: 'uppercase',
+                  fontWeight: 600,
+                }}
+              >
+                <span style={{ color: PAPER }}>{{DOMAIN}}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+                  <span style={{ color: MUTED }}>{footnote}</span>
+                  <span
+                    style={{
+                      width: 12,
+                      height: 12,
+                      background: SIGNAL,
+                      display: 'flex',
+                    }}
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      ),
+      {
+        width: 1200,
+        height: 630,
+        fonts: [
+          { name: 'Barlow', data: barlowRegular, weight: 400, style: 'normal' },
+          { name: 'Barlow', data: barlowSemibold, weight: 600, style: 'normal' },
+          { name: 'Barlow', data: barlowBold, weight: 700, style: 'normal' },
+          { name: 'Anton', data: anton, weight: 400, style: 'normal' },
+        ],
+      },
+    );
+
+    const buf = await imageResponse.arrayBuffer();
+    return new Response(buf, {
+      status: 200,
+      headers: {
+        'Content-Type': 'image/png',
+        'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=604800',
+      },
+    });
+  } catch (err) {
+    console.error('[og] render failed', err);
+    return new Response(JSON.stringify({ error: 'failed_to_render' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
+  }
+}

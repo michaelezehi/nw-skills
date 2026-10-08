@@ -1,0 +1,5 @@
+<path d="M24 28 q12 -4 26 0 v44 q-12 -4 -26 0 z" fill="{HERO}" stroke="{INK}"/>
+<path d="M50 28 q12 -4 26 0 v44 q-12 -4 -26 0 z" fill="{PAPER}" stroke="{INK}"/>
+<path d="M50 28 v44" stroke="{INK}"/>
+<path d="M30 40 h12 M30 48 h10 M56 40 h12 M56 48 h10" stroke="{FAINT}"/>
+<path d="M44 58 l4 4 l8 -9" stroke="{ACCENT}" stroke-width="2.4"/>

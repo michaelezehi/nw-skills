@@ -1,0 +1,28 @@
+---
+title: ""            # ≤60 chars, contains primary keyword; page template renders it as the H1
+description: ""       # ≤160 chars, factual, answer-flavored — used for meta description + OG
+slug: ""              # matches calendar row
+date: ""              # YYYY-MM-DD
+author: ""            # from STRATEGY.md Publishing section (E-E-A-T)
+cluster: ""
+keywords: []          # [primary, ...secondary]
+image: ""             # optional; social image otherwise comes from the site's /og route
+faq:                  # 3–5 pairs; the [slug] page renders these visibly (the AI-extractable
+  - q: ""             # signal) + FAQPage JSON-LD centrally — never hand-write schema in the body
+    a: ""
+sources:              # 2–4 external citations. HARD RULE: only URLs actually retrieved via
+  - title: ""         # WebSearch/WebFetch in the writing session. Never from memory.
+    url: ""
+---
+
+{/*
+  Body skeleton — see reference/article-anatomy.md for the full spec.
+  - 900–1,400 words. No H1 in body (frontmatter title is the H1). H2 → H3 only.
+  - First paragraph (~50 words) directly answers the primary query — extraction bait
+    for AI engines. No throat-clearing.
+  - One comparison table or ordered list where the topic supports it.
+  - 2–4 internal links from _seo/LINKMAP.md (+ batch siblings), inline markdown links.
+  - Cite each source inline where its claim appears.
+  - End with the FAQ section rendered from frontmatter by the page template — do NOT
+    repeat the Q&As in the body.
+*/}

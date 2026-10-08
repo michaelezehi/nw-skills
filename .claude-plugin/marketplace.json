@@ -1,0 +1,25 @@
+{
+  "name": "nw-skills",
+  "owner": {
+    "name": "Michael Ezehi",
+    "url": "https://github.com/michaelezehi"
+  },
+  "description": "New Ward skills as an installable Claude Code plugin.",
+  "plugins": [
+    {
+      "name": "nw-skills",
+      "source": "./",
+      "description": "New Ward skills: Michael Ezehi's agent skills and slash commands for engineering, security, design, writing, growth and video.",
+      "category": "productivity",
+      "keywords": [
+        "skills",
+        "claude-code",
+        "engineering",
+        "design",
+        "security",
+        "writing",
+        "video"
+      ]
+    }
+  ]
+}

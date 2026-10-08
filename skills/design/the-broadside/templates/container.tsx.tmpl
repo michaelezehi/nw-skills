@@ -1,0 +1,182 @@
+'use client';
+// the-broadside outer container — horizontal-snap scroll, wires up the
+// close button, sign-in/up chrome, side chevrons, and converts vertical
+// wheel to one-slide-at-a-time horizontal navigation.
+
+import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
+import { X } from '@phosphor-icons/react';
+import { SideChevron } from './chevrons';
+import { getAccent, type FlowAccent } from './tokens';
+
+export interface BroadsideContainerProps {
+  /** Active flow accent — controls chevron + sign-up pip color. */
+  accent?: FlowAccent;
+  /** href the close button navigates to. */
+  closeHref?: string;
+  /** Optional sign-in/up CTAs in the top-right. */
+  signInHref?: string;
+  signUpHref?: string;
+  /**
+   * Localized labels — pass the consumer's translated strings here.
+   * Defaults are English; replace per locale.
+   */
+  labels?: {
+    close?: string;
+    signIn?: string;
+    signUp?: string;
+    previousSlide?: string;
+    nextSlide?: string;
+    backToHome?: string;
+  };
+  children: ReactNode;
+}
+
+const DEFAULT_LABELS = {
+  close: 'Close',
+  signIn: 'Sign In',
+  signUp: 'Sign Up',
+  previousSlide: 'Previous slide',
+  nextSlide: 'Next slide',
+  backToHome: 'Back to home',
+};
+
+/**
+ * Outer story container. Renders the horizontal-snap viewport, the chrome
+ * (close + sign-in/up), and the side chevrons. Children are the slide
+ * `<section>`s — each one full-viewport with `snap-start`.
+ */
+export function BroadsideContainer({
+  accent = 'primary',
+  closeHref = '/',
+  signInHref,
+  signUpHref,
+  labels: labelOverrides,
+  children,
+}: BroadsideContainerProps) {
+  const labels = { ...DEFAULT_LABELS, ...labelOverrides };
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [activeSlide, setActiveSlide] = useState(0);
+  const [slideCount, setSlideCount] = useState(0);
+  const accentTokens = getAccent(accent);
+
+  // Count children + observe scroll position to track active slide.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    setSlideCount(el.children.length);
+
+    const onScroll = () => {
+      const w = el.clientWidth;
+      const idx = Math.round(el.scrollLeft / w);
+      setActiveSlide(idx);
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+
+  const scrollToSlide = useCallback((index: number) => {
+    const el = containerRef.current;
+    if (!el) return;
+    el.scrollTo({ left: index * el.clientWidth, behavior: 'smooth' });
+  }, []);
+
+  const isFirst = activeSlide <= 0;
+  const isLast = activeSlide >= slideCount - 1;
+  const goPrev = useCallback(() => {
+    if (!isFirst) scrollToSlide(activeSlide - 1);
+  }, [isFirst, activeSlide, scrollToSlide]);
+  const goNext = useCallback(() => {
+    if (!isLast) scrollToSlide(activeSlide + 1);
+  }, [isLast, activeSlide, scrollToSlide]);
+
+  // Convert vertical wheel into one-slide-at-a-time horizontal nav.
+  const wheelLocked = useRef(false);
+  const wheelAccum = useRef(0);
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const DELTA_THRESHOLD = 60;
+    const COOLDOWN_MS = 1400;
+
+    const onWheel = (e: WheelEvent) => {
+      if (Math.abs(e.deltaY) <= Math.abs(e.deltaX)) return;
+      e.preventDefault();
+      if (wheelLocked.current) return;
+      wheelAccum.current += e.deltaY;
+      if (Math.abs(wheelAccum.current) < DELTA_THRESHOLD) return;
+      wheelLocked.current = true;
+      const direction = wheelAccum.current > 0 ? 1 : -1;
+      wheelAccum.current = 0;
+      const next = Math.min(Math.max(activeSlide + direction, 0), slideCount - 1);
+      if (next !== activeSlide) scrollToSlide(next);
+      setTimeout(() => {
+        wheelLocked.current = false;
+        wheelAccum.current = 0;
+      }, COOLDOWN_MS);
+    };
+
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [activeSlide, slideCount, scrollToSlide]);
+
+  return (
+    <div
+      ref={containerRef}
+      className="flex h-screen w-screen snap-x snap-mandatory overflow-x-auto overflow-y-hidden scroll-smooth"
+    >
+      {children}
+
+      {/* Top-left close — labeled paper-bg button over the dark rail */}
+      <a
+        href={closeHref}
+        className="group fixed top-6 left-6 z-50 inline-flex items-center gap-2.5 bg-[#FBFAF7] px-4 py-2.5 font-mono text-[11px] font-medium uppercase tracking-[0.32em] text-[#15110D] shadow-[0_2px_12px_-4px_rgba(0,0,0,0.18)] transition-all hover:bg-white md:text-[12px]"
+        aria-label={labels.backToHome}
+      >
+        <X size={12} weight="bold" className="transition-transform group-hover:rotate-90" />
+        <span>{labels.close}</span>
+      </a>
+
+      {/* Top-right CTA — ink primary, accent pip */}
+      {(signInHref || signUpHref) && (
+        <div className="fixed top-6 right-6 z-50 flex items-center gap-2 md:top-9 md:right-12 lg:right-16">
+          {signInHref && (
+            <a
+              href={signInHref}
+              className="px-4 py-2 font-mono text-[10px] font-medium uppercase tracking-[0.32em] text-[#5A574F] transition-colors hover:text-[#15110D] md:text-[11px]"
+            >
+              {labels.signIn}
+            </a>
+          )}
+          {signUpHref && (
+            <a
+              href={signUpHref}
+              className="inline-flex items-center gap-2 bg-[#15110D] px-4 py-2.5 font-mono text-[10px] font-medium uppercase tracking-[0.32em] text-white transition-all hover:bg-[#181613] md:text-[11px]"
+            >
+              <span>{labels.signUp}</span>
+              <span aria-hidden="true" className="inline-block h-1.5 w-1.5" style={{ backgroundColor: accentTokens.bg }} />
+            </a>
+          )}
+        </div>
+      )}
+
+      {/* Side chevrons */}
+      <SideChevron side="left" disabled={isFirst} onClick={goPrev} flow={accent} label={labels.previousSlide} />
+      <SideChevron side="right" disabled={isLast} onClick={goNext} flow={accent} label={labels.nextSlide} />
+    </div>
+  );
+}
+
+/**
+ * Single slide wrapper. Renders a full-viewport `<section>` that snaps to
+ * its start. Use one per slide as a direct child of `<BroadsideContainer>`.
+ */
+export function BroadsideSlide({ children, bg = '{{PAPER}}' }: { children: ReactNode; bg?: string }) {
+  return (
+    <section
+      className="relative h-screen w-screen shrink-0 snap-start snap-always overflow-hidden"
+      style={{ backgroundColor: bg }}
+    >
+      <div className="flex h-full w-full">{children}</div>
+    </section>
+  );
+}

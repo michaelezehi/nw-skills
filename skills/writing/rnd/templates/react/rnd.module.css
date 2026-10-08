@@ -1,0 +1,447 @@
+/* R&D surface design language: slate ink on white, sage hero accent. */
+.root {
+  --ink: #0f172a;
+  --body: #475569;
+  --faint: #94a3b8;
+  --line: #f1f5f9;
+  --line2: #e2e8f0;
+  --paper: #ffffff;
+  --panel: #f8fafc;
+  --hero: #a9c7ad;
+  --heroSoft: #eef4ec;
+  --heroDeep: #4a6b52;
+  background: var(--paper);
+  color: var(--ink);
+  font:
+    15px/1.6 system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+.root a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* ---- demo viewer ---- */
+.viewer {
+  display: flex;
+  min-height: 100vh;
+}
+.aside {
+  width: 268px;
+  flex: none;
+  border-right: 1px solid var(--line);
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  position: sticky;
+  top: 0;
+}
+.mark {
+  display: block;
+  padding: 18px 20px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  font-weight: 600;
+}
+.markProj {
+  display: block;
+  font-size: 10.5px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--faint);
+  margin-top: 2px;
+}
+.nav {
+  flex: 1;
+  overflow-y: auto;
+  padding: 14px 12px;
+}
+.tlink {
+  display: block;
+  border-radius: 9px;
+  padding: 7px 10px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--body);
+}
+.tlink:hover {
+  background: var(--panel);
+}
+.tlinkCur {
+  composes: tlink;
+  background: var(--heroSoft);
+  color: var(--ink);
+}
+.tn {
+  color: var(--faint);
+  font-weight: 600;
+  margin-right: 8px;
+  font-size: 11px;
+}
+.scenes {
+  margin: 2px 0 8px;
+  padding: 0 0 0 12px;
+  list-style: none;
+}
+.slink {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 10px;
+  font-size: 12px;
+  color: var(--faint);
+  border-radius: 8px;
+}
+.slink:hover {
+  color: var(--ink);
+}
+.slinkOn {
+  composes: slink;
+  color: var(--ink);
+  font-weight: 600;
+}
+.dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--line2);
+  flex: none;
+}
+.slinkOn .dot {
+  background: var(--hero);
+}
+.aft {
+  padding: 14px 20px;
+  border-top: 1px solid var(--line);
+  font-size: 11px;
+  color: var(--faint);
+  line-height: 1.5;
+}
+.aft a {
+  text-decoration: underline;
+}
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+}
+.stage {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 34px 32px 24px;
+}
+.eyebrow {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--faint);
+}
+.title {
+  margin: 10px 0 0;
+  font-size: clamp(20px, 2.4vw, 29px);
+  font-weight: 700;
+  letter-spacing: -0.015em;
+  text-align: center;
+  max-width: 34ch;
+}
+.sketch {
+  width: min(860px, 100%);
+  margin: 16px 0 6px;
+}
+.sketch :global(figure.sk) {
+  margin: 0;
+}
+.sketch :global(svg) {
+  width: 100%;
+  height: auto;
+}
+.caption {
+  margin: 0;
+  max-width: 64ch;
+  text-align: center;
+  font-size: 14px;
+  color: var(--body);
+}
+.prd {
+  width: min(720px, 100%);
+  margin: 20px auto 0;
+  border: 1px solid var(--line2);
+  border-radius: 12px;
+  background: var(--panel);
+}
+.prdSummary {
+  cursor: pointer;
+  padding: 10px 16px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+  list-style: none;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.prdSummary::after {
+  content: "+";
+  font-size: 15px;
+  color: var(--faint);
+}
+.prd[open] .prdSummary {
+  border-bottom: 1px solid var(--line2);
+  color: var(--ink);
+}
+.prd[open] .prdSummary::after {
+  content: "\2212";
+}
+.prdList {
+  margin: 0;
+  padding: 12px 20px 14px 34px;
+  font-size: 13.5px;
+  color: var(--body);
+}
+.prdList li {
+  margin: 5px 0;
+}
+.src {
+  font-size: 11px;
+  color: var(--faint);
+  margin: 10px auto 0;
+  text-align: center;
+}
+.footer {
+  border-top: 1px solid var(--line);
+}
+.fwrap {
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.navBack {
+  border-radius: 9px;
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: 1px solid var(--line2);
+  background: #fff;
+  color: var(--body);
+  cursor: pointer;
+  font-family: inherit;
+}
+.navNext {
+  border-radius: 9px;
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border: 0;
+  background: var(--ink);
+  color: #fff;
+  cursor: pointer;
+  font-family: inherit;
+}
+.navBack:disabled,
+.navNext:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.hint {
+  font-size: 11.5px;
+  color: var(--faint);
+  text-align: center;
+}
+.kbd {
+  border: 1px solid var(--line2);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  padding: 1px 6px;
+  font: 11px ui-monospace, monospace;
+  background: var(--panel);
+}
+@media (max-width: 900px) {
+  .aside {
+    display: none;
+  }
+}
+
+/* ---- index ---- */
+.idxHeader {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  background: rgba(255, 255, 255, 0.88);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+.idxHwrap {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 14px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.idxMark {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.idxProj {
+  font-size: 11px;
+  font-weight: 400;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: var(--faint);
+}
+.idxExt {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--faint);
+}
+.idxExt:hover {
+  color: var(--ink);
+}
+.idxMain {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 72px 24px 128px;
+}
+.idxH1 {
+  margin: 16px 0 0;
+  font-size: clamp(40px, 6vw, 56px);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.1;
+  max-width: 18ch;
+}
+.idxSub {
+  display: block;
+  font-weight: 400;
+  font-style: italic;
+  color: var(--faint);
+}
+.idxLede {
+  margin: 24px 0 0;
+  max-width: 60ch;
+  font-size: 17px;
+  color: var(--body);
+}
+.idxListHead {
+  margin-top: 80px;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--line);
+  padding-bottom: 12px;
+}
+.idxListHead h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.idxCount {
+  margin: 0;
+  font-size: 12px;
+  color: var(--faint);
+}
+.idxEntries {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+}
+.idxEntries li {
+  border-bottom: 1px solid var(--line);
+}
+.entry {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  gap: 24px;
+  align-items: center;
+  padding: 28px 0;
+}
+.entryIcon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.entryRow {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.entryRow h3 {
+  margin: 0;
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.25;
+  display: inline;
+}
+.entry p {
+  margin: 6px 0 0;
+  max-width: 70ch;
+  font-size: 14px;
+  color: var(--body);
+}
+.chip {
+  border-radius: 999px;
+  padding: 2px 8px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  background: #ecfdf5;
+  color: #047857;
+  box-shadow: inset 0 0 0 1px #d1fae5;
+}
+.entryMeta {
+  font-size: 12px;
+  color: var(--faint);
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.arrow {
+  color: var(--line2);
+  transition:
+    transform 0.15s,
+    color 0.15s;
+  font-weight: 700;
+}
+.entry:hover .arrow {
+  transform: translateX(3px);
+  color: var(--ink);
+}
+.entry:hover h3 {
+  text-decoration: underline;
+  text-decoration-color: var(--hero);
+  text-decoration-thickness: 2px;
+  text-underline-offset: 4px;
+}
+.idxFooter {
+  margin-top: 96px;
+  border-top: 1px solid var(--line);
+  padding-top: 24px;
+  font-size: 12px;
+  color: var(--faint);
+}

@@ -1,0 +1,56 @@
+// the-broadside — barrel exports.
+
+// Surface tokens
+export * from './tokens';
+
+// Frame, Plate, Pagination, BottomCards, AccentDot, types
+export {
+  EditorialFrame,
+  EditorialPlate,
+  EditorialPagination,
+  EditorialBottomCards,
+  AccentDot,
+  RedDot,
+  useFlowAccent,
+  useAccent,
+  type EditorialCard,
+} from './slide';
+
+// 9 layout variants (v1–v5 original, v6–v9 extended)
+export {
+  EditorialSplit,
+  EditorialOverlay,
+  EditorialCardsSide,
+  EditorialCardsTop,
+  EditorialScatter,
+  type EditorialLayoutProps,
+} from './layouts';
+
+export {
+  EditorialPortrait,
+  EditorialAgency,
+  EditorialPoster,
+  EditorialMagazine,
+  SerifAccent,
+  type EditorialExtendedProps,
+} from './layouts-extended';
+
+// Numeric version registry — <EditorialVersion version={1..9} />
+export {
+  EditorialVersion,
+  EDITORIAL_VERSIONS,
+  EDITORIAL_VERSION_NAMES,
+  getEditorialLayout,
+  type EditorialVersionNumber,
+  type EditorialVersionProps,
+} from './versions';
+
+// Side chevrons (paired ink + accent)
+export { SideChevron } from './chevrons';
+
+// Outer container with horizontal-snap + chrome
+export {
+  BroadsideContainer,
+  BroadsideSlide,
+  type BroadsideContainerProps,
+} from './container';

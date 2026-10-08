@@ -1,0 +1,55 @@
+'use client';
+// the-broadside side chevrons — paired opposites:
+// Back is solid ink with an accent outline; Next is solid accent with an
+// ink outline. Each button reads BOTH brand colors so the pair feels
+// like one system on any background.
+
+import { useState } from 'react';
+import { CaretLeft, CaretRight } from '@phosphor-icons/react';
+import { getAccent, type FlowAccent } from './tokens';
+
+interface SideChevronProps {
+  side: 'left' | 'right';
+  disabled: boolean;
+  onClick: () => void;
+  /** When omitted, resolves from the project's primary accent. */
+  flow?: FlowAccent;
+  /** aria-label for assistive tech — the consumer plugs in their t() value. */
+  label: string;
+}
+
+export function SideChevron({ side, disabled, onClick, flow = 'primary', label }: SideChevronProps) {
+  const [hover, setHover] = useState(false);
+  const isLeft = side === 'left';
+  const Icon = isLeft ? CaretLeft : CaretRight;
+  const accent = getAccent(flow);
+
+  // Left = solid ink + accent outline. Right = solid accent + ink outline.
+  const bg = isLeft ? '#15110D' : accent.bg;
+  const fg = isLeft ? '#FFFFFF' : accent.ink;
+  const outline = isLeft ? accent.bg : '#15110D';
+  const positionClass = isLeft ? 'left-3 md:left-6' : 'right-3 md:right-6';
+
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={disabled}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      onFocus={() => setHover(true)}
+      onBlur={() => setHover(false)}
+      aria-label={label}
+      className={`fixed top-1/2 z-40 flex h-12 w-12 -translate-y-1/2 items-center justify-center transition-all duration-200 disabled:opacity-30 disabled:pointer-events-none md:h-14 md:w-14 ${positionClass}`}
+      style={{
+        backgroundColor: bg,
+        color: fg,
+        outline: `2px solid ${outline}`,
+        outlineOffset: 2,
+        transform: `translateY(-50%) ${hover && !disabled ? 'scale(1.06)' : 'scale(1)'}`,
+      }}
+    >
+      <Icon size={18} weight="bold" />
+    </button>
+  );
+}

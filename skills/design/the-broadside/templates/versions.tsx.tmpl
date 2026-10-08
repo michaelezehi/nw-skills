@@ -1,0 +1,63 @@
+// the-broadside numeric version registry.
+// Lets consumers invoke layouts by number: <EditorialVersion version={7} />.
+// Original five (v1–v5) live in ./layouts. Extended set (v6–v9) in ./layouts-extended.
+
+import type { ComponentType } from 'react';
+import {
+  EditorialSplit,
+  EditorialOverlay,
+  EditorialCardsSide,
+  EditorialCardsTop,
+  EditorialScatter,
+  type EditorialLayoutProps,
+} from './layouts';
+import {
+  EditorialPortrait,
+  EditorialAgency,
+  EditorialPoster,
+  EditorialMagazine,
+  type EditorialExtendedProps,
+} from './layouts-extended';
+
+export const EDITORIAL_VERSIONS = {
+  1: EditorialSplit,
+  2: EditorialOverlay,
+  3: EditorialCardsSide,
+  4: EditorialCardsTop,
+  5: EditorialScatter,
+  6: EditorialPortrait,
+  7: EditorialAgency,
+  8: EditorialPoster,
+  9: EditorialMagazine,
+} as const;
+
+export type EditorialVersionNumber = keyof typeof EDITORIAL_VERSIONS;
+
+export const EDITORIAL_VERSION_NAMES: Record<EditorialVersionNumber, string> = {
+  1: 'Split',
+  2: 'Overlay',
+  3: 'CardsSide',
+  4: 'CardsTop',
+  5: 'Scatter',
+  6: 'Portrait',
+  7: 'Agency',
+  8: 'Poster',
+  9: 'Magazine',
+};
+
+type AnyEditorialProps = EditorialLayoutProps & Partial<EditorialExtendedProps> & {
+  imageSide?: 'left' | 'right';
+};
+
+export interface EditorialVersionProps extends AnyEditorialProps {
+  version: EditorialVersionNumber;
+}
+
+export function EditorialVersion({ version, ...props }: EditorialVersionProps) {
+  const Layout = EDITORIAL_VERSIONS[version] as ComponentType<AnyEditorialProps>;
+  return <Layout {...props} />;
+}
+
+export function getEditorialLayout(version: EditorialVersionNumber) {
+  return EDITORIAL_VERSIONS[version];
+}

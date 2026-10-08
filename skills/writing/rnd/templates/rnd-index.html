@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>R&amp;D · {{PROJECT}}</title>
+<style>
+:root{--ink:#0f172a;--body:#475569;--faint:#94a3b8;--line:#f1f5f9;--line-2:#e2e8f0;
+--paper:#fff;--panel:#f8fafc;--hero:{{HERO}};--hero-soft:{{HERO_SOFT}};--hero-deep:{{HERO_DEEP}}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);
+font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+header{position:sticky;top:0;z-index:30;background:rgba(255,255,255,.88);
+backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+.hwrap{max-width:1100px;margin:0 auto;padding:14px 24px;display:flex;
+align-items:center;justify-content:space-between}
+.mark{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600}
+.mark .proj{font-size:11px;font-weight:400;text-transform:uppercase;
+letter-spacing:.16em;color:var(--faint)}
+.ext{font-size:12px;font-weight:500;color:var(--faint)}
+.ext:hover{color:var(--ink)}
+main{max-width:1100px;margin:0 auto;padding:72px 24px 128px}
+.eyebrow{font-size:11px;font-weight:600;text-transform:uppercase;
+letter-spacing:.18em;color:var(--faint);margin:0}
+h1{margin:16px 0 0;font-size:clamp(40px,6vw,56px);font-weight:700;
+letter-spacing:-.02em;line-height:1.1;max-width:18ch}
+h1 .sub{display:block;font-weight:400;font-style:italic;color:var(--faint)}
+.lede{margin:24px 0 0;max-width:60ch;font-size:17px;color:var(--body)}
+.listhead{margin-top:80px;display:flex;align-items:flex-end;
+justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:12px}
+.listhead h2{margin:0;font-size:15px;font-weight:600;letter-spacing:-.01em}
+.listhead p{margin:0;font-size:12px;color:var(--faint)}
+ul.entries{list-style:none;margin:8px 0 0;padding:0}
+ul.entries li{border-bottom:1px solid var(--line)}
+.entry{display:grid;grid-template-columns:44px 1fr auto;gap:24px;
+align-items:center;padding:28px 0}
+.entry .icon{width:44px;height:44px;border-radius:10px;border:1px solid var(--line);
+background:var(--panel);display:flex;align-items:center;justify-content:center}
+.entry h3{margin:0;font-size:20px;font-weight:600;line-height:1.25;
+display:inline}
+.entry .row{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.entry p{margin:6px 0 0;max-width:70ch;font-size:14px;color:var(--body)}
+.chip{border-radius:999px;padding:2px 8px;font-size:10px;font-weight:600;
+text-transform:uppercase;letter-spacing:.1em}
+.chip.live{background:#ecfdf5;color:#047857;box-shadow:inset 0 0 0 1px #d1fae5}
+.chip.in-progress{background:#fffbeb;color:#b45309;box-shadow:inset 0 0 0 1px #fef3c7}
+.chip.planned{background:var(--panel);color:var(--faint);box-shadow:inset 0 0 0 1px var(--line)}
+.meta{font-size:12px;color:var(--faint);display:flex;align-items:center;gap:14px}
+.arrow{color:var(--line-2);transition:transform .15s,color .15s;font-weight:700}
+a.entry:hover .arrow{transform:translateX(3px);color:var(--ink)}
+a.entry:hover h3{text-decoration:underline;text-decoration-color:var(--hero);
+text-decoration-thickness:2px;text-underline-offset:4px}
+footer{margin-top:96px;border-top:1px solid var(--line);padding-top:24px;
+font-size:12px;color:var(--faint)}
+</style>
+</head>
+<body>
+<header><div class="hwrap">
+  <a class="mark" href="./index.html">{{MARK_SVG}} R&amp;D <span class="proj">{{PROJECT}}</span></a>
+  <a class="ext" href="{{MAIN_SITE}}">Main site ↗</a>
+</div></header>
+<main>
+  <p class="eyebrow">{{PROJECT}} · R&amp;D</p>
+  <h1>Where we think out loud <span class="sub">about what we&rsquo;re building.</span></h1>
+  <p class="lede">Living briefs and visual prototypes from the team. Each entry is a
+  single, shareable page, written for clarity rather than marketing.</p>
+
+  <div class="listhead"><h2>Briefs &amp; prototypes</h2><p id="count"></p></div>
+  <ul class="entries" id="entries"></ul>
+
+  <footer>Internal R&amp;D surface. Not indexed. Not for redistribution without permission.</footer>
+</main>
+<script>
+// One object per artifact. APPEND new entries; never rewrite existing ones.
+// icon: a small inline-SVG string (a Sketches icon body), or '' for the default.
+const ENTRIES = [
+  // { href: '<slug>/index.html', title: '…', summary: '…',
+  //   status: 'live' /* live | in-progress | planned */, updated: 'June 2026', icon: '' },
+];
+const DEFAULT_ICON = '{{DEFAULT_ICON_SVG}}';
+const STATUS = { live: 'Live', 'in-progress': 'In progress', planned: 'Planned' };
+const ul = document.getElementById('entries');
+for (const e of ENTRIES) {
+  const live = e.status === 'live';
+  const li = document.createElement('li');
+  const cell = document.createElement(live ? 'a' : 'div');
+  cell.className = 'entry';
+  if (live) cell.href = e.href;
+  cell.innerHTML =
+    `<span class="icon">${e.icon || DEFAULT_ICON}</span>` +
+    `<span><span class="row"><h3>${e.title}</h3>` +
+    `<span class="chip ${e.status}">${STATUS[e.status] || e.status}</span></span>` +
+    `<p>${e.summary}</p></span>` +
+    `<span class="meta"><span>${e.updated || ''}</span>${live ? '<span class="arrow">→</span>' : ''}</span>`;
+  li.appendChild(cell); ul.appendChild(li);
+}
+document.getElementById('count').textContent = `${ENTRIES.length} entries`;
+</script>
+</body>
+</html>

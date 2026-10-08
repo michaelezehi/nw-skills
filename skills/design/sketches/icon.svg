@@ -1,0 +1,10 @@
+<svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" fill="none" stroke="#2b3a30" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- doodle scribble (the thing being drawn) -->
+  <path d="M14 60 q10 -22 22 -8 t20 -6 q10 -10 18 4" stroke="#6B8F71"/>
+  <!-- hero blob the scribble lands on -->
+  <path d="M70 50 q14 -2 14 12 q0 12 -14 12 q-12 0 -12 -12 q0 -10 12 -12 z" fill="#a9c7ad" stroke="#2b3a30"/>
+  <!-- pencil drawing it -->
+  <path d="M58 78 l26 -26 l10 10 l-26 26 z" fill="#faf8f3" stroke="#2b3a30"/>
+  <path d="M84 52 l10 10" stroke="#2b3a30"/>
+  <path d="M58 78 l-6 12 l12 -6 z" fill="#2b3a30" stroke="#2b3a30"/>
+</svg>

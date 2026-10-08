@@ -1,0 +1,49 @@
+// the-broadside design tokens — neutral palette is locked across themes;
+// only the accent triple changes per flow. Add new flows by extending
+// FlowAccent + getAccent.
+
+export const PAPER = '{{PAPER}}';        // warm-grey ambient surround
+export const CARD = '{{CARD}}';          // inner card surface
+export const CARD_SOFT = '#F2EEE7';      // soft variant for inset panels
+export const INK = '{{INK}}';            // near-black, primary text
+export const RAIL = '{{RAIL}}';          // dark left rail + dark cards
+export const SMOKE = '{{SMOKE}}';        // secondary text
+export const ASH = '{{ASH}}';            // hairline divider
+export const MIST = '{{MIST}}';          // subtle border / inset
+
+// — Per-flow accent ——————————————————————————————————————
+
+export const ACCENT_PRIMARY = '{{ACCENT_BG}}';
+export const ACCENT_PRIMARY_INK = '{{ACCENT_INK}}';
+
+export type FlowAccent = 'primary'; // extend with additional flow names
+
+export interface AccentTokens {
+  bg: string;
+  ink: string;
+  /** True when the accent surface is light and needs dark ink for contrast.
+   *  Avoids hex-string comparisons at consumer sites. */
+  isLight: boolean;
+}
+
+export function getAccent(flow: FlowAccent = 'primary'): AccentTokens {
+  switch (flow) {
+    case 'primary':
+    default:
+      return {
+        bg: ACCENT_PRIMARY,
+        ink: ACCENT_PRIMARY_INK,
+        isLight: {{ACCENT_IS_LIGHT}},
+      };
+  }
+}
+
+// — Animation primitives ————————————————————————————
+
+export const EASE = [0.16, 1, 0.3, 1] as const;
+export const DURATION = 0.55;
+export const STAGGER = 0.06;
+export const Y_DISTANCE = 18;
+
+// — Image filter — desaturates source assets for B&W editorial print feel.
+export const IMAGE_FILTER = 'grayscale(100%) contrast(1.05) brightness(0.98)';

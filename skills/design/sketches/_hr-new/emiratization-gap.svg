@@ -1,0 +1,4 @@
+<path d="M14 82 H44 V62 H14 z" fill="{PAPER}" stroke="{INK}" stroke-width="3.2"/>
+<path d="M60 82 H88 V40 H60 z" fill="#00732f" stroke="{INK}" stroke-width="3.2"/>
+<path d="M60 40 h28 v8 h-9 v8 h-9 v8 h-9 v8" fill="#ff0000" stroke="none" opacity="0.85"/>
+<path d="M44 58 q10 -20 18 -20" fill="none" stroke="{ACCENT}" stroke-width="2.6" stroke-dasharray="2 5"/>

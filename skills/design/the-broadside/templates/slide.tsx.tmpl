@@ -1,0 +1,430 @@
+'use client';
+// the-broadside slide primitives — Frame, Plate, Pagination, BottomCards.
+// Each slide composes one of the layout variants from `./layouts.tsx`
+// inside an EditorialFrame; this file owns the surface tokens, the dark
+// side rail, the image plate with film grain, the inline pagination
+// dots, and the bottom 3-card strip + 4 card kinds.
+
+import { motion, useReducedMotion, type Variants } from 'motion/react';
+import { createContext, ReactNode, useContext, useId } from 'react';
+import { List, At, ArrowUpRight } from '@phosphor-icons/react';
+import {
+  ASH,
+  CARD,
+  DURATION,
+  EASE,
+  type FlowAccent,
+  getAccent,
+  IMAGE_FILTER,
+  INK,
+  MIST,
+  PAPER,
+  RAIL,
+  SMOKE,
+  STAGGER,
+  Y_DISTANCE,
+} from './tokens';
+
+// — Per-flow accent context ——————————————————————————
+
+const FlowAccentContext = createContext<FlowAccent>('primary');
+
+export function useFlowAccent(): FlowAccent {
+  return useContext(FlowAccentContext);
+}
+
+export function useAccent() {
+  return getAccent(useFlowAccent());
+}
+
+// — Animation primitives ————————————————————————————
+
+function useAnim() {
+  const prefersReduced = useReducedMotion();
+  const container = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: STAGGER, delayChildren: 0.08 },
+    },
+  } satisfies Variants;
+  const item = (
+    prefersReduced
+      ? { hidden: { opacity: 0 }, visible: { opacity: 1, transition: { duration: DURATION } } }
+      : {
+          hidden: { opacity: 0, y: Y_DISTANCE },
+          visible: { opacity: 1, y: 0, transition: { duration: DURATION, ease: [...EASE] } },
+        }
+  ) as Variants;
+  return { container, item, prefersReduced };
+}
+
+// — Frame ——————————————————————————————————————————
+
+interface EditorialFrameProps {
+  /** Flow accent — drives the per-slide color. */
+  accent?: FlowAccent;
+  /** When true, the frame bleeds to 100vw × 100vh (full viewport) with no outer padding.
+   *  Use for hero slides (slide 1 of any generated page). */
+  hero?: boolean;
+  children: ReactNode;
+}
+
+/**
+ * Outer frame. Renders the warm-grey ambient surround and the inner
+ * near-white card with a dark left rail. Provides FlowAccentContext.
+ *
+ * When `hero` is true, the outer wrapper switches to `w-screen h-screen`
+ * and strips its horizontal padding so the slide bleeds edge-to-edge.
+ */
+export function EditorialFrame({ accent = 'primary', hero = false, children }: EditorialFrameProps) {
+  const { container } = useAnim();
+  return (
+    <FlowAccentContext.Provider value={accent}>
+      <motion.div
+        variants={container}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, amount: 0.2 }}
+        style={{ backgroundColor: PAPER }}
+        className={hero ? 'relative h-screen w-screen overflow-hidden' : 'relative h-full w-full overflow-hidden'}
+      >
+        <div
+          className={
+            hero
+              ? 'relative mx-auto flex h-full w-full flex-col'
+              : 'relative mx-auto flex h-full w-full flex-col md:px-6 md:py-6 lg:px-10 lg:py-10'
+          }
+        >
+          <div
+            className={hero
+              ? 'relative flex h-full w-full flex-1 overflow-hidden'
+              : 'relative flex h-full w-full flex-1 overflow-hidden md:rounded-[2px]'}
+            style={{ backgroundColor: CARD }}
+          >
+            <SideRail />
+            <div className="relative flex h-full w-full flex-1 flex-col overflow-hidden md:pl-[64px]">
+              {children}
+            </div>
+          </div>
+        </div>
+      </motion.div>
+    </FlowAccentContext.Provider>
+  );
+}
+
+// — Side rail ——————————————————————————————————————
+
+function SideRail() {
+  return (
+    <aside
+      aria-hidden="true"
+      className="absolute inset-y-0 left-0 z-20 hidden w-[64px] flex-col justify-between md:flex"
+      style={{ backgroundColor: RAIL }}
+    >
+      <div className="flex justify-center pt-7">
+        <button
+          type="button"
+          aria-label="Menu"
+          className="flex h-8 w-8 items-center justify-center text-white/85 transition-colors hover:text-white"
+        >
+          <List size={18} weight="bold" />
+        </button>
+      </div>
+      <div className="flex flex-col items-center gap-5 pb-7 text-white/55">
+        <At size={14} weight="bold" />
+        <span
+          className="font-mono text-[9px] uppercase tracking-[0.32em]"
+          style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+        >
+          ©
+        </span>
+      </div>
+    </aside>
+  );
+}
+
+// — Image plate with film grain ————————————————————
+
+interface EditorialPlateProps {
+  src: string;
+  alt?: string;
+  objectPosition?: string;
+  className?: string;
+  children?: ReactNode;
+}
+
+export function EditorialPlate({
+  src,
+  alt,
+  objectPosition = '50% 35%',
+  className = '',
+  children,
+}: EditorialPlateProps) {
+  // useId guarantees a unique filter id per instance — without it, two
+  // <EditorialPlate>s with the same src produce duplicate <filter id=...>
+  // and the second is silently ignored by the browser.
+  const filterId = `broadside-grain-${useId().replace(/:/g, '')}`;
+  return (
+    <div className={`relative overflow-hidden ${className}`} style={{ backgroundColor: '#0A0A0A' }}>
+      <img
+        src={src}
+        alt={alt ?? ''}
+        aria-hidden={alt ? undefined : true}
+        className="absolute inset-0 h-full w-full object-cover"
+        style={{ objectPosition, filter: IMAGE_FILTER }}
+      />
+      <svg
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.22] mix-blend-multiply"
+      >
+        <filter id={filterId}>
+          <feTurbulence type="fractalNoise" baseFrequency="0.45" numOctaves="2" stitchTiles="stitch" seed="7" />
+          <feColorMatrix
+            values="0 0 0 0 0
+                    0 0 0 0 0
+                    0 0 0 0 0
+                    0 0 0 1 0"
+          />
+        </filter>
+        <rect width="100%" height="100%" filter={`url(#${filterId})`} />
+      </svg>
+      {children && <div className="relative z-10 flex h-full w-full">{children}</div>}
+    </div>
+  );
+}
+
+// — Inline pagination ———————————————————————————————
+
+export function EditorialPagination({
+  current,
+  total,
+}: {
+  current: number;
+  total: number;
+}) {
+  const accent = useAccent();
+  const dots = Array.from({ length: total }, (_, i) => i);
+  return (
+    <div className="flex items-center gap-2.5">
+      <span className="font-mono text-[11px] tracking-[0.18em]" style={{ color: SMOKE }}>
+        {String(current).padStart(2, '0')}
+      </span>
+      <div className="flex items-center gap-1.5" role="presentation">
+        {dots.map(i => {
+          const isActive = i === current - 1;
+          return (
+            <span
+              key={i}
+              aria-hidden="true"
+              className="block h-[2px] w-3 transition-all"
+              style={{
+                backgroundColor: isActive ? accent.bg : ASH,
+                width: isActive ? 18 : 8,
+              }}
+            />
+          );
+        })}
+      </div>
+      <span className="font-mono text-[11px] tracking-[0.18em]" style={{ color: SMOKE }}>
+        {String(total).padStart(2, '0')}
+      </span>
+    </div>
+  );
+}
+
+// — Bottom 3-card strip ——————————————————————————
+
+export type EditorialCard =
+  | { kind: 'red'; eyebrow: string; title: ReactNode; body?: ReactNode }
+  | {
+      kind: 'image';
+      eyebrow?: string;
+      title?: ReactNode;
+      body?: ReactNode;
+      imageSrc: string;
+    }
+  | {
+      kind: 'light';
+      eyebrow: string;
+      title: ReactNode;
+      body?: ReactNode;
+      cta?: { label: string; href: string };
+    }
+  | { kind: 'dark'; eyebrow: string; title: ReactNode; body?: ReactNode };
+
+export function EditorialBottomCards({ cards }: { cards: EditorialCard[] }) {
+  const { item } = useAnim();
+  return (
+    <motion.div
+      variants={item}
+      className="grid w-full grid-cols-1 md:grid-cols-3 md:grid-rows-[1fr] md:flex-[3] md:basis-0 md:overflow-hidden"
+    >
+      {cards.map((card, i) => (
+        <div key={i} className="relative flex min-h-[180px] flex-col overflow-hidden md:min-h-0">
+          <CardBody card={card} />
+        </div>
+      ))}
+    </motion.div>
+  );
+}
+
+function CardBody({ card }: { card: EditorialCard }) {
+  const accent = useAccent();
+  const accentSubFg = accent.isLight ? 'rgba(17,17,0,0.65)' : 'rgba(255,255,255,0.85)';
+  const accentGhostFg = accent.isLight ? 'rgba(17,17,0,0.12)' : 'rgba(255,255,255,0.15)';
+
+  if (card.kind === 'red') {
+    return (
+      <div
+        className="relative flex h-full flex-col justify-end overflow-hidden p-7 md:p-10 lg:p-12"
+        style={{ backgroundColor: accent.bg, color: accent.ink }}
+      >
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute -left-2 -top-3 text-[clamp(4rem,9vw,7.5rem)] font-medium leading-none tracking-[-0.04em]"
+          style={{ fontFamily: 'var(--font-geist-sans), system-ui, sans-serif', color: accentGhostFg }}
+        >
+          {typeof card.title === 'string' ? card.title.split(' ')[0] : ''}
+        </span>
+        <div className="relative">
+          <p className="font-mono text-[12px] uppercase tracking-[0.32em]" style={{ color: accentSubFg }}>
+            {card.eyebrow}
+          </p>
+          <h3 className="mt-3 text-[clamp(1.25rem,1.95vw,1.75rem)] font-medium leading-[1.18] tracking-[-0.02em]">
+            {card.title}
+          </h3>
+          {card.body && (
+            <p className="mt-3 max-w-[280px] text-[14px] leading-[1.6]" style={{ color: accentSubFg }}>
+              {card.body}
+            </p>
+          )}
+        </div>
+      </div>
+    );
+  }
+
+  if (card.kind === 'image') {
+    return <ImageCard card={card} />;
+  }
+
+  if (card.kind === 'dark') {
+    return (
+      <div
+        className="relative flex h-full flex-col justify-end overflow-hidden p-7 md:p-10 lg:p-12"
+        style={{ backgroundColor: RAIL, color: '#FFFFFF' }}
+      >
+        <p className="font-mono text-[12px] uppercase tracking-[0.32em] text-white/65">
+          {card.eyebrow}
+        </p>
+        <h3 className="mt-3 text-[clamp(1.25rem,1.95vw,1.75rem)] font-medium leading-[1.18] tracking-[-0.02em]">
+          {card.title}
+        </h3>
+        {card.body && (
+          <p className="mt-3 max-w-[280px] text-[14px] leading-[1.6] text-white/72">{card.body}</p>
+        )}
+      </div>
+    );
+  }
+
+  // light
+  return (
+    <div className="relative flex h-full flex-col justify-end overflow-hidden p-7 md:p-10 lg:p-12" style={{ backgroundColor: CARD }}>
+      <p className="font-mono text-[12px] uppercase tracking-[0.32em]" style={{ color: SMOKE }}>
+        {card.eyebrow}
+      </p>
+      <h3
+        className="mt-3 text-[clamp(1.25rem,1.95vw,1.75rem)] font-medium leading-[1.18] tracking-[-0.02em]"
+        style={{ color: INK, fontFamily: 'var(--font-geist-sans), system-ui, sans-serif' }}
+      >
+        {card.title}
+      </h3>
+      {card.body && (
+        <p className="mt-3 max-w-[280px] text-[14px] leading-[1.6]" style={{ color: SMOKE }}>
+          {card.body}
+        </p>
+      )}
+      {card.cta && (
+        <a
+          href={card.cta.href}
+          className="mt-5 inline-flex items-center gap-2 font-mono text-[11px] font-medium uppercase tracking-[0.22em] transition-colors hover:text-[var(--color-ink)]"
+          style={{ color: INK }}
+        >
+          {card.cta.label}
+          <ArrowUpRight size={12} weight="bold" />
+        </a>
+      )}
+    </div>
+  );
+}
+
+function ImageCard({ card }: { card: Extract<EditorialCard, { kind: 'image' }> }) {
+  const filterId = `card-grain-${useId().replace(/:/g, '')}`;
+  const hasOverlay = Boolean(card.eyebrow || card.title || card.body);
+  return (
+    <div className="relative h-full overflow-hidden" style={{ backgroundColor: '#0A0A0A' }}>
+      <img
+        src={card.imageSrc}
+        alt=""
+        aria-hidden="true"
+        className="absolute inset-0 h-full w-full object-cover"
+        style={{ filter: IMAGE_FILTER, objectPosition: 'center' }}
+      />
+      <svg
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 h-full w-full opacity-[0.22] mix-blend-multiply"
+      >
+        <filter id={filterId}>
+          <feTurbulence type="fractalNoise" baseFrequency="0.45" numOctaves="2" stitchTiles="stitch" seed="11" />
+          <feColorMatrix
+            values="0 0 0 0 0
+                    0 0 0 0 0
+                    0 0 0 0 0
+                    0 0 0 1 0"
+          />
+        </filter>
+        <rect width="100%" height="100%" filter={`url(#${filterId})`} />
+      </svg>
+      {hasOverlay && (
+        <>
+          <div
+            aria-hidden="true"
+            className="absolute inset-0"
+            style={{ background: 'linear-gradient(180deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.6) 100%)' }}
+          />
+          <div className="relative flex h-full flex-col justify-end p-7 text-white md:p-10 lg:p-12">
+            {card.eyebrow && (
+              <p className="font-mono text-[12px] uppercase tracking-[0.32em] text-white/75">
+                {card.eyebrow}
+              </p>
+            )}
+            {card.title && (
+              <h3 className="mt-3 text-[clamp(1.25rem,1.95vw,1.75rem)] font-medium leading-[1.18] tracking-[-0.02em]">
+                {card.title}
+              </h3>
+            )}
+            {card.body && (
+              <p className="mt-3 max-w-[300px] text-[14px] leading-[1.6] text-white/72">
+                {card.body}
+              </p>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// — Trailing accent dot for headlines ————————————————
+
+export function AccentDot() {
+  const accent = useAccent();
+  return (
+    <span aria-hidden="true" style={{ color: accent.bg }}>
+      .
+    </span>
+  );
+}
+
+// Deprecated alias for backwards compat.
+export const RedDot = AccentDot;

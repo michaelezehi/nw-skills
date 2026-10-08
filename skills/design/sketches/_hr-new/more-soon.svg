@@ -1,0 +1,9 @@
+<path d="M14 78 h72" stroke="{FAINT}"/>
+<path d="M22 78 q18 -22 34 -14 q12 6 18 -8 q8 -12 22 -6" fill="none" stroke="{INK}"/>
+<circle cx="78" cy="42" r="9" fill="{HERO}" stroke="{INK}"/>
+<g stroke="{ACCENT}">
+  <path d="M78 26 v-6 M62 34 l-6 -5 M94 34 l6 -5"/>
+</g>
+<circle cx="88" cy="52" r="2.2" fill="{ACCENT}" stroke="{ACCENT}"/>
+<circle cx="94" cy="58" r="2.2" fill="{ACCENT}" stroke="{ACCENT}"/>
+<circle cx="90" cy="66" r="2.2" fill="{ACCENT}" stroke="{ACCENT}"/>

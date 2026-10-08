@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>{{TOPIC}} · R&amp;D · {{PROJECT}}</title>
+<style>
+:root{--ink:#0f172a;--body:#475569;--faint:#94a3b8;--line:#f1f5f9;--line-2:#e2e8f0;
+--paper:#fff;--panel:#f8fafc;--hero:{{HERO}};--hero-soft:{{HERO_SOFT}};--hero-deep:{{HERO_DEEP}}}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;display:flex;background:var(--paper);color:var(--ink);
+font:15px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font:inherit;cursor:pointer}
+aside{width:268px;flex:none;border-right:1px solid var(--line);display:flex;
+flex-direction:column;height:100vh;position:sticky;top:0}
+.mark{padding:18px 20px;border-bottom:1px solid var(--line);font-size:13px;font-weight:600}
+.mark .proj{display:block;font-size:10.5px;font-weight:400;text-transform:uppercase;
+letter-spacing:.16em;color:var(--faint);margin-top:2px}
+nav{flex:1;overflow-y:auto;padding:14px 12px}
+.tlink{display:block;border-radius:9px;padding:7px 10px;font-size:12.5px;
+font-weight:600;color:var(--body)}
+.tlink:hover{background:var(--panel)}
+.tlink .tn{color:var(--faint);font-weight:600;margin-right:8px;font-size:11px}
+.tlink.cur{background:var(--hero-soft);color:var(--ink)}
+ul.scenes{margin:2px 0 8px;padding:0 0 0 12px;list-style:none}
+.slink{display:flex;align-items:center;gap:8px;padding:5px 10px;font-size:12px;
+color:var(--faint);border-radius:8px}
+.slink:hover{color:var(--ink)}
+.slink .d{width:6px;height:6px;border-radius:99px;background:var(--line-2);flex:none}
+.slink.on{color:var(--ink);font-weight:600}
+.slink.on .d{background:var(--hero)}
+.aft{padding:14px 20px;border-top:1px solid var(--line);font-size:11px;
+color:var(--faint);line-height:1.5}
+main{flex:1;min-width:0;display:flex;flex-direction:column;height:100vh}
+.stage{flex:1;overflow-y:auto;display:flex;flex-direction:column;align-items:center;
+padding:34px 32px 24px}
+.eyebrow{margin:0;font-size:11px;font-weight:600;text-transform:uppercase;
+letter-spacing:.18em;color:var(--faint)}
+h1.title{margin:10px 0 0;font-size:clamp(20px,2.4vw,29px);font-weight:700;
+letter-spacing:-.015em;text-align:center;max-width:34ch}
+.skwrap{width:min(860px,100%);margin:16px 0 6px}
+.sk svg{width:100%;height:auto}figure.sk{margin:0}
+.caption{margin:0;max-width:64ch;text-align:center;font-size:14px;color:var(--body)}
+details.prd{width:min(720px,100%);margin:20px auto 0;border:1px solid var(--line-2);
+border-radius:12px;background:var(--panel)}
+details.prd summary{cursor:pointer;padding:10px 16px;font-size:11.5px;font-weight:600;
+letter-spacing:.1em;text-transform:uppercase;color:var(--faint);list-style:none;
+display:flex;justify-content:space-between;align-items:center}
+details.prd summary::after{content:"+";font-size:15px;color:var(--faint)}
+details.prd[open] summary{border-bottom:1px solid var(--line-2);color:var(--ink)}
+details.prd[open] summary::after{content:"\2212"}
+details.prd ul{margin:0;padding:12px 20px 14px 34px;font-size:13.5px;color:var(--body)}
+details.prd li{margin:5px 0}
+.src{font-size:11px;color:var(--faint);margin:10px auto 0;text-align:center}
+footer{border-top:1px solid var(--line)}
+.fwrap{padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+.navb{border-radius:9px;padding:8px 16px;font-size:12.5px;font-weight:600;border:0;
+display:inline-block}
+.navb.back{border:1px solid var(--line-2);background:#fff;color:var(--body)}
+.navb.next{background:var(--ink);color:#fff}
+.hint{font-size:11.5px;color:var(--faint);text-align:center}
+kbd{border:1px solid var(--line-2);border-bottom-width:2px;border-radius:5px;
+padding:1px 6px;font:11px ui-monospace,monospace;background:var(--panel)}
+@media(max-width:900px){aside{display:none}}
+</style>
+</head>
+<body>
+<aside>
+  <a class="mark" href="{{INDEX_HREF}}">R&amp;D <span class="proj">{{PROJECT}} · demos by theme</span></a>
+  <nav id="nav"></nav>
+  <div class="aft" id="aft"></div>
+</aside>
+<main>
+  <div class="stage">
+    <p class="eyebrow" id="eyebrow"></p>
+    <h1 class="title" id="title"></h1>
+    <div class="skwrap" id="sketch"></div>
+    <p class="caption" id="caption"></p>
+    <details class="prd" id="prd" hidden>
+      <summary>From the PRD</summary>
+      <ul id="prdlist"></ul>
+    </details>
+    <p class="src" id="src"></p>
+  </div>
+  <footer><div class="fwrap">
+    <button class="navb back" id="prevBtn">←</button>
+    <span class="hint"><kbd>←</kbd> <kbd>→</kbd> to step · themes continue across pages · <kbd>Esc</kbd> all themes</span>
+    <button class="navb next" id="nextBtn">→</button>
+  </div></footer>
+</main>
+
+<script>
+/* DATA -- replace everything between the markers.
+   ALL_THEMES: every theme page in the set, in order (sidebar + cross-page arrows).
+   CUR: this page's theme. Each scene: { id, title, caption, detail: [..], svg }.
+   detail bullets come from the source PRD (task ids, acceptance criteria). */
+const INDEX_HREF = '{{INDEX_HREF}}';
+const ALL_THEMES = [ /* { id, name, href } */ ];
+const CUR = { id: '', name: '', prd: '', scenes: [] };
+/* END DATA */
+
+const byId = Object.fromEntries(CUR.scenes.map((s, i) => [s.id, i]));
+const ti = ALL_THEMES.findIndex(t => t.id === CUR.id);
+let idx = 0, prdOpen = false;
+
+function fromHash(){
+  const h = location.hash.replace(/^#/, '');
+  return h in byId ? byId[h] : 0;
+}
+function nav(){
+  document.getElementById('nav').innerHTML = ALL_THEMES.map((t, i) => {
+    const cur = t.id === CUR.id;
+    let html = `<a class="tlink ${cur ? 'cur' : ''}" href="${cur ? '#' + CUR.scenes[0].id : t.href}">` +
+      `<span class="tn">${String(i + 1).padStart(2, '0')}</span>${t.name}</a>`;
+    if (cur) html += `<ul class="scenes">` + CUR.scenes.map((s, j) =>
+      `<li><a class="slink ${j === idx ? 'on' : ''}" href="#${s.id}"><span class="d"></span>${s.title}</a></li>`).join('') + `</ul>`;
+    return html;
+  }).join('');
+}
+function show(i, push = true){
+  if (!CUR.scenes.length) return;
+  idx = Math.max(0, Math.min(CUR.scenes.length - 1, i));
+  const s = CUR.scenes[idx];
+  document.getElementById('eyebrow').textContent =
+    `${CUR.name} · ${idx + 1} of ${CUR.scenes.length}`;
+  document.getElementById('title').textContent = s.title;
+  document.getElementById('sketch').innerHTML = s.svg;
+  document.getElementById('caption').textContent = s.caption;
+  const prd = document.getElementById('prd');
+  if (s.detail && s.detail.length){
+    prd.hidden = false; prd.open = prdOpen;
+    document.getElementById('prdlist').innerHTML = s.detail.map(d => `<li>${d}</li>`).join('');
+  } else prd.hidden = true;
+  document.getElementById('src').textContent = CUR.prd ? `Source: ${CUR.prd}` : '';
+  if (push) history.replaceState(null, '', '#' + s.id);
+  const prevT = ALL_THEMES[ti - 1], nextT = ALL_THEMES[ti + 1];
+  const pb = document.getElementById('prevBtn'), nb = document.getElementById('nextBtn');
+  pb.textContent = idx === 0 ? (prevT ? `← ${prevT.name}` : '←') : '← Previous';
+  nb.textContent = idx === CUR.scenes.length - 1 ? (nextT ? `${nextT.name} →` : '→') : 'Next →';
+  pb.disabled = idx === 0 && !prevT;
+  nb.disabled = idx === CUR.scenes.length - 1 && !nextT;
+  nav();
+}
+function step(d){
+  const t = idx + d;
+  if (t < 0) { const p = ALL_THEMES[ti - 1]; if (p) location.href = p.href + '#last'; return; }
+  if (t >= CUR.scenes.length) { const n = ALL_THEMES[ti + 1]; if (n) location.href = n.href; return; }
+  show(t);
+}
+document.getElementById('prevBtn').onclick = () => step(-1);
+document.getElementById('nextBtn').onclick = () => step(1);
+document.getElementById('prd').addEventListener('toggle', e => { prdOpen = e.target.open; });
+addEventListener('keydown', e => {
+  if (e.key === 'ArrowRight') step(1);
+  else if (e.key === 'ArrowLeft') step(-1);
+  else if (e.key === 'Escape') location.href = INDEX_HREF;
+});
+addEventListener('hashchange', () => show(fromHash(), false));
+document.getElementById('aft').innerHTML =
+  `${ALL_THEMES.length} themes · <a href="${INDEX_HREF}" style="text-decoration:underline">all of R&amp;D</a>`;
+show(location.hash === '#last' ? CUR.scenes.length - 1 : fromHash(), false);
+</script>
+</body>
+</html>

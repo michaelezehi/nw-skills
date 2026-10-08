@@ -1,0 +1,6 @@
+<rect x="20" y="26" width="60" height="48" rx="4" fill="{PAPER}" stroke="{INK}"/>
+<path d="M20 42 h60 M20 58 h60 M44 26 v48 M60 26 v48" stroke="{FAINT}"/>
+<rect x="24" y="46" width="16" height="10" rx="2" fill="{HERO}" stroke="{INK}"/>
+<rect x="64" y="30" width="12" height="10" rx="2" fill="{PAPER}" stroke="{INK}"/>
+<circle cx="52" cy="66" r="5" fill="{HERO}" stroke="{INK}"/>
+<path d="M52 63 v6 M49 66 h6" stroke="{INK}" stroke-width="2"/>

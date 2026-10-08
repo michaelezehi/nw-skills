@@ -88,6 +88,7 @@ Several skills point at `~/.claude/skills/unlazy/scripts/gate-check.mjs` and `~/
 |---|---|
 | `/cf` | Force-continue a context-exhausted session. |
 | `/prd-ch` | Create a PRD fast and well. |
+| `/reviewer` | Full audit and fix pass on the current task's changes, using any review skills installed on your machine (never Greptile or CodeRabbit). |
 | `/research` | Deep research on any topic. |
 
 ## Licence

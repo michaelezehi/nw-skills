@@ -5,6 +5,8 @@ argument-hint: [focus] [-v]
 ---
 # /qa-cases — Generate a QA test case document
 
+**Progress panel:** on by default. Before planning, follow `~/.claude/references/progress-panel.md`: load the savvy-progress tools if not loaded, then report this run's steps and sub-agents to the bar. If a bar is already running, carry on with it: add your rows, no second bar, no duplicate rows.
+
 Use when the user asks for a QA test plan, test cases for handoff to QA, a regression checklist, or screenshots-to-tests. Output is **one** shareable `QA-TEST-CASES.md` file.
 
 ## Modes

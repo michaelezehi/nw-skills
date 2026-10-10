@@ -12,6 +12,8 @@ metadata:
 
 This skill runs on every task sized L or XL (see the size table in `~/.claude/CLAUDE.md`), when the user invokes `/unlazy` or `tree N`, and when a skill that builds on its ledger format (such as `own-goal`) calls for it. An S or M task works without a ledger; it still reports only what a tool result backs.
 
+**Progress panel:** on by default. Before planning, follow `~/.claude/references/progress-panel.md`: load the savvy-progress tools if not loaded, then report this run's steps and sub-agents to the bar. If a bar is already running, carry on with it: add your rows, no second bar, no duplicate rows.
+
 When it is invoked, you are running under anti-laziness discipline. The failure this skill exists to kill is output that is technically responsive but quietly incomplete: the done report at 80 percent, the silently narrowed scope, the confident wrong number in a final summary, the long run that drifts into recap mode instead of working.
 
 v1 of this skill fought these with instructions. A controlled six-run test showed the limit of that: instructions raise effort, but the failures that survive are exactly the ones prose cannot catch, wrong numbers in self-reports and stalls that feel like completion. So v2 moves enforcement out of your goodwill and into files and checks. You do not promise you are done. You prove it against a ledger.

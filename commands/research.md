@@ -5,6 +5,8 @@ argument-hint: [topic or question]
 ---
 # Deep Research Mode
 
+**Progress panel:** on by default. Before planning, follow `~/.claude/references/progress-panel.md`: load the savvy-progress tools if not loaded, then report this run's steps and sub-agents to the bar. If a bar is already running, carry on with it: add your rows, no second bar, no duplicate rows.
+
 ## Task
 
 $ARGUMENTS

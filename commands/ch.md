@@ -16,14 +16,16 @@ Always invoke `writing-clearly-and-concisely`. For frontend work, also invoke `v
 
 ## Protocol
 
+0. Load the progress panel tools first: ToolSearch `select:mcp__savvy-progress__progress,mcp__savvy-progress__step` (`~/.claude/references/progress-panel.md`).
 1. Parse flags: `--html`/`-h` → on completion, also emit `SUMMARY.html` per the HTML Summary Report spec below. Default: Markdown only.
 2. Parse the task. If unclear, ask — don't guess.
 3. Create numbered task list grouped by domain. No time estimates. Each task concrete and verifiable.
 4. Cross-check: every requirement maps to a task, every task traces to a requirement. Flag orphans.
 5. Create `.claude/goals/<task-slug>/ACCOUNTABILITY.md` (the shared accountability home used by `own-goal`; never project root). If a file already exists for this slug, append a new dated run section rather than overwriting. Track each task with status, confidence before/after (with reason), gaps found, **and a `Q&A` section** — every clarifying question, every user decision, every "should we X or Y" resolution. Direct quotes where possible. These are what get lost in a code push.
-6. Execute tasks. Update accountability as you go.
-7. Make incremental commits. Document key decisions.
-8. **If `--html` is set:** on completion, generate `SUMMARY.html` in the same directory.
+6. Report progress per `~/.claude/references/progress-panel.md`: the task list from step 3 as `tasks` (tier by who does each, the driver's inline tasks included), `done` as each task verifies, `finished` at the end. Every sub-agent brief carries the worker step line from that file.
+7. Execute tasks. Update accountability as you go.
+8. Make incremental commits. Document key decisions.
+9. **If `--html` is set:** on completion, generate `SUMMARY.html` in the same directory.
 
 Confidence scale: 5=guessing, 8=clear, 10=zero ambiguity. Drop from before→after signals unexpected difficulty — explain in Gaps Register.
 

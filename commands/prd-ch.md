@@ -48,6 +48,9 @@ Directory: `_r&d/prd/<task-slug>/$(date +%m-%d)/$(date +%H-%M)/` — create it n
 
 ## Step 1 — Investigate in parallel (single message, multiple Agent calls)
 
+First load the progress panel tools: ToolSearch
+`select:mcp__savvy-progress__progress,mcp__savvy-progress__step`.
+
 If a `CONTEXT.md` exists (project root or the relevant context under a
 `CONTEXT-MAP.md`), read it first. Name things in Requirements and the task
 list the way it names them — don't invent a synonym for a term it already
@@ -71,6 +74,13 @@ narrow brief and `"medium"` thoroughness (`"very thorough"` only for L):
 
 Each agent returns raw findings only. Ask for ≤ 40 lines each. **You do not
 re-read what they read**; you cite their paths.
+
+Progress panel (`~/.claude/references/progress-panel.md`): before the launch,
+report `title` (the slug), one `tasks` row per reader at tier `medium`, titled
+exactly as its Agent `description`, plus a last row `Write PRD files` at tier
+`careful`, and `phase: "delegate"`. Each reader brief carries the worker step
+line. Bump `done` as each reader returns, `phase: "design"` while writing, and
+`finished: true` once the files are written.
 
 While they run, draft the Problem / Goals / Non-goals from the brief.
 

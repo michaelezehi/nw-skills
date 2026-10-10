@@ -62,9 +62,13 @@ below). Pick by phase content, one type per workstream:
 | Auth, tenancy, permissions, anything OWASP-shaped | Security Engineer |
 | Tests only, or test gaps found in review | API Tester |
 | Docs, runbooks, READMEs | Technical Writer |
-| Anything else | general-purpose |
+| Anything else | `savvy-flow:savvy-<tier>` by tier (`~/.claude/references/progress-panel.md`); general-purpose when savvy-flow is not installed |
 
 ## Step 1: lock the completion condition
+
+First load the progress panel tools, on by default: ToolSearch
+`select:mcp__savvy-progress__progress,mcp__savvy-progress__step`
+(`~/.claude/references/progress-panel.md`).
 
 Restate the goal as verifiable statements ("build passes", "route X renders
 Y", "all N call sites migrated"). If `$ARGUMENTS` is a PRD path, or the goal
@@ -142,6 +146,12 @@ files the phase owns. Rules:
 - **Stay solo below half an hour of real work.** One agent's overhead then
   costs more than it buys; the driver does that phase inline and still logs it.
 - Record the plan in ACCOUNTABILITY.md before the first dispatch.
+- Report the plan to the progress panel (`~/.claude/references/progress-panel.md`):
+  one `tasks` row per Execution plan phase, titled exactly as its Agent
+  `description`, tier from the model column, `after` from Depends on,
+  `phase: "delegate"`. Then `done` on each acceptance (Step 5), new rows for
+  gap phases (Step 6), `phase: "review"` at Step 7, and `finished: true` with
+  `phase: "close"` at Step 8.
 
 ## Step 4: dispatch
 
@@ -160,6 +170,7 @@ agent prompt is self-contained and carries exactly:
 6. The report format for its final message: what was done, commit SHAs,
    gate ledger pasted (N of N), anything it could not finish and why.
 7. `max_turns`: 25 for build phases, 10 for mechanical or research phases.
+8. The worker step line from `~/.claude/references/progress-panel.md`.
 
 When an agent hits "context limit reached", split its phase smaller and
 redispatch; never retry the same prompt.

@@ -12,4 +12,5 @@ These skills started from other people's work and carry my changes. The upstream
 | ui-ux-pro-max | [nextlevelbuilder/ui-ux-pro-max-skill](https://github.com/nextlevelbuilder/ui-ux-pro-max-skill) | MIT |
 | vercel-react-best-practices | [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) | MIT (per skill) |
 | writing-clearly-and-concisely | [softaworks/agent-toolkit](https://github.com/softaworks/agent-toolkit) | MIT |
+| savvy-progress (mod) | [johnnyvizz/claude-kit](https://github.com/johnnyvizz/claude-kit) | MIT |
 

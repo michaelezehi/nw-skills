@@ -1,0 +1,26 @@
+{
+  "name": "savvy-progress",
+  "version": "1.3.2",
+  "description": "Progress bar above the prompt and a live agents panel, drawn in colour with pixel crabs on the desktop and in any truecolor terminal. Fork of johnnyvizz/claude-kit savvy-progress (MIT).",
+  "author": {
+    "name": "johnnyvizz",
+    "url": "https://github.com/johnnyvizz"
+  },
+  "types": "./types/index.d.ts",
+  "userConfig": {
+    "language": {
+      "type": "string",
+      "title": "Panel language",
+      "description": "auto follows Claude Code's language setting, then the system locale",
+      "default": "auto",
+      "options": [
+        "auto",
+        "en",
+        "ru"
+      ]
+    }
+  },
+  "homepage": "https://github.com/johnnyvizz/claude-kit/tree/main/plugins/savvy-progress",
+  "repository": "https://github.com/johnnyvizz/claude-kit",
+  "license": "MIT"
+}

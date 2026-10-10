@@ -1,0 +1,8 @@
+{
+  "name": "turn-chime",
+  "version": "0.1.0",
+  "description": "A chime and a toast when a turn that ran over a minute finishes",
+  "author": {
+    "name": "Michael Ezehi"
+  }
+}

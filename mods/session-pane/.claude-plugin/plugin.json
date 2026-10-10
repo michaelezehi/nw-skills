@@ -1,0 +1,9 @@
+{
+  "name": "session-pane",
+  "version": "0.1.0",
+  "description": "/session-pane: files changed this session as a tree, plus the latest tool calls",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Michael Ezehi"
+  }
+}

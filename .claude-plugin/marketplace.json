@@ -18,6 +18,36 @@
         "design",
         "writing"
       ]
+    },
+    {
+      "name": "savvy-progress",
+      "source": "./mods/savvy-progress",
+      "description": "Progress bar and agents panel with pixel crabs, on the desktop and in any truecolor terminal (fork of johnnyvizz/claude-kit, MIT)",
+      "category": "productivity"
+    },
+    {
+      "name": "agent-bar",
+      "source": "./mods/agent-bar",
+      "description": "Keeps the savvy-progress bar on for every task",
+      "category": "productivity"
+    },
+    {
+      "name": "guard-rails",
+      "source": "./mods/guard-rails",
+      "description": "Blocks git commands that sweep other agents' work, and dashes in commit text",
+      "category": "productivity"
+    },
+    {
+      "name": "session-pane",
+      "source": "./mods/session-pane",
+      "description": "/session-pane: files changed this session and the latest tool calls",
+      "category": "productivity"
+    },
+    {
+      "name": "turn-chime",
+      "source": "./mods/turn-chime",
+      "description": "A chime and a toast when a long turn finishes",
+      "category": "productivity"
     }
   ]
 }

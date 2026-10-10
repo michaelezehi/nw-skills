@@ -1,0 +1,8 @@
+{
+  "name": "guard-rails",
+  "version": "0.1.0",
+  "description": "Blocks git commands that sweep or discard other agents' work, and dashes in commit and PR text",
+  "author": {
+    "name": "Michael Ezehi"
+  }
+}

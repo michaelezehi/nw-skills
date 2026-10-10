@@ -1,0 +1,11 @@
+{
+  "name": "agent-bar",
+  "version": "0.1.0",
+  "description": "Keeps the savvy-progress bar on for every task: the todo list, tasks and every agent the main thread starts become rows, counted done as they finish, unless a skill is already reporting",
+  "author": {
+    "name": "Michael Ezehi"
+  },
+  "dependencies": [
+    "savvy-progress@nw-skills"
+  ]
+}

@@ -95,6 +95,25 @@ Several skills point at `~/.claude/skills/unlazy/scripts/gate-check.mjs` and `~/
 | `/research` | Deep research on any topic. |
 | `/reviewer` | Full audit and fix pass on the current task's changes, using any review skills installed on your machine (never Greptile or CodeRabbit). |
 
+## Mods
+
+Claude Code mods (plugins with function hooks) in `mods/`. Each one installs on its own from this marketplace:
+
+```bash
+claude plugin marketplace add michaelezehi/nw-skills
+claude plugin install savvy-progress@nw-skills
+```
+
+| Mod | What it does | Origin |
+|---|---|---|
+| [`savvy-progress`](mods/savvy-progress/README.md) | Progress bar above the prompt and an agents panel (`/agents-info`) with each subagent's model, context, cost and time. Draws in 24-bit colour in any truecolor terminal (Warp, iTerm2, Ghostty, WezTerm, kitty) as well as on the desktop. | Modified from [johnnyvizz/claude-kit](https://github.com/johnnyvizz/claude-kit) |
+| [`agent-bar`](mods/agent-bar/hooks/register.tsx) | Turns the savvy-progress bar on for every task: todos, tasks and subagent launches become its rows. Steps aside when a skill reports its own plan. Needs `savvy-progress`. | Original |
+| [`guard-rails`](mods/guard-rails/hooks/register.tsx) | Denies git commands that sweep other agents' work (`git add -A`, `commit -a`, stash, reset, clean, restore, checkout) and dashes in commit or PR text. | Original |
+| [`session-pane`](mods/session-pane/hooks/register.tsx) | `/session-pane` opens a pane with the files changed this session as a tree and the latest 50 tool calls. | Original |
+| [`turn-chime`](mods/turn-chime/hooks/register.tsx) | A toast and a chime when a turn that ran a minute or longer finishes. | Original |
+
+The skills and commands report to the progress panel by the rules in [`references/progress-panel.md`](references/progress-panel.md). Copy it to `~/.claude/references/`. Without savvy-progress installed they skip it.
+
 ## Handoff hooks (optional)
 
 `/ch`, `/fd-ch` and `/prd-ch` hand work over to a fresh session when context runs low. That needs three hooks in `hooks/`:

@@ -119,10 +119,10 @@ function spritePixels(costume: string, tint: string): Int32Array {
   return px
 }
 
-// A crab drawn for 8×6 pixels: a shrunk sprite loses its eyes and legs, so
+// A crab drawn for 6×4 pixels: a shrunk sprite loses its eyes and legs, so
 // only the body and hat colors come from the full costume.
-const MINI = ['..HHHH..', '.HHHHHH.', '.CICCIC.', 'CCCCCCCC', '.CCCCCC.']
-const LEGS = ['.C.CC.C.', 'C.C..C.C']
+const MINI = ['.HHHH.', 'CICCIC', '.CCCC.']
+const LEGS = ['.C..C.', 'C.CC.C']
 
 function colorsOf(px: Int32Array): { body: number; hat: number } {
   const tally = (y0: number, y1: number, skip: number[]) => {
@@ -161,8 +161,8 @@ function halfBlocks(px: Int32Array, w: number, h: number, dim: boolean): Grid {
   return grid
 }
 
-const CRAB_COLS = 8
-const CRAB_ROWS = 3
+const CRAB_COLS = 6
+const CRAB_ROWS = 2
 
 function crabCells(costume: string, tint: string, step: number, dim: boolean): string {
   const px = miniPixels(costume, tint, step)

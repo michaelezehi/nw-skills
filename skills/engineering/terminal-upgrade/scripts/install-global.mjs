@@ -96,7 +96,9 @@ step(`write the devdeck command to ${join(deck, 'bin', 'devdeck')} (runs on ${pr
     '  NODE_BIN=$(command -v node) || { echo "devdeck: node not found" >&2; exit 78; }',
     '  "$NODE_BIN" -e "process.exit(Number(process.versions.node.split(\'.\')[0]) >= 22 ? 0 : 1)" || { echo "devdeck: needs Node 22 or later; run /terminal-upgrade update" >&2; exit 78; }',
     'fi',
-    'exec "$NODE_BIN" "$HOME/.devdeck/app/node_modules/tsx/dist/cli.mjs" "$HOME/.devdeck/app/src/cli.tsx" "$@"',
+    // tsx reads the tsconfig of the directory it starts in, so a repo whose tsconfig sets
+    // classic JSX would compile Devdeck to React.createElement with no React in scope.
+    'exec "$NODE_BIN" "$HOME/.devdeck/app/node_modules/tsx/dist/cli.mjs" --tsconfig "$HOME/.devdeck/app/tsconfig.json" "$HOME/.devdeck/app/src/cli.tsx" "$@"',
     '',
   ].join('\n'));
   chmodSync(shim, 0o755);

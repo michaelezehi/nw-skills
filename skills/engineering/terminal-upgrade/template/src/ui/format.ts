@@ -105,6 +105,16 @@ export function formatUptime(ms: number): string {
   return [h, m, s].map((n) => String(n).padStart(2, '0')).join(':');
 }
 
+/** 3h 45m, 12m, 40s: how long something has run, coarse enough not to tick. */
+export function formatSpan(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  const h = Math.floor(total / 3600);
+  const m = Math.floor((total % 3600) / 60);
+  if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
+  if (m > 0) return `${m}m`;
+  return `${total}s`;
+}
+
 /** 2:43 wall clock, no seconds. */
 export function formatClock(at: number): string {
   const d = new Date(at);

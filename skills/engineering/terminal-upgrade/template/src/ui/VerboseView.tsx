@@ -1,7 +1,9 @@
 /**
  * The full deck: hero header, a card or pill per service, Convex calls beside (or over)
  * the timeline, and the error tray. Either feed panel folds to its title rule; the other
- * takes the freed rows, and with both folded the rest of the region stays blank.
+ * takes the freed rows, and with both folded the rest of the region stays blank. The
+ * region also takes the log pane or an open view, and in the quiet state the cards
+ * grow over it, with the memory trend the plain deck leaves out.
  */
 import type { ReactNode } from 'react';
 import { Box } from 'ink';
@@ -9,6 +11,7 @@ import type { ConvexCall, DeckMeta, DevError, DevEvent, ServiceState } from '../
 import { splitColumns, splitRows, type Layout } from './layout.ts';
 import { Header } from './Header.tsx';
 import { ServiceCard, PillStrip } from './ServiceCard.tsx';
+import { QuietGrid } from './QuietCards.tsx';
 import { ConvexCalls, filterCalls, type CallFilter } from './ConvexCalls.tsx';
 import { Timeline } from './Timeline.tsx';
 import { ErrorTray } from './ErrorTray.tsx';
@@ -39,7 +42,7 @@ export interface VerboseViewProps {
   frame: number;
   spinning: ReadonlySet<string>;
   now: number;
-  /** An open view (error card, key sheet) drawn in place of the feeds. */
+  /** The log pane or an open view (error card, palette) drawn in place of the feeds. */
   view: ReactNode | null;
 }
 
@@ -51,7 +54,7 @@ export function VerboseView(props: VerboseViewProps) {
   const middle = height < 1 ? <Box height={Math.max(0, height)} /> : (props.view ?? <Feeds {...props} />);
 
   return (
-    <Box flexDirection="column" width={layout.columns} height={layout.rows - layout.logPane - layout.footer} overflow="hidden">
+    <Box flexDirection="column" width={layout.columns} height={layout.rows - layout.footer} overflow="hidden">
       <Header
         meta={props.meta}
         convex={convex}
@@ -67,7 +70,11 @@ export function VerboseView(props: VerboseViewProps) {
         columns={layout.columns}
         rows={layout.header}
       />
-      <ServiceStrip apps={apps} layout={layout} maxMemMb={maxMemMb} selectedIndex={props.serviceIndex} focused={focus === 'services'} frame={frame} spinning={spinning} now={now} />
+      {layout.grid ? (
+        <QuietGrid apps={apps} grid={layout.grid} errors={errors} columns={layout.columns} selectedIndex={props.serviceIndex} focused={focus === 'services'} frame={frame} spinning={spinning} now={now} detail />
+      ) : (
+        <ServiceStrip apps={apps} layout={layout} maxMemMb={maxMemMb} selectedIndex={props.serviceIndex} focused={focus === 'services'} frame={frame} spinning={spinning} now={now} />
+      )}
       {middle}
       <ErrorTray errors={errors} rows={layout.tray} columns={layout.columns} focused={focus === 'errors'} selectedIndex={props.errorIndex} />
     </Box>

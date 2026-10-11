@@ -1,8 +1,9 @@
 /**
  * The header's stats as a row of small outlined tiles beside the clock: the label sits
  * in each tile's rule, the value on its one line, a quieter note right aligned when it
- * fits. Tiles share out the width so the row has no dead gap; one tile can be named to
- * take all the slack instead.
+ * fits. Tiles sit flush, outline to outline, the way the service cards below them do,
+ * and share out the width so the row has no dead gap; one tile can be named to take
+ * all the slack instead.
  */
 import { Box, Text } from 'ink';
 import { Panel } from './Panel.tsx';
@@ -28,7 +29,8 @@ export interface TileSpec {
 /** Rule, sides and one space of padding each side. */
 const CHROME = 4;
 const NOTE_GAP = 2;
-export const TILE_GAP = 1;
+/** Flush, like the cards: `╮╭` between tiles. */
+export const TILE_GAP = 0;
 /** One content row between the two rules. */
 export const TILE_ROWS = 3;
 

@@ -1,9 +1,13 @@
 /**
  * Pure layout arithmetic. Given the terminal size and what is on screen, decide the
  * width tier and the exact row count of every region so the frame never exceeds the screen.
+ * The region under the cards holds the feed or the logs; in the quiet state it goes to
+ * the cards themselves, laid out on the grid from grid.ts.
  */
 import { FULL_COLS, MEDIUM_COLS } from './theme.ts';
 import { CLOCK_ROWS } from './glyphs.ts';
+import { gridPlan, gridRows, MIN_BIG_ROWS, type GridPlan } from './grid.ts';
+import type { Activity } from './deckState.ts';
 
 export type Tier = 'full' | 'medium' | 'narrow';
 
@@ -15,8 +19,8 @@ export interface LayoutInput {
   services: number;
   errors: number;
   view: View;
-  /** The log pane is open under the dashboard. */
-  logs?: boolean;
+  /** Feed by default. Logs keeps the feed's rows for the log pane; quiet gives them to the cards. */
+  activity?: Activity;
 }
 
 export interface Layout {
@@ -25,14 +29,12 @@ export interface Layout {
   rows: number;
   /** Rows the header takes, borders included. */
   header: number;
-  /** Rows the service strip takes, borders included. Cards or pill rows. */
+  /** Rows the service strip takes, borders included. Cards, pill rows, or the quiet grid. */
   services: number;
-  /** Rows for the middle region (calls + timeline, or the error or keys view). */
+  /** Rows for the middle region (calls + timeline, the logs, or the error or keys view). */
   middle: number;
   /** Rows of collapsed error lines in the tray. */
   tray: number;
-  /** Rows of the log pane under the dashboard; 0 when hidden. */
-  logPane: number;
   /** Always one row: the key hints and the error summary. */
   footer: number;
   /** Pills per row in the medium and narrow tiers. */
@@ -41,6 +43,8 @@ export interface Layout {
   pillWidth: number;
   /** Width of one card in the full tier; 0 when the strip is pills. */
   cardWidth: number;
+  /** The quiet grid, when the cards have the region. */
+  grid?: GridPlan;
   view: View;
 }
 
@@ -52,11 +56,6 @@ export const MAX_TRAY_LINES = 3;
 export const PILL_WIDTH = 25;
 /** `▕ ● ADMIN   1.1G ▏`, without the port, so five pills fit a 96-column row. */
 export const PILL_COMPACT_WIDTH = 18;
-/** The log pane takes this share of the screen, never fewer than MIN_LOG_PANE rows. */
-export const LOG_PANE_SHARE = 0.45;
-export const MIN_LOG_PANE = 6;
-/** The dashboard keeps at least this many rows; below it the log pane does not open. */
-const MIN_DASHBOARD = 8;
 
 export function tierFor(columns: number): Tier {
   if (columns >= FULL_COLS) return 'full';
@@ -64,11 +63,9 @@ export function tierFor(columns: number): Tier {
   return 'narrow';
 }
 
-/** Rows the log pane gets on a screen of `rows`; 0 when hidden or the screen is too short. */
-export function logPaneRows(rows: number, logs: boolean): number {
-  if (!logs) return 0;
-  const pane = Math.max(MIN_LOG_PANE, Math.round(rows * LOG_PANE_SHARE));
-  return rows - pane >= MIN_DASHBOARD ? pane : 0;
+/** The quiet state draws its big cards only on the deck itself; an open view needs the region. */
+export function wantsQuiet(input: { activity?: Activity; view: View; services: number }): boolean {
+  return input.activity === 'quiet' && input.view === 'deck' && input.services > 0;
 }
 
 /**
@@ -84,17 +81,38 @@ export function pillPlan(columns: number, services: number): { width: number; pe
   return plans.reduce((best, plan) => (Math.ceil(services / plan.perRow) < Math.ceil(services / best.perRow) ? plan : best));
 }
 
+/**
+ * The quiet layout: header, the grid, the tray, the footer. The header folds to a line
+ * and the tray gives up lines before a card row drops under MIN_BIG_ROWS; undefined when
+ * even that is not enough, and the feed layout stands in.
+ */
+function quietLayout(input: LayoutInput, tier: Tier, pills: { width: number; perRow: number }): Layout | undefined {
+  const { columns, rows, view } = input;
+  const footer = 1;
+  const need = gridRows(input.services, columns) * MIN_BIG_ROWS;
+  let header = tier === 'full' ? CLOCK_ROWS + 2 : tier === 'medium' ? 3 : 1;
+  let tray = Math.min(input.errors, MAX_TRAY_LINES);
+  const region = () => rows - header - tray - footer;
+  if (region() < need && tier === 'full') header = 3;
+  while (region() < need && tray > 1) tray -= 1;
+  if (region() < need) return undefined;
+  const services = region();
+  return { tier, columns, rows, header, services, middle: 0, tray, footer, pillsPerRow: pills.perRow, pillWidth: pills.width, cardWidth: 0, grid: gridPlan(input.services, columns, services), view };
+}
+
 export function computeLayout(input: LayoutInput): Layout {
   const { columns, rows, view } = input;
   const tier = tierFor(columns);
   const footer = 1;
-  const logPane = logPaneRows(rows, input.logs ?? false);
-  const avail = rows - logPane;
+  const pills = pillPlan(columns, input.services);
+  if (wantsQuiet(input)) {
+    const quiet = quietLayout(input, tier, pills);
+    if (quiet) return quiet;
+  }
   let tray = input.errors > 0 ? Math.min(input.errors, MAX_TRAY_LINES) : 0;
 
   let header: number;
   let services: number;
-  const pills = pillPlan(columns, input.services);
   let pillsPerRow = pills.perRow;
   let cardWidth = 0;
   const pillRows = Math.ceil(input.services / pillsPerRow);
@@ -110,19 +128,19 @@ export function computeLayout(input: LayoutInput): Layout {
     services = pillRows;
   }
 
-  let middle = avail - header - services - tray - footer;
+  let middle = rows - header - services - tray - footer;
 
   // Short terminals: drop the clock first, then collapse the cards into pills,
   // so the middle region keeps at least three rows.
   if (middle < 3 && tier === 'full') {
     header = 3;
-    middle = avail - header - services - tray - footer;
+    middle = rows - header - services - tray - footer;
   }
   if (middle < 3 && tier === 'full' && cardWidth > 0) {
     pillsPerRow = pills.perRow;
     services = pillRows;
     cardWidth = 0;
-    middle = avail - header - services - tray - footer;
+    middle = rows - header - services - tray - footer;
   }
   // Very short terminals: give up tray lines, then service rows, so the footer stays on screen.
   while (middle < 0 && tray > 1) {
@@ -143,7 +161,7 @@ export function computeLayout(input: LayoutInput): Layout {
   }
   if (middle < 0) middle = 0;
 
-  return { tier, columns, rows, header, services, middle, tray, logPane, footer, pillsPerRow, pillWidth: pills.width, cardWidth, view };
+  return { tier, columns, rows, header, services, middle, tray, footer, pillsPerRow, pillWidth: pills.width, cardWidth, view };
 }
 
 /** Split a middle region of `width` cells into two side-by-side panels with a 1-cell gutter. */

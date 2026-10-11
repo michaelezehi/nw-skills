@@ -1,7 +1,9 @@
 /**
  * The calm default: the verbose deck's frame with less in it. The boxed header with
- * the clock and three stats, one two-row card per service, and LATEST, a short feed of
- * notable things. Nothing on it is ever cut short; what cannot fit in full is left out.
+ * the clock and three stats, one two-row card per service, and under them the region:
+ * LATEST, a short feed of notable things, or the log pane, or an open view. In the
+ * quiet state the region is gone and the cards grow to explain themselves. Nothing on
+ * it is ever cut short; what cannot fit in full is left out.
  */
 import type { ReactNode } from 'react';
 import { Box } from 'ink';
@@ -9,6 +11,7 @@ import type { ConvexCall, DeckMeta, DevError, DevEvent, ServiceState } from '../
 import { ErrorTray } from './ErrorTray.tsx';
 import { PlainHeader } from './PlainHeader.tsx';
 import { PlainStrip } from './PlainCards.tsx';
+import { QuietGrid } from './QuietCards.tsx';
 import { Latest } from './Latest.tsx';
 import type { PlainLayout } from './plainLayout.ts';
 
@@ -32,13 +35,13 @@ export interface PlainViewProps {
   frame: number;
   spinning: ReadonlySet<string>;
   now: number;
-  /** An open view (error card, key sheet) drawn in place of LATEST. */
+  /** The log pane or an open view (error card, palette) drawn in place of LATEST. */
   view: ReactNode | null;
 }
 
 export function PlainView(props: PlainViewProps) {
   const { layout, apps, view, now } = props;
-  const height = layout.rows - layout.logPane - layout.footer;
+  const height = layout.rows - layout.footer;
   return (
     <Box flexDirection="column" width={layout.columns} height={height} overflow="hidden">
       {layout.header > 0 ? (
@@ -54,7 +57,11 @@ export function PlainView(props: PlainViewProps) {
           rows={layout.header}
         />
       ) : null}
-      <PlainStrip apps={apps} layout={layout} selectedIndex={props.selectedIndex} focused={props.focused} frame={props.frame} spinning={props.spinning} now={now} />
+      {layout.grid ? (
+        <QuietGrid apps={apps} grid={layout.grid} errors={props.errors} columns={layout.columns} selectedIndex={props.selectedIndex} focused={props.focused} frame={props.frame} spinning={props.spinning} now={now} detail={false} />
+      ) : (
+        <PlainStrip apps={apps} layout={layout} selectedIndex={props.selectedIndex} focused={props.focused} frame={props.frame} spinning={props.spinning} now={now} />
+      )}
       {layout.latest < 1 ? null : (view ?? <Latest events={props.events} calls={props.calls} width={layout.columns} rows={layout.latest} now={now} />)}
       <ErrorTray errors={props.errors} rows={layout.tray} columns={layout.columns} focused={props.errorsFocused} selectedIndex={props.errorIndex} />
     </Box>

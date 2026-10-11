@@ -54,7 +54,7 @@ export function cardTail(service: ServiceState, now: number, room: number, tone:
 }
 
 /** The label in caps, its first word when the rule is too short for it, else nothing. */
-function fitLabel(service: ServiceState, room: number): string {
+export function fitLabel(service: ServiceState, room: number): string {
   const full = service.label.toUpperCase();
   if (cellWidth(full) <= room) return full;
   const short = shortLabel(service);

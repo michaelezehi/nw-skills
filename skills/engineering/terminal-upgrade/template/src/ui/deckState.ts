@@ -1,18 +1,23 @@
-/** Pure UI state for the deck: mode, focus, selection, view, logs and feed options. Keys become actions here. */
+/** Pure UI state for the deck: mode, focus, selection, view, activity and feed options. Keys become actions here. */
 import type { View } from './layout.ts';
 import { nextFilter, type CallFilter } from './ConvexCalls.tsx';
 
 export type Focus = 'services' | 'calls' | 'timeline' | 'errors';
 export type Mode = 'plain' | 'verbose';
 export type Panel = 'calls' | 'timeline';
+/**
+ * What the region under the cards holds. `feed` is LATEST, or the Convex calls and the
+ * timeline; `logs` puts the selected service's raw lines there instead; `quiet` shows
+ * neither and lets the cards grow. `l` walks the three in that order.
+ */
+export type Activity = 'feed' | 'logs' | 'quiet';
 
 export interface UiState {
   /** Plain is the calm default; verbose is the full deck. */
   mode: Mode;
   focus: Focus;
   view: View;
-  /** The log pane under the dashboard. */
-  logs: boolean;
+  activity: Activity;
   /** Lines the log pane is scrolled up from its tail. 0 follows live output. */
   logScroll: number;
   /** Verbose panels folded to their title rule. Survives mode switches. */
@@ -75,7 +80,7 @@ export const initialUi: UiState = {
   mode: 'plain',
   focus: 'services',
   view: 'deck',
-  logs: false,
+  activity: 'feed',
   logScroll: 0,
   collapsed: { calls: false, timeline: false },
   serviceIndex: 0,
@@ -144,7 +149,11 @@ const selectService = (state: UiState, ctx: UiContext, step: number): UiState =>
   logScroll: 0,
 });
 
-const toggleLogs = (state: UiState, logs: boolean): UiState => ({ ...state, logs, logScroll: 0 });
+export function nextActivity(activity: Activity): Activity {
+  return activity === 'feed' ? 'logs' : activity === 'logs' ? 'quiet' : 'feed';
+}
+
+const setActivity = (state: UiState, activity: Activity): UiState => ({ ...state, activity, logScroll: 0 });
 
 const togglePanel = (state: UiState, panel: Panel): UiState => ({ ...state, collapsed: { ...state.collapsed, [panel]: !state.collapsed[panel] } });
 
@@ -160,22 +169,22 @@ export function reduceUi(state: UiState, action: UiAction, ctx: UiContext): UiSt
     case 'up':
       if (state.view === 'error') return scroll(-1);
       if (inView) return state;
-      if (state.logs) return scrollLog(1);
+      if (state.activity === 'logs') return scrollLog(1);
       return moveSelection(state, ctx, -1);
     case 'down':
       if (state.view === 'error') return scroll(1);
       if (inView) return state;
-      if (state.logs) return scrollLog(-1);
+      if (state.activity === 'logs') return scrollLog(-1);
       return moveSelection(state, ctx, 1);
     case 'pageUp':
       if (state.view === 'error') return scroll(-ctx.page);
       if (inView) return state;
-      if (state.logs) return scrollLog(ctx.page);
+      if (state.activity === 'logs') return scrollLog(ctx.page);
       return moveSelection(state, ctx, -ctx.page);
     case 'pageDown':
       if (state.view === 'error') return scroll(ctx.page);
       if (inView) return state;
-      if (state.logs) return scrollLog(-ctx.page);
+      if (state.activity === 'logs') return scrollLog(-ctx.page);
       return moveSelection(state, ctx, ctx.page);
     case 'left':
       return inView ? back(state) : selectService(state, ctx, -1);
@@ -185,12 +194,12 @@ export function reduceUi(state: UiState, action: UiAction, ctx: UiContext): UiSt
       if (inView) return back(state);
       if (state.focus === 'errors' && ctx.errors.length > 0) return open(state, 'error', { errorId: stepId(ctx.errors, state.errorId, 0) });
       if (state.focus === 'calls' || state.focus === 'timeline') return togglePanel(state, state.focus);
-      if (state.focus === 'services' && ctx.services > 0 && !state.logs) return toggleLogs(state, true);
+      if (state.focus === 'services' && ctx.services > 0 && state.activity !== 'logs') return setActivity(state, 'logs');
       return state;
     case 'escape':
     case 'close':
       if (inView) return close(state);
-      return state.logs ? toggleLogs(state, false) : state;
+      return state.activity === 'feed' ? state : setActivity(state, 'feed');
     case 'back':
       return inView ? back(state) : state;
     case 'errors':
@@ -199,7 +208,7 @@ export function reduceUi(state: UiState, action: UiAction, ctx: UiContext): UiSt
       return open({ ...state, focus: 'errors' }, 'error', { errorId: stepId(ctx.errors, state.errorId, 0) });
     case 'logs':
       if (ctx.services === 0) return state;
-      return toggleLogs(state, !state.logs);
+      return setActivity(state, nextActivity(state.activity));
     case 'mode':
       return { ...state, mode: state.mode === 'plain' ? 'verbose' : 'plain' };
     case 'calls':

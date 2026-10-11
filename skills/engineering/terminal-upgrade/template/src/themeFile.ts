@@ -25,7 +25,11 @@ export interface Preset {
   colors: Colors;
 }
 
-/** Each preset reads on a near-black terminal and on a dark teal one; Paper is for light terminals. */
+/**
+ * Each preset reads on a near-black terminal and on a dark teal one; Paper is for light
+ * terminals. Unicolor is one amber hue graded by lightness alone: errors are its brightest
+ * step, the text a shade under, then the accent, activity, muted and line down the ramp.
+ */
 export const PRESETS: readonly Preset[] = [
   { name: 'brand', label: 'Brand', colors: { accent: '#fde047', activity: '#f5a524', text: '#ecebe4', muted: '#8a887f', line: '#3d3c38', error: '#f87171' } },
   { name: 'ember', label: 'Ember', colors: { accent: '#fb923c', activity: '#e8a060', text: '#f3ece2', muted: '#9a8f82', line: '#46403a', error: '#ff7b7b' } },
@@ -34,6 +38,7 @@ export const PRESETS: readonly Preset[] = [
   { name: 'rose', label: 'Rose', colors: { accent: '#f9a8d4', activity: '#ffb199', text: '#f5ebee', muted: '#9c8f94', line: '#473c41', error: '#ff6b6b' } },
   { name: 'mono', label: 'Mono', colors: { accent: '#ecebe4', activity: '#b5b3a8', text: '#ecebe4', muted: '#8a887f', line: '#3d3c38', error: '#f87171' } },
   { name: 'paper', label: 'Paper', colors: { accent: '#9a4a00', activity: '#1d6f8a', text: '#1c1b19', muted: '#6b6960', line: '#c9c7bd', error: '#b91c1c' } },
+  { name: 'unicolor', label: 'Unicolor', colors: { accent: '#f2b632', activity: '#c98a1e', text: '#e9d6a8', muted: '#9c7a3c', line: '#4a3a1e', error: '#fff1cc' } },
 ];
 
 export const DEFAULT_PRESET = PRESETS[0]!;

@@ -1,11 +1,15 @@
 /**
  * Row budget for the plain deck: the boxed header (or one line of it), the service
- * cards (or a pill row), the LATEST panel, the error tray, the log pane and the footer.
- * The sum is always exactly the screen height. When rows run short LATEST gives first,
- * then the header folds to one line, then the cards fold to pills, then the tray.
+ * cards (or a pill row), the region under them, the error tray and the footer. The sum
+ * is always exactly the screen height. The region holds LATEST or the log pane; in the
+ * quiet state the cards take it on the grid from grid.ts. When rows run short the
+ * region gives first, then the header folds to one line, then the cards fold to pills,
+ * then the tray.
  */
 import { CLOCK_ROWS } from './glyphs.ts';
-import { logPaneRows, pillPlan, MAX_TRAY_LINES, MIN_CARD_WIDTH } from './layout.ts';
+import { pillPlan, wantsQuiet, MAX_TRAY_LINES, MIN_CARD_WIDTH, type View } from './layout.ts';
+import { gridPlan, gridRows, MIN_BIG_ROWS, type GridPlan } from './grid.ts';
+import type { Activity } from './deckState.ts';
 
 export interface PlainLayoutInput {
   columns: number;
@@ -13,7 +17,8 @@ export interface PlainLayoutInput {
   /** App services; watch packages fold into the header. */
   services: number;
   errors: number;
-  logs: boolean;
+  view: View;
+  activity?: Activity;
 }
 
 export interface PlainLayout {
@@ -21,17 +26,18 @@ export interface PlainLayout {
   rows: number;
   /** Rows the header takes: the boxed clock, one line, or none. */
   header: number;
-  /** Rows the service strip takes: cards with their rules, or pill rows. */
+  /** Rows the service strip takes: cards with their rules, pill rows, or the quiet grid. */
   services: number;
-  /** Width of one card; 0 when the strip is pills. */
+  /** Width of one card; 0 when the strip is pills or the quiet grid. */
   cardWidth: number;
   pillsPerRow: number;
   pillWidth: number;
-  /** Rows of the LATEST panel, rules included. An open view (error card, key sheet) gets the same rows. */
+  /** Rows of the region under the cards: LATEST, the log pane, or an open view. 0 in the quiet state. */
   latest: number;
   tray: number;
-  logPane: number;
   footer: number;
+  /** The quiet grid, when the cards have the region. */
+  grid?: GridPlan;
 }
 
 /** Two body rows and two rules. */
@@ -40,12 +46,29 @@ export const BOXED_HEADER_ROWS = CLOCK_ROWS + 2;
 /** LATEST keeps a rule, one line and a rule before anything above it folds. */
 const MIN_LATEST = 3;
 
+function quietPlainLayout(input: PlainLayoutInput, pills: { width: number; perRow: number }): PlainLayout | undefined {
+  const { columns, rows } = input;
+  const footer = 1;
+  const need = gridRows(input.services, columns) * MIN_BIG_ROWS;
+  let header = BOXED_HEADER_ROWS;
+  let tray = Math.min(input.errors, MAX_TRAY_LINES);
+  const region = () => rows - header - tray - footer;
+  if (region() < need) header = 1;
+  while (region() < need && tray > 1) tray -= 1;
+  if (region() < need) return undefined;
+  const services = region();
+  return { columns, rows, header, services, cardWidth: 0, pillsPerRow: pills.perRow, pillWidth: pills.width, latest: 0, tray, footer, grid: gridPlan(input.services, columns, services) };
+}
+
 export function computePlainLayout(input: PlainLayoutInput): PlainLayout {
   const { columns, rows } = input;
   const footer = 1;
-  const logPane = logPaneRows(rows, input.logs);
-  const avail = rows - logPane - footer;
   const pills = pillPlan(columns, input.services);
+  if (wantsQuiet(input)) {
+    const quiet = quietPlainLayout(input, pills);
+    if (quiet) return quiet;
+  }
+  const avail = rows - footer;
   const pillRows = Math.ceil(input.services / pills.perRow);
   let cardWidth = input.services > 0 ? Math.floor(columns / input.services) : 0;
   if (cardWidth < MIN_CARD_WIDTH) cardWidth = 0;
@@ -67,5 +90,5 @@ export function computePlainLayout(input: PlainLayoutInput): PlainLayout {
   if (latestOf() < 0) header = 0;
   const latest = Math.max(0, latestOf());
 
-  return { columns, rows, header, services, cardWidth, pillsPerRow: pills.perRow, pillWidth: pills.width, latest, tray, logPane, footer };
+  return { columns, rows, header, services, cardWidth, pillsPerRow: pills.perRow, pillWidth: pills.width, latest, tray, footer };
 }

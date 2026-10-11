@@ -1,8 +1,10 @@
 /**
  * Devdeck's Ink root. Picks the plain or verbose dashboard, lays the regions out to the
  * exact terminal size, routes keys to the UI reducer, and asks the supervisor (through
- * DeckControls) for anything that touches a process. Never exits on its own: q and
- * Ctrl-C call controls.quit(). The palette wraps everything in ThemeContext.
+ * DeckControls) for anything that touches a process. The region under the cards holds
+ * the feed, the log pane or an open view, whichever the activity state and the view
+ * say. Never exits on its own: q and Ctrl-C call controls.quit(). The palette wraps
+ * everything in ThemeContext.
  */
 import { useMemo, useReducer, useRef } from 'react';
 import { Box, render, useInput, useWindowSize, type RenderOptions } from 'ink';
@@ -101,8 +103,8 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
   const errors = state.errors;
 
   const plain = ui.mode === 'plain';
-  const layout = computeLayout({ columns, rows, services: apps.length, errors: errors.length, view: ui.view, logs: ui.logs });
-  const plainLayout = computePlainLayout({ columns, rows, services: apps.length, errors: errors.length, logs: ui.logs });
+  const layout = computeLayout({ columns, rows, services: apps.length, errors: errors.length, view: ui.view, activity: ui.activity });
+  const plainLayout = computePlainLayout({ columns, rows, services: apps.length, errors: errors.length, view: ui.view, activity: ui.activity });
   const panels = useMemo<Focus[]>(() => {
     const list: Focus[] = ['services'];
     if (!plain && layout.tier !== 'narrow') list.push('calls', 'timeline');
@@ -124,7 +126,7 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
     calls: callIds,
     events: eventIds,
     errors: errorIds,
-    page: Math.max(1, (ui.logs ? layout.logPane : viewRows) - 2),
+    page: Math.max(1, viewRows - 2),
     // The open view and the log pane write their limits while rendering; read again at the key press.
     scrollMax: 0,
     logScrollMax: 0,
@@ -155,7 +157,7 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
   const copyPayload = (all: boolean): CopyPayload | undefined => {
     if (all) return allErrorsPayload(errors);
     if (ui.view === 'error' && selectedError) return errorPayload(selectedError);
-    if (ui.logs && layout.logPane > 0 && selectedService) return logPayload(selectedService.id, logWindow.current);
+    if (ui.view === 'deck' && ui.activity === 'logs' && viewRows > 1 && selectedService) return logPayload(selectedService.id, logWindow.current);
     if (ui.view === 'deck' && selectedError) return errorPayload(selectedError);
     return undefined;
   };
@@ -201,6 +203,10 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
     if (ui.view === 'error' && selectedError) {
       return <ErrorCard error={selectedError} width={columns} rows={viewRows} offset={ui.scroll} scrollMax={scrollMax} link={(text) => linkFor(selectedError.service, text)} />;
     }
+    // The logs take the feed's rows; the feed is back one `l` or an escape later.
+    if (ui.activity === 'logs' && selectedService) {
+      return <LogPane services={apps} selectedIndex={serviceIndex} controls={controls} columns={columns} rows={viewRows} scroll={ui.logScroll} paused={ui.paused} scrollMax={logScrollMax} window={logWindow} link={linkFor} />;
+    }
     return null;
   })();
 
@@ -217,10 +223,7 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
         ) : (
           <VerboseView {...shared} layout={layout} focus={focus} serviceIndex={serviceIndex} callIndex={callIndex} eventIndex={eventIndex} filter={ui.filter} paused={ui.paused} collapsed={ui.collapsed} />
         )}
-        {ui.view !== 'keys' && layout.logPane > 0 && selectedService ? (
-          <LogPane services={apps} selectedIndex={serviceIndex} controls={controls} columns={columns} rows={layout.logPane} scroll={ui.logScroll} paused={ui.paused} scrollMax={logScrollMax} window={logWindow} link={linkFor} />
-        ) : null}
-        <Footer errors={errors} columns={columns} mode={ui.mode} logs={ui.logs && layout.logPane > 0} view={ui.view} />
+        <Footer errors={errors} columns={columns} mode={ui.mode} activity={ui.activity} view={ui.view} />
         {notice ? <Notice notice={notice} columns={columns} /> : null}
       </Box>
     </ThemeProvider>

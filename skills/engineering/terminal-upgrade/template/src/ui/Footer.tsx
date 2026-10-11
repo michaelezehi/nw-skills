@@ -3,14 +3,14 @@ import { Box, Text } from 'ink';
 import type { DevError } from '../types.ts';
 import { useTone } from './theme.ts';
 import { ErrorSummary } from './ErrorTray.tsx';
-import type { Mode } from './deckState.ts';
+import { nextActivity, type Activity, type Mode } from './deckState.ts';
 import type { View } from './layout.ts';
 
 export interface FooterProps {
   errors: readonly DevError[];
   columns: number;
   mode: Mode;
-  logs: boolean;
+  activity: Activity;
   view: View;
 }
 
@@ -21,7 +21,13 @@ interface Hint {
   active?: boolean;
 }
 
-export function footerHints(mode: Mode, logs: boolean, columns: number, view: View = 'deck'): Hint[] {
+/** What `l` does next: show the logs, hide them and the feed, or bring the feed back. */
+export function activityHint(activity: Activity): string {
+  const next = nextActivity(activity);
+  return next === 'logs' ? 'logs' : next === 'quiet' ? 'hide' : 'feed';
+}
+
+export function footerHints(mode: Mode, activity: Activity, columns: number, view: View = 'deck'): Hint[] {
   if (view === 'palette') {
     const hints: Hint[] = [{ key: '↑↓', word: 'row' }, { key: '←→', word: 'swatch' }, { key: '#', word: 'hex' }, { key: 'enter', word: 'save' }];
     if (columns >= 90) hints.push({ key: 'r', word: 'brand' });
@@ -29,18 +35,18 @@ export function footerHints(mode: Mode, logs: boolean, columns: number, view: Vi
     return hints;
   }
   const hints: Hint[] = [{ key: 'v', word: mode === 'plain' ? 'detail' : 'plain' }];
-  if (mode === 'verbose' && columns >= 90 && view === 'deck') hints.push({ key: 'c', word: 'calls' }, { key: 't', word: 'timeline' });
-  hints.push({ key: 'l', word: 'logs', active: logs }, { key: 'e', word: 'errors' });
-  if (view === 'error' || logs) hints.push({ key: 'y', word: 'copy' });
+  if (mode === 'verbose' && columns >= 90 && view === 'deck' && activity === 'feed') hints.push({ key: 'c', word: 'calls' }, { key: 't', word: 'timeline' });
+  hints.push({ key: 'l', word: activityHint(activity), active: activity !== 'feed' }, { key: 'e', word: 'errors' });
+  if (view === 'error' || (view === 'deck' && activity === 'logs')) hints.push({ key: 'y', word: 'copy' });
   hints.push({ key: 'h', word: 'help' });
   if (columns >= 120) hints.push({ key: 'C', word: 'palette' }, { key: 'b', word: 'back' }, { key: 'esc', word: 'close' });
   hints.push({ key: 'q', word: 'quit' });
   return hints;
 }
 
-export function Footer({ errors, columns, mode, logs, view }: FooterProps) {
+export function Footer({ errors, columns, mode, activity, view }: FooterProps) {
   const tone = useTone();
-  const hints = footerHints(mode, logs, columns, view);
+  const hints = footerHints(mode, activity, columns, view);
   const hintWidth = hints.reduce((sum, h) => sum + h.key.length + 1 + h.word.length + 2, 0);
   const left = Math.max(10, columns - hintWidth - 2);
   return (

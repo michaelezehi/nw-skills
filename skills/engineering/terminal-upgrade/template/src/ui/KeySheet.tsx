@@ -6,7 +6,7 @@ import { padEnd } from './format.ts';
 
 export const KEYS: Array<[string, string]> = [
   ['v or /', 'detail or plain view'],
-  ['l', 'show or hide the logs'],
+  ['l', 'the logs, then neither, then the feed'],
   ['c', 'fold or open Convex calls'],
   ['t', 'fold or open the timeline'],
   ['← →', 'select a service, or the logged one'],
@@ -22,7 +22,7 @@ export const KEYS: Array<[string, string]> = [
   ['p', 'pause the feed'],
   ['C', 'palette'],
   ['pgup / pgdn', 'scroll the logs or an error'],
-  ['esc / x', 'close the view, or hide the logs'],
+  ['esc / x', 'close the view, or back to the feed'],
   ['backspace / b', 'back to the previous view'],
   ['h or ?', 'this help'],
   ['q / ctrl-c', 'quit and stop every service'],

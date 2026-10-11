@@ -233,6 +233,12 @@ function lineCells(width: number, ratio: number | null, ctx: number, color: numb
 
 // --- the band above the prompt.
 
+const STATUS: Record<string, { glyph: string; color: string }> = {
+  running: { glyph: '●', color: '#5fbf8f' },
+  done: { glyph: '✓', color: '#3B9C5F' },
+  failed: { glyph: '✗', color: '#D0453F' },
+}
+
 export type BandProps = {
   f: Flow
   label: string
@@ -244,6 +250,38 @@ export type BandProps = {
   crewButton: JSX.Element
   dismiss: JSX.Element
   look: Look
+  // Agents to list under the bar: the pane is open but too narrow to place.
+  waiting: AgentRun[]
+  at: number
+}
+
+const BAND_AGENTS = 6
+
+// One line per agent, for a terminal too narrow to seat the agents pane.
+function bandAgent(ui: Ui, p: BandProps, a: AgentRun): JSX.Element {
+  const { Box, Text } = ui
+  const { look } = p
+  const tier = look.tierOf(a.type)
+  const tint = look.colorOf(tier === 'other' && look.costumeOf(a.type) === 'explore' ? 'medium' : tier)
+  const status = STATUS[a.status] ?? STATUS.running!
+  const steps = a.stepTotal ? ` ${a.stepDone ?? 0}/${a.stepTotal}` : ''
+  const stats = `${look.ctxOf(a)}% ${look.fmtTime(look.elapsed(a, p.at))}`
+
+  return (
+    <Box key={`band-${a.id}`} flexDirection="row" gap={1}>
+      <Text color={status.color}>{status.glyph}</Text>
+      <Box flexGrow={1} flexShrink={1}>
+        <Text wrap="truncate-end">
+          {a.description || a.type}
+          <Text color={tint}> {tier === 'other' ? a.type : tier}</Text>
+          <Text dimColor>{steps}</Text>
+        </Text>
+      </Box>
+      <Box flexShrink={0}>
+        <Text dimColor>{stats}</Text>
+      </Box>
+    </Box>
+  )
 }
 
 export function terminalBand(ui: Ui, p: BandProps): JSX.Element {
@@ -252,7 +290,7 @@ export function terminalBand(ui: Ui, p: BandProps): JSX.Element {
   const titleW = Math.max(8, Math.min(28, p.f.title.length + 1, Math.floor(p.columns / 3)))
   const barW = Math.max(10, p.columns - titleW - 26)
 
-  return (
+  const bar = (
     <Box flexDirection="row" gap={1}>
       <Text color={color}>●</Text>
       <Box width={titleW} flexShrink={0}>
@@ -265,6 +303,16 @@ export function terminalBand(ui: Ui, p: BandProps): JSX.Element {
       <Raster key="savvy-mini" columns={6} rows={1} cells={miniCrabCells(p.step, p.isWorking)} />
       {p.crewButton}
       {p.dismiss}
+    </Box>
+  )
+  if (p.waiting.length === 0) return bar
+
+  const more = p.waiting.length - BAND_AGENTS
+  return (
+    <Box flexDirection="column">
+      {bar}
+      {p.waiting.slice(0, BAND_AGENTS).map(a => bandAgent(ui, p, a))}
+      {more > 0 && <Text dimColor>  +{more}</Text>}
     </Box>
   )
 }
@@ -287,11 +335,6 @@ export type PaneProps = {
   look: Look
 }
 
-const STATUS: Record<string, { glyph: string; color: string }> = {
-  running: { glyph: '●', color: '#5fbf8f' },
-  done: { glyph: '✓', color: '#3B9C5F' },
-  failed: { glyph: '✗', color: '#D0453F' },
-}
 
 function tile(ui: Ui, key: string, label: string, value: string): JSX.Element {
   const { Box, Text } = ui
@@ -367,6 +410,16 @@ function plannedCard(ui: Ui, p: PaneProps, pl: Planned): JSX.Element {
       </Box>
     </Box>
   )
+}
+
+// The rows the inline pane needs to show every card, so the last agent is not
+// cut off by the default third of the screen.
+export function paneRows(p: { title: string; running: number; finished: number; planned: number; isCompact: boolean; isDoneCollapsed: boolean }): number {
+  const header = (p.title !== '' ? 1 : 0) + 3 + 1
+  if (p.isCompact) return header + 1
+  const cards = (n: number, size: number) => (n > 0 ? 1 + n * size : 0)
+  const finished = p.finished > 0 ? 1 + (p.isDoneCollapsed ? 0 : p.finished * 5) : 0
+  return header + 1 + Math.max(1, cards(p.running, 5) + finished + cards(p.planned, 3))
 }
 
 export function terminalPane(ui: Ui, p: PaneProps): JSX.Element {

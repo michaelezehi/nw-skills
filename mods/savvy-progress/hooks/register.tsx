@@ -5,7 +5,7 @@ import type { AgentRun, Flow, Panel, Phase, PlannedTask } from '../types'
 
 import { CLAY, COSTUMES, crabBody } from './sprites'
 import type { Fill } from './sprites'
-import { terminalBand, terminalPane } from './terminal'
+import { paneRows, terminalBand, terminalPane } from './terminal'
 import type { Look } from './terminal'
 
 const flow = atom({ plugin: 'savvy-progress', key: 'flow' } as const, null)
@@ -569,6 +569,33 @@ const look = (): Look => ({
   progressOf,
 })
 
+// The agents pane as the surface holds it; undefined when it is closed or the
+// host cannot say, so a failed lookup never costs the bar or the spawn.
+async function paneOf($: EngineInterface): Promise<{ isPlaced: boolean } | undefined> {
+  try {
+    return (await $.ui.panes()).find(p => p.id === PANE)
+  } catch {
+    return undefined
+  }
+}
+
+// Opens the pane, or resizes an open one, tall enough for every card.
+async function openPane($: EngineInterface): Promise<void> {
+  const list = await read($, agents)
+  const f = await read($, flow)
+  const p = await read($, panel)
+  const running = list.filter(a => a.status === 'running').length
+  const rows = paneRows({
+    title: f && !f.isFinished ? f.title : '',
+    running,
+    finished: list.length - running,
+    planned: plannedOf(f, list).length,
+    isCompact: p.isCompact,
+    isDoneCollapsed: p.isDoneCollapsed,
+  })
+  await $.ui.open({ id: PANE, title: tr().pane, rows })
+}
+
 // Opens the agents pane, or closes it when it is up; true when it ends up open.
 async function togglePane($: EngineInterface): Promise<boolean> {
   const isOpen = (await $.ui.panes()).some(p => p.id === PANE)
@@ -578,7 +605,7 @@ async function togglePane($: EngineInterface): Promise<boolean> {
   }
   const at = await $.clock.now()
   await update($, now, () => at)
-  await $.ui.open({ id: PANE, title: tr().pane })
+  await openPane($)
   return true
 }
 
@@ -586,7 +613,7 @@ async function autoOpen($: EngineInterface, key: string): Promise<void> {
   const p = await read($, panel)
   if (p.autoOpenedFor === key) return
   await update($, panel, prev => ({ ...prev, autoOpenedFor: key }))
-  void $.ui.open({ id: PANE, title: tr().pane })
+  void openPane($)
 }
 
 export const register: Register = (on, options) => {
@@ -735,6 +762,7 @@ export const register: Register = (on, options) => {
       const f = await read($, flow)
       await autoOpen($, f && !f.isFinished ? f.title : 'savvy-flow')
     }
+    if ((await paneOf($))?.isPlaced) await openPane($)
     return started
   })
 
@@ -1015,7 +1043,11 @@ export const register: Register = (on, options) => {
     // Every surface's table names every element (a missing one draws an empty
     // fragment), so the terminal is told apart by name, not by 'Svg' in ui.
     if (e.surface === 'terminal') {
+      // Too narrow to seat the pane: its agents go under the bar instead.
+      const isWaiting = (await paneOf($))?.isPlaced === false
       return terminalBand($.ui.resolve(e), {
+        waiting: isWaiting ? list.filter(a => a.status === 'running').reverse() : [],
+        at: Math.max(await read($, now), ...list.map(a => a.startedAt), 0),
         f,
         label: label(f),
         ratio: ratio(f),

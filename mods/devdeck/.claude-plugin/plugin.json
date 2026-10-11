@@ -1,0 +1,9 @@
+{
+  "name": "devdeck",
+  "version": "0.1.0",
+  "description": "Mirrors a running Devdeck dev dashboard: service dots and the latest reload or Convex call above the prompt, /devdeck for the full pane, and a devdeck_status tool",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Michael Ezehi"
+  }
+}

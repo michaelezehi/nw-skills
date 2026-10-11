@@ -48,6 +48,12 @@
       "source": "./mods/turn-chime",
       "description": "A chime and a toast when a long turn finishes",
       "category": "productivity"
+    },
+    {
+      "name": "devdeck",
+      "source": "./mods/devdeck",
+      "description": "Live mirror of a Devdeck dev dashboard: service dots, the latest hot reload or Convex call above the prompt, /devdeck for the full pane, and a devdeck_status tool",
+      "category": "productivity"
     }
   ]
 }

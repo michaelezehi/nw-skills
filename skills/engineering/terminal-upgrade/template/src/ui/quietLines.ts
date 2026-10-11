@@ -6,7 +6,7 @@
  */
 import type { DevError, ServiceState } from '../types.ts';
 import { MEM_HISTORY } from '../store.ts';
-import type { Tone } from './theme.ts';
+import { serviceHue, type Tone } from './theme.ts';
 import { capsuleBar, capsule, sparkline } from './glyphs.ts';
 import { cellWidth, formatClock, formatMb, formatMs, formatSpan, padEnd, padStart } from './format.ts';
 import { displayRuntime } from './ServiceCard.tsx';
@@ -118,7 +118,7 @@ export function quietLines(input: QuietLineInput): CardLine[] {
     const bar = capsuleBar(input.maxMemMb > 0 ? (service.memMb / input.maxMemMb) * 100 : 0, Math.min(16, barRoom));
     memory.push(
       { text: `  ${capsule.left}`, color: tone.line },
-      { text: bar.filled, color: service.memMb / Math.max(1, input.maxMemMb) > 0.85 ? tone.activity : tone.accent },
+      { text: bar.filled, color: service.memMb / Math.max(1, input.maxMemMb) > 0.85 ? tone.activity : serviceHue(tone, service.id, tone.accent) },
       { text: bar.empty, color: tone.line },
       { text: capsule.right, color: tone.line },
     );

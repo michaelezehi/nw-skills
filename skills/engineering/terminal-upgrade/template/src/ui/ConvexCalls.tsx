@@ -7,7 +7,7 @@ import { memo } from 'react';
 import { Text } from 'ink';
 import type { ConvexCall, UdfType } from '../types.ts';
 import { Panel, Row, EmptyRow, Blank, panelInner } from './Panel.tsx';
-import { useTone, labelOn, SLOW_CALL_MS, type Tone } from './theme.ts';
+import { useTone, labelOn, statHue, SLOW_CALL_MS, type Tone } from './theme.ts';
 import { formatClockSeconds, formatMs, padEnd, padStart, truncateStart } from './format.ts';
 import { glyph } from './sprites.ts';
 
@@ -50,10 +50,14 @@ export function badgeFor(type: UdfType, tone: Tone): Badge {
       return { letter, background: tone.accent, label: labelOn(tone.accent), color: tone.accent };
     case 'Action':
       return { letter, background: tone.activity, label: labelOn(tone.activity), color: tone.activity };
-    case 'Query':
-      return { letter, background: tone.line, label: tone.text, color: tone.text };
-    case 'HttpAction':
-      return { letter, background: tone.line, label: tone.muted, color: tone.muted };
+    case 'Query': {
+      const hue = statHue(tone, 'query', '');
+      return hue ? { letter, background: hue, label: labelOn(hue), color: hue } : { letter, background: tone.line, label: tone.text, color: tone.text };
+    }
+    case 'HttpAction': {
+      const hue = statHue(tone, 'http', '');
+      return hue ? { letter, background: hue, label: labelOn(hue), color: hue } : { letter, background: tone.line, label: tone.muted, color: tone.muted };
+    }
   }
 }
 

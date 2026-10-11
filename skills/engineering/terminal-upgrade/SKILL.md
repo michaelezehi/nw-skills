@@ -109,7 +109,7 @@ Do not start `dev` yourself; the user runs it. Report:
 | `c` / `t` | collapse Convex Calls / Timeline in the detailed deck |
 | `e`, `enter` | open errors; full body, file paths are Cmd-clickable |
 | `y` / `Y` | copy the open error or visible logs / every error |
-| `C` | colour palette: 8 presets (Unicolor is one hue) plus per-colour overrides, saved in `~/.config/devdeck/theme.json` |
+| `C` | colour palette: 8 presets (Spectrum gives each stat and server its own colour) plus per-colour overrides, saved in `~/.config/devdeck/theme.json` |
 | `b`, `esc` or `x` | back one view / close every view |
 | `r`, `o`, `q` | restart a server, open it in the browser, quit and stop everything |
 | `h` or `?` | help: every key, plus what the terminal does (Cmd-click a port opens it in the browser, Cmd-click a path opens the file) |

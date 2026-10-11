@@ -3,7 +3,7 @@ import { memo } from 'react';
 import { Text } from 'ink';
 import type { DevEvent, DevEventKind } from '../types.ts';
 import { Panel, Row, panelInner } from './Panel.tsx';
-import { useTone, SLOW_CALL_MS, type Tone } from './theme.ts';
+import { useTone, serviceHue, SLOW_CALL_MS, type Tone } from './theme.ts';
 import { formatClockSeconds, formatMs, padEnd, padStart, truncateEnd } from './format.ts';
 import { glyph, hotColor } from './sprites.ts';
 
@@ -76,7 +76,7 @@ export const Timeline = memo(function Timeline({ events, paused, width, rows, fo
               <Text color={tone.accent}>{selected ? '› ' : '  '}</Text>
               <Text color={tone.muted}>{padStart(formatClockSeconds(event.at), TIME_WIDTH)} </Text>
               <Text color={look.color}>{look.glyph} </Text>
-              <Text color={tone.muted}>{padEnd(event.service, SERVICE_WIDTH)} </Text>
+              <Text color={serviceHue(tone, event.service, tone.muted)}>{padEnd(event.service, SERVICE_WIDTH)} </Text>
               <Text color={selected ? tone.accent : failed ? tone.error : event.kind === 'info' ? tone.muted : tone.text}>{padEnd(truncateEnd(event.text, textWidth), textWidth)}</Text>
               <Text color={slow ? tone.activity : tone.muted}> {padStart(formatMs(event.ms), MS_WIDTH)}</Text>
             </Row>

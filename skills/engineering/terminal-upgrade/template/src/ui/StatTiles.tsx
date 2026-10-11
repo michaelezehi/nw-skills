@@ -24,6 +24,8 @@ export interface TileSpec {
   right?: TileSegment;
   /** Cut the right note from the start to fit, instead of dropping it. */
   shrinkRight?: boolean;
+  /** Label colour; muted when unset. */
+  tint?: string;
 }
 
 /** Rule, sides and one space of padding each side. */
@@ -82,7 +84,7 @@ export function StatTile({ spec, width }: { spec: TileSpec; width: number }) {
   let note = spec.right?.text ?? '';
   if (note && cellWidth(note) > noteRoom) note = spec.shrinkRight && noteRoom >= 6 ? truncateStart(note, noteRoom) : '';
   return (
-    <Panel title={spec.label} width={width} rows={TILE_ROWS} titleColor={tone.muted}>
+    <Panel title={spec.label} width={width} rows={TILE_ROWS} titleColor={spec.tint ?? tone.muted}>
       <Text wrap="truncate">
         {spec.left.map((s, i) => (
           <Text key={i} color={s.color}>

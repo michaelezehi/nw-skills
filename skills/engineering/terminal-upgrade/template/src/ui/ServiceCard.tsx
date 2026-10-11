@@ -7,7 +7,7 @@ import { memo } from 'react';
 import { Box, Text } from 'ink';
 import type { ServiceState } from '../types.ts';
 import { Panel, Row, panelInner } from './Panel.tsx';
-import { useTone } from './theme.ts';
+import { useTone, serviceHue } from './theme.ts';
 import { capsule, capsuleBar, sparkline } from './glyphs.ts';
 import { formatClock, formatMb, formatMbShort, formatMs, padEnd, padStart, truncateEnd, cellWidth } from './format.ts';
 import { glyph, hotColor, isHot, statusLook } from './sprites.ts';
@@ -89,7 +89,7 @@ export const ServiceCard = memo(function ServiceCard({ service, maxMemMb, width,
   const sparkWidth = Math.max(0, Math.min(12, inner - cellWidth(tail) - 3));
 
   return (
-    <Panel title={title} width={width} rows={rows} focused={focused && selected} titleColor={selected ? tone.accent : tone.text}>
+    <Panel title={title} width={width} rows={rows} focused={focused && selected} titleColor={selected ? tone.accent : serviceHue(tone, service.id, tone.text)}>
       <Row>
         <Text color={look.color}>{look.glyph} </Text>
         <Text color={look.color}>{padEnd(look.word, statusWidth)}</Text>
@@ -101,7 +101,7 @@ export const ServiceCard = memo(function ServiceCard({ service, maxMemMb, width,
       </Row>
       <Row>
         <Text color={tone.line}>{capsule.left}</Text>
-        <Text color={service.memMb / Math.max(1, maxMemMb) > 0.85 ? tone.activity : tone.accent}>{bar.filled}</Text>
+        <Text color={service.memMb / Math.max(1, maxMemMb) > 0.85 ? tone.activity : serviceHue(tone, service.id, tone.accent)}>{bar.filled}</Text>
         <Text color={tone.line}>{bar.empty}</Text>
         <Text color={tone.line}>{capsule.right}</Text>
         <Text color={tone.text}>{padStart(memText, 7)}</Text>
@@ -142,7 +142,7 @@ export function ServicePill({ service, selected, focused, frame, spinning = true
       <Text wrap="truncate">
         <Text color={cap}>{capsule.left}</Text>
         <Text color={look.color}> {look.glyph} </Text>
-        <Text color={selected ? tone.accent : tone.text} bold={selected}>
+        <Text color={selected ? tone.accent : serviceHue(tone, service.id, tone.text)} bold={selected}>
           {label}
         </Text>
         {compact ? null : <Text color={tone.muted}> {port}</Text>}

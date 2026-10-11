@@ -7,7 +7,7 @@ import { memo } from 'react';
 import { Text } from 'ink';
 import type { ConvexCall, DevEvent } from '../types.ts';
 import { Panel, Row, panelInner } from './Panel.tsx';
-import { useTone, SLOW_CALL_MS, type Tone } from './theme.ts';
+import { useTone, serviceHue, SLOW_CALL_MS, type Tone } from './theme.ts';
 import { cellWidth, formatClockSeconds, formatMs, padEnd, padStart } from './format.ts';
 import { badgeFor } from './ConvexCalls.tsx';
 import { lookFor } from './Timeline.tsx';
@@ -56,7 +56,7 @@ function lineFor(row: LatestRow, now: number, tone: Tone): Line {
     return {
       glyph: { text: look.glyph, color: look.color },
       bold: false,
-      body: [{ text: `${column(event.service, SERVICE_W)} `, color: tone.muted }, { text: event.text, color: failed ? tone.error : tone.text }, ...times],
+      body: [{ text: `${column(event.service, SERVICE_W)} `, color: serviceHue(tone, event.service, tone.muted) }, { text: event.text, color: failed ? tone.error : tone.text }, ...times],
       ms: formatMs(event.ms),
       msColor: failed ? tone.error : slow ? tone.activity : tone.muted,
     };

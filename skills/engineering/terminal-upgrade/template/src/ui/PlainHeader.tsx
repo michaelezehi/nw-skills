@@ -8,7 +8,7 @@
 import { Box, Text } from 'ink';
 import type { DeckMeta, ServiceState } from '../types.ts';
 import { Panel } from './Panel.tsx';
-import { useTone, type Tone } from './theme.ts';
+import { useTone, statHue, type Tone } from './theme.ts';
 import { blockDigitsWidth, ring, CLOCK_ROWS } from './glyphs.ts';
 import { cellWidth, formatCount, formatMb, formatUptime } from './format.ts';
 import { CLOCK_GAP, TOTAL_MB, UptimeClock, cpuPercentOf, deckTitle, nodeLabel, watcherSummary } from './Header.tsx';
@@ -49,20 +49,23 @@ function tileSpecs(props: PlainHeaderProps, tone: Tone): TileSpec[] {
   const specs: TileSpec[] = [
     {
       label: 'MEMORY',
+      tint: statHue(tone, 'memory', tone.muted),
       left: [
-        { text: `${ring(memPercent)} `, color: memPercent > 75 ? tone.activity : tone.accent },
+        { text: `${ring(memPercent)} `, color: memPercent > 75 ? tone.activity : statHue(tone, 'memory', tone.accent) },
         { text: formatMb(props.totalMemMb), color: tone.text },
       ],
     },
     {
       label: 'CPU',
+      tint: statHue(tone, 'cpu', tone.muted),
       left: [
-        { text: `${ring(cpuPercent)} `, color: cpuPercent > 75 ? tone.activity : tone.accent },
+        { text: `${ring(cpuPercent)} `, color: cpuPercent > 75 ? tone.activity : statHue(tone, 'cpu', tone.accent) },
         { text: `${Math.round(cpuPercent)}%`, color: tone.text },
       ],
     },
     {
       label: 'CALLS',
+      tint: statHue(tone, 'calls', tone.muted),
       // Failures ride on the value line, so a tile too narrow for a note still shows them.
       left: [
         { text: formatCount(props.callCount), color: tone.text },

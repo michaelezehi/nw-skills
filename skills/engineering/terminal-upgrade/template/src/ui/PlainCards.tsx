@@ -8,7 +8,7 @@ import type { ServiceState } from '../types.ts';
 import { Panel, Row, panelInner } from './Panel.tsx';
 import { PillStrip, reloadGlyph, shortLabel } from './ServiceCard.tsx';
 import { hotColor, statusLook } from './sprites.ts';
-import { useTone, type Tone } from './theme.ts';
+import { useTone, serviceHue, type Tone } from './theme.ts';
 import { cellWidth, formatClock, formatMb, formatMs } from './format.ts';
 import type { PlainLayout } from './plainLayout.ts';
 import { CardRows } from './CardRows.tsx';
@@ -83,7 +83,7 @@ function PlainCard({ service, width: cardWidth, rows, selected, focused, frame, 
   const mem = formatMb(service.memMb);
   const tail = cardTail(service, now, inner - cellWidth(mem) - 1, tone);
   return (
-    <Panel title={fitLabel(service, cardWidth - 6)} width={cardWidth} rows={rows} focused={focused && selected} titleColor={selected ? tone.accent : tone.text}>
+    <Panel title={fitLabel(service, cardWidth - 6)} width={cardWidth} rows={rows} focused={focused && selected} titleColor={selected ? tone.accent : serviceHue(tone, service.id, tone.text)}>
       <Row>
         <Text color={look.color}>{status}</Text>
         {showPort ? <Text color={tone.muted}>{' '.repeat(inner - cellWidth(status) - cellWidth(port))}{portLink(service, port)}</Text> : null}

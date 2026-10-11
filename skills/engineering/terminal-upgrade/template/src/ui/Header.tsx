@@ -7,7 +7,7 @@ import os from 'node:os';
 import { Box, Text } from 'ink';
 import type { DeckMeta, ServiceState } from '../types.ts';
 import { Panel, Row } from './Panel.tsx';
-import { useTone, type Tone } from './theme.ts';
+import { useTone, statHue, type Tone } from './theme.ts';
 import { blockDigits, blockDigitsWidth, ring, CLOCK_ROWS } from './glyphs.ts';
 import { cellWidth, formatCount, formatMb, formatUptime, truncateEnd } from './format.ts';
 import { statusLook } from './sprites.ts';
@@ -157,22 +157,25 @@ export function Header(props: HeaderProps) {
   const tiles: TileSpec[] = [
     {
       label: 'MEMORY',
+      tint: statHue(tone, 'memory', tone.muted),
       left: [
-        { text: `${ring(memPercent)} `, color: memPercent > 75 ? tone.activity : tone.accent },
+        { text: `${ring(memPercent)} `, color: memPercent > 75 ? tone.activity : statHue(tone, 'memory', tone.accent) },
         { text: formatMb(props.totalMemMb), color: tone.text },
       ],
       right: { text: `${Math.round(memPercent)}% of ${Math.round(TOTAL_MB / 1024)} GB`, color: tone.muted },
     },
     {
       label: 'CPU',
+      tint: statHue(tone, 'cpu', tone.muted),
       left: [
-        { text: `${ring(cpuPercent)} `, color: cpuPercent > 75 ? tone.activity : tone.accent },
+        { text: `${ring(cpuPercent)} `, color: cpuPercent > 75 ? tone.activity : statHue(tone, 'cpu', tone.accent) },
         { text: `${Math.round(cpuPercent)}%`, color: tone.text },
       ],
       right: { text: `${CORES} cores`, color: tone.muted },
     },
     {
       label: 'CONVEX',
+      tint: statHue(tone, 'convex', tone.muted),
       left: look
         ? [
             { text: `${look.glyph} ${look.word}`, color: look.color },
@@ -184,7 +187,8 @@ export function Header(props: HeaderProps) {
     },
     {
       label: 'CALLS',
-      left: [{ text: formatCount(props.callCount), color: tone.text }],
+      tint: statHue(tone, 'calls', tone.muted),
+      left: [{ text: formatCount(props.callCount), color: statHue(tone, 'calls', tone.text) }],
       right: props.callErrorCount > 0 ? { text: `${formatCount(props.callErrorCount)} failed`, color: tone.error } : undefined,
     },
   ];
@@ -192,6 +196,7 @@ export function Header(props: HeaderProps) {
     tiles.push(
       {
         label: 'WATCHERS',
+        tint: statHue(tone, 'watchers', tone.muted),
         left: [{ text: `${watch.glyph} ${watch.text}`, color: watch.color }],
         right: watch.names ? { text: watch.names, color: tone.error } : { text: `${props.watchers.length} packages`, color: tone.muted },
       },

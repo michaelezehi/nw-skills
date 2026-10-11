@@ -8,7 +8,7 @@
 import { Box, Text } from 'ink';
 import type { DevError, ServiceState } from '../types.ts';
 import { Panel, Row, Blank, panelInner } from './Panel.tsx';
-import { useTone, type Tone } from './theme.ts';
+import { useTone, serviceHue, type Tone } from './theme.ts';
 import { statusLook, type StatusLook } from './sprites.ts';
 import { osc8 } from './links.ts';
 import { fitLabel } from './PlainCards.tsx';
@@ -101,7 +101,7 @@ function BigCard({ service, maxMemMb, error, width: cardWidth, rows, headRows, s
   const ruled = body.filter(opensGroup).length <= spare - reserve;
   const rule = '┈'.repeat(inner);
   return (
-    <Panel title={fitLabel(service, cardWidth - 6)} width={cardWidth} rows={rows} focused={focused && selected} titleColor={selected ? tone.accent : tone.text}>
+    <Panel title={fitLabel(service, cardWidth - 6)} width={cardWidth} rows={rows} focused={focused && selected} titleColor={selected ? tone.accent : serviceHue(tone, service.id, tone.text)}>
       {head.map((line, i) => (
         <LineRow key={`h${i}`} line={line} inner={inner} />
       ))}

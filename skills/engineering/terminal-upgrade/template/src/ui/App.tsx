@@ -15,7 +15,7 @@ import type { DeckControls, ServiceState } from '../types.ts';
 import { readTheme, type Theme } from '../themeFile.ts';
 import { copyText } from '../clipboard.ts';
 import { EXIT_SIGINT } from '../config.ts';
-import { HOT_MS, ThemeProvider } from './theme.ts';
+import { HOT_MS, ThemeProvider, withHues } from './theme.ts';
 import { computeLayout } from './layout.ts';
 import { computePlainLayout } from './plainLayout.ts';
 import { useFrame, useWakeAt } from './useFrame.ts';
@@ -92,7 +92,8 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
   );
   const palette = usePalette(theme);
   const paletteOpen = ui.view === 'palette';
-  const tone = palette.toneFor(paletteOpen);
+  const paletteColors = palette.toneFor(paletteOpen);
+  const tone = useMemo(() => withHues(paletteColors, state.order), [paletteColors, state.order]);
 
   // Pausing freezes the feeds at the moment of the key press.
   const frozen = useRef<{ calls: typeof state.calls; events: typeof state.events } | null>(null);

@@ -4,7 +4,7 @@
  * helpers take a `Tone` argument. `DEFAULT_TONE` is Brand, for code that runs outside React.
  */
 import { createContext, use } from 'react';
-import { DEFAULT_PRESET, type Colors } from '../themeFile.ts';
+import { DEFAULT_PRESET, PRESETS, presetNameFor, type Colors } from '../themeFile.ts';
 
 /**
  * accent: running, healthy, focused, selected (the old yellow).
@@ -12,7 +12,32 @@ import { DEFAULT_PRESET, type Colors } from '../themeFile.ts';
  * text: main text and numbers. muted: labels and secondary text.
  * line: outlines, rules and dim glyphs. error: errors only.
  */
-export type Tone = Colors;
+export type Tone = Colors & {
+  /** Spectrum's colours; absent in every other preset, so each helper below falls back to a token. */
+  hues?: readonly string[];
+  /** Service id to its colour, assigned in service order. */
+  serviceHues?: Readonly<Record<string, string>>;
+};
+
+export type Stat = 'memory' | 'cpu' | 'convex' | 'calls' | 'watchers' | 'query' | 'http';
+const STAT_HUE: Record<Stat, number> = { memory: 1, cpu: 2, convex: 3, calls: 4, watchers: 5, query: 1, http: 5 };
+
+/** The palette with Spectrum's hues attached when these colours are Spectrum's. */
+export function withHues(colors: Colors, serviceOrder: readonly string[]): Tone {
+  const hues = PRESETS.find((p) => p.name === presetNameFor(colors))?.hues;
+  if (!hues || hues.length === 0) return colors;
+  return { ...colors, hues, serviceHues: Object.fromEntries(serviceOrder.map((id, i) => [id, hues[i % hues.length]!])) };
+}
+
+/** A stat's own colour under Spectrum, else `fallback`. */
+export function statHue(tone: Tone, stat: Stat, fallback: string): string {
+  return tone.hues?.[STAT_HUE[stat] % tone.hues.length] ?? fallback;
+}
+
+/** A service's own colour under Spectrum, else `fallback`. */
+export function serviceHue(tone: Tone, id: string, fallback: string): string {
+  return tone.serviceHues?.[id] ?? fallback;
+}
 
 export const DEFAULT_TONE: Tone = { ...DEFAULT_PRESET.colors };
 

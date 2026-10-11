@@ -108,6 +108,15 @@ Package-manager notes:
   override.
 - **bun**: aliases work the same. `bun install`, or `bun install --lockfile-only` to write
   `bun.lock` without touching `node_modules`.
+- **Never `pnpm install --filter` to dodge dirty files.** It still writes the other session's
+  manifest changes into the lockfile and can prune their packages from the store (it broke two
+  Next apps' `next` link once). Use a scratch worktree with `--lockfile-only`, or stop.
+- **Isolated pnpm has traps too.** A workspace package that loads typescript-eslint without
+  declaring `typescript` gets the newest one in the tree (7.0.2) as its peer, even outside the
+  peer range: give such packages (an eslint config package, for one) an explicit
+  `"typescript": "^5.x"`. The root `typescript` is the fallback for any undeclared
+  `require('typescript')` (Remotion's bundler hits it), so keep the root on 5.x/6.x when
+  anything relies on that. A package's own `.bin/tsc` points at 7 once the alias is installed.
 - **Splitting a lockfile across two commits:** run the install for the first concern, commit,
   then the second. If another session's dirty package.json would land in the lockfile, install
   in a scratch `git worktree` instead and copy only your lockfile hunks back, or stop.

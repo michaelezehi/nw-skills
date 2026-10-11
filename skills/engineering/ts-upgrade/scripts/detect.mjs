@@ -89,7 +89,12 @@ const bunfig = existsSync(join(root, 'bunfig.toml')) ? readFileSync(join(root, '
 const hoisted = pm === 'pnpm' ? /shamefully-hoist\s*=\s*true|node-linker\s*=\s*hoisted/.test(npmrc)
   : pm === 'bun' ? !/linker\s*=\s*["']isolated["']/.test(bunfig)
     : true;
-const nestedLocks = files.filter((f) => lockNames.some((l) => f.endsWith(`/${l}`)) && dirname(f) !== root).map(rel);
+const wsGlobs = [...(Array.isArray(rootPkg.workspaces) ? rootPkg.workspaces : rootPkg.workspaces?.packages ?? [])];
+if (existsSync(join(root, 'pnpm-workspace.yaml'))) {
+  for (const m of readFileSync(join(root, 'pnpm-workspace.yaml'), 'utf8').matchAll(/^\s*-\s*["']?([^"'\n]+?)["']?\s*$/gm)) wsGlobs.push(m[1]);
+}
+const inWorkspace = (d) => wsGlobs.some((g) => new RegExp('^' + g.replace(/\/\*\*$/, '(/.*)?').replace(/\*/g, '[^/]+') + '$').test(rel(d)));
+const nestedLocks = files.filter((f) => lockNames.some((l) => f.endsWith(`/${l}`)) && dirname(f) !== root && !inWorkspace(dirname(f))).map(rel);
 const notes = [];
 if (rootLocks.length > 1) notes.push(`more than one lockfile at the root (${rootLocks.join(', ')}): work out which one CI and Docker install from before installing`);
 if (existsSync(join(root, 'pnpm-workspace.yaml')) && pm !== 'pnpm') notes.push(`pnpm-workspace.yaml exists but the manager is ${pm}: check whether it is a leftover`);
@@ -135,7 +140,7 @@ for (const f of files.filter((f) => f.endsWith('/package.json'))) {
         ? 'side-by-side (hoisted root: shared tools load this copy)'
         : 'direct: typescript -> 7.0.2';
   const warn = [];
-  if (strategy.startsWith('side-by-side') && !tscScripts.some((s) => s.startsWith('typecheck'))) warn.push('no typecheck script: add one');
+  if (strategy.startsWith('side-by-side') && existsSync(join(dir, 'tsconfig.json')) && !tscScripts.some((s) => s.startsWith('typecheck'))) warn.push('no typecheck script: add one');
   packages.push({ dir: rel(dir), name: p.name, typescript: tsSpec, installed: installedTs(dir), tscScripts, apiConsumers: consumers, next, convexCli: deps.convex, strategy, warn });
 }
 
@@ -178,7 +183,10 @@ for (const f of files.filter((f) => /\/tsconfig[^/]*\.json$/.test(f))) {
 const convexDirs = new Set();
 for (const f of files) {
   if (f.endsWith('/convex.json')) convexDirs.add(dirname(f));
-  if (/\/convex\/tsconfig\.json$/.test(f)) convexDirs.add(dirname(dirname(f)));
+  if (/\/convex\/tsconfig\.json$/.test(f)) {
+    const fnDir = dirname(f);
+    if (existsSync(join(fnDir, 'schema.ts')) || existsSync(join(fnDir, '_generated'))) convexDirs.add(dirname(fnDir));
+  }
 }
 const convex = [...convexDirs].map((d) => {
   const j = readJsonc(join(d, 'convex.json')) ?? {};

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "Live terminal dashboard for pnpm dev",
+  "description": "Live terminal dashboard that replaces pnpm dev",
   "bin": {
     "devdeck": "./src/cli.tsx"
   },

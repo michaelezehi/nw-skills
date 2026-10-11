@@ -3,6 +3,7 @@
  * port, then memory and the last thing that happened. A field that cannot fit in full
  * is left out rather than cut. Below card width the strip is the shared pill row.
  */
+import { memo } from 'react';
 import { Text } from 'ink';
 import type { ServiceState } from '../types.ts';
 import { Panel, Row, panelInner } from './Panel.tsx';
@@ -74,7 +75,7 @@ interface CardProps {
   now: number;
 }
 
-function PlainCard({ service, width: cardWidth, rows, selected, focused, frame, spinning, now }: CardProps) {
+const PlainCard = memo(function PlainCard({ service, width: cardWidth, rows, selected, focused, frame, spinning, now }: CardProps) {
   const tone = useTone();
   const inner = panelInner(cardWidth);
   const look = statusLook(service.status, frame, spinning, tone);
@@ -101,9 +102,9 @@ function PlainCard({ service, width: cardWidth, rows, selected, focused, frame, 
       </Row>
     </Panel>
   );
-}
+});
 
-export function PlainStrip({ apps, layout, selectedIndex, focused, frame, spinning, now }: PlainStripProps) {
+export const PlainStrip = memo(function PlainStrip({ apps, layout, selectedIndex, focused, frame, spinning, now }: PlainStripProps) {
   if (layout.services < 1 || apps.length === 0) return null;
   if (layout.cardWidth > 0 && layout.cardRows) {
     return (
@@ -131,4 +132,4 @@ export function PlainStrip({ apps, layout, selectedIndex, focused, frame, spinni
   return (
     <PillStrip services={apps} perRow={layout.pillsPerRow} pillWidth={layout.pillWidth} rows={layout.services} columns={layout.columns} selectedIndex={selectedIndex} focused={focused} frame={frame} spinning={spinning} />
   );
-}
+});

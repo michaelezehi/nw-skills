@@ -39,7 +39,7 @@ Scripts live in `${CLAUDE_SKILL_DIR}/scripts`, and the Devdeck source in `${CLAU
   ```
   `null` hides a service, and `"add": [ ... ]` adds one.
 - **Git ignore.** `.devdeck/`, the runtime socket the Claude mod reads, goes into the global git excludes file, so no repo ever shows it.
-- **In-repo installs win.** A repo with its own `devdeck.config.ts` (installed with `repo`) keeps using it.
+- **Repo configs win.** A `devdeck.config.json` at the repo root, or an in-repo `devdeck.config.ts` (installed with `repo`), wins over detection. The JSON holds `title`, `root` (`.`), `packageManager` and `services`, each with `id`, `label`, `dir`, `kind` and an optional `port`, `url` or `command`.
 
 ## Steps
 

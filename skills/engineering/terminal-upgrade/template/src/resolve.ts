@@ -7,7 +7,7 @@
 import { execFileSync } from 'node:child_process';
 import { existsSync } from 'node:fs';
 import { join, resolve } from 'node:path';
-import { CONFIG_FILE, ConfigError, loadConfig } from './config.ts';
+import { CONFIG_FILE, ConfigError, JSON_CONFIG_FILE, loadConfig } from './config.ts';
 import { detectConfig } from './detect.ts';
 import { applyOverride, overridesPath, readOverride } from './overrides.ts';
 import type { DeckConfig } from './types.ts';
@@ -81,8 +81,8 @@ export interface ResolveOptions {
   overridesFile?: string;
 }
 
-/** Where a repo that ships its own Devdeck keeps the config, relative to the repo root. */
-export const REPO_CONFIGS = ['packages/devdeck', 'tools/devdeck'].map((dir) => `${dir}/${CONFIG_FILE}`);
+/** Where a repo keeps its Devdeck config, relative to the repo root: a JSON file at the root, or an in-repo install's config. */
+export const REPO_CONFIGS = [JSON_CONFIG_FILE, ...['packages/devdeck', 'tools/devdeck'].map((dir) => `${dir}/${CONFIG_FILE}`)];
 
 async function fromFile(file: string, source: DeckSource): Promise<ResolvedDeck> {
   try {

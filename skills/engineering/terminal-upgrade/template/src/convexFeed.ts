@@ -66,10 +66,13 @@ export function startConvexFeed(store: DeckStore, root: string, options: ConvexF
     const splitter = createLineSplitter(MAX_ROW);
     proc.stdout?.setEncoding('utf8');
     proc.stdout?.on('data', (chunk: string) => {
+      // One store update per chunk, however many calls it carries.
+      const calls = [];
       for (const line of splitter.push(chunk)) {
         const call = parseConvexJsonl(stripAnsi(line));
-        if (call) store.getState().addCall(call);
+        if (call) calls.push(call);
       }
+      store.getState().addCalls(calls);
     });
     proc.stdout?.on('error', () => undefined);
 

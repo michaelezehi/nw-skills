@@ -13,6 +13,8 @@ import { gridPlan, gridRows, MIN_BIG_ROWS, type GridPlan } from './grid.ts';
 export const HOG_PANEL_MIN_COLS = 60;
 /** The feed, LATEST or the logs keep at least this many rows when the panel grows. */
 export const HOG_MIN_REGION = 6;
+/** The most hogs the panel grows to show; `m` lists them all. */
+export const HOG_PANEL_MAX = 5;
 /** Rule, one hog, rule. */
 export const HOG_PANEL_MIN_ROWS = 3;
 /** Below this the screen holds no hog rows at all; the footer and cards come first. */
@@ -50,7 +52,9 @@ export interface HogRows {
  * grid's rows above its minimum). Returns the rows taken from the region.
  */
 export function panelGrowth(hogs: number, spare: number): number {
-  const extra = Math.min(hogs + 2 - 1, spare);
+  // Each hog after the first brings its separator row; the full list is one `m` away.
+  const shown = Math.min(hogs, HOG_PANEL_MAX);
+  const extra = Math.min(2 * shown - 1 + 2 - 1, spare);
   return extra + 1 >= HOG_PANEL_MIN_ROWS ? extra : 0;
 }
 

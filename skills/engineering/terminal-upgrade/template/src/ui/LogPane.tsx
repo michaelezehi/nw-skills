@@ -87,7 +87,7 @@ export function LogPane({ services, selectedIndex, controls, columns, rows, scro
 
 const linked = (text: string, id: string, link?: (serviceId: string, line: string) => string): string => (link ? link(id, text) : text);
 
-/** `── web   admin   teams align ───────── 312 lines · live ──` across the full width. */
+/** `── web   admin   docs   api ───────── 312 lines · live ──` across the full width. */
 function LogRule({ services, selectedIndex, columns, right, rightColor }: { services: ServiceState[]; selectedIndex: number; columns: number; right: string; rightColor: string }) {
   const tone = useTone();
   const names = services.map((s) => s.label.toLowerCase());

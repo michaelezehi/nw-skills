@@ -43,6 +43,10 @@ export interface VerboseViewProps {
   frame: number;
   spinning: ReadonlySet<string>;
   now: number;
+  /** Now as the hot colours need it: moves only when one cools (settledNow). */
+  hotNow: number;
+  /** Now as the quiet cards' uptime spans need it: moves only when a span's text would. */
+  spanNow: number;
   /** The memory hogs panel or strip, drawn above the error tray. */
   hogBlock?: ReactNode;
   /** The log pane or an open view (error card, palette) drawn in place of the feeds. */
@@ -74,9 +78,9 @@ export function VerboseView(props: VerboseViewProps) {
         rows={layout.header}
       />
       {layout.grid ? (
-        <QuietGrid apps={apps} grid={layout.grid} errors={errors} columns={layout.columns} selectedIndex={props.serviceIndex} focused={focus === 'services'} frame={frame} spinning={spinning} now={now} detail />
+        <QuietGrid apps={apps} grid={layout.grid} errors={errors} columns={layout.columns} selectedIndex={props.serviceIndex} focused={focus === 'services'} frame={frame} spinning={spinning} now={props.spanNow} detail />
       ) : (
-        <ServiceStrip apps={apps} layout={layout} maxMemMb={maxMemMb} selectedIndex={props.serviceIndex} focused={focus === 'services'} frame={frame} spinning={spinning} now={now} />
+        <ServiceStrip apps={apps} layout={layout} maxMemMb={maxMemMb} selectedIndex={props.serviceIndex} focused={focus === 'services'} frame={frame} spinning={spinning} now={props.hotNow} />
       )}
       {middle}
       {props.hogBlock ?? null}
@@ -87,7 +91,7 @@ export function VerboseView(props: VerboseViewProps) {
 
 /** The calls and timeline panels, open or folded, in the arrangement the tier allows. */
 function Feeds(props: VerboseViewProps) {
-  const { layout, calls, events, filter, paused, focus, collapsed, now } = props;
+  const { layout, calls, events, filter, paused, focus, collapsed, hotNow } = props;
   const width = layout.columns;
   const height = layout.middle;
   const callItems = filterCalls(calls, filter).length;
@@ -95,7 +99,7 @@ function Feeds(props: VerboseViewProps) {
     <ConvexCalls calls={calls} filter={filter} paused={paused} focused={focus === 'calls'} selectedIndex={props.callIndex} width={w} rows={rows} />
   );
   const timelineOpen = (w: number, rows: number) => (
-    <Timeline events={events} paused={paused} focused={focus === 'timeline'} selectedIndex={props.eventIndex} width={w} rows={rows} now={now} />
+    <Timeline events={events} paused={paused} focused={focus === 'timeline'} selectedIndex={props.eventIndex} width={w} rows={rows} now={hotNow} />
   );
   const callsRule = (
     <Rule title={`CONVEX CALLS · ${formatCount(props.callCount)} calls${props.callErrorCount > 0 ? ` · ${formatCount(props.callErrorCount)} failed` : ''}`} right="c to open" width={width} focused={focus === 'calls'} />

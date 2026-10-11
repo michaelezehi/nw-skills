@@ -3,7 +3,8 @@
  * says a spinner is live; otherwise Devdeck sits idle and costs nothing.
  * A second clock ticks once a second for the uptime display.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { HOT_MS } from './theme.ts';
 
 export const FRAME_MS = 400;
 
@@ -83,6 +84,29 @@ export function useWakeAt(at: number | undefined): void {
     timer.unref?.();
     return () => clearTimeout(timer);
   }, [at]);
+}
+
+/**
+ * A stand-in for now that moves only when something cools: the latest `at + HOT_MS` that
+ * has passed, else 0. For every `at` given, isHot(at, settledNow(now, ats)) equals
+ * isHot(at, now), so a memoised leaf that only colours hot things can take this value
+ * and skip the renders where nothing it draws would change.
+ */
+export function settledNow(now: number, ats: Iterable<number | undefined>): number {
+  let settled = 0;
+  for (const at of ats) {
+    if (at === undefined) continue;
+    const cooled = at + HOT_MS;
+    if (cooled <= now && cooled > settled) settled = cooled;
+  }
+  return settled;
+}
+
+/** `now` as of the last time `key` changed: a clock that holds still while what it draws is the same. */
+export function useHeldNow(now: number, key: string): number {
+  const held = useRef({ key, now });
+  if (held.current.key !== key) held.current = { key, now };
+  return held.current.now;
 }
 
 /** Test seam: true when the 400ms ticker is running. */

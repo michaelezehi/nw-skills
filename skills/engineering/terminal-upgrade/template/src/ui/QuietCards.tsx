@@ -5,6 +5,7 @@
  * row's cards stretch to the full width. A row is as tall as its fullest card, not the
  * screen, and a thin rule sits before each fact so the card reads as a list.
  */
+import { memo } from 'react';
 import { Box, Text } from 'ink';
 import type { DevError, ServiceState } from '../types.ts';
 import { Panel, Row, Blank, panelInner } from './Panel.tsx';
@@ -87,7 +88,7 @@ function cardLines(service: ServiceState, inner: number, maxMemMb: number, error
   return quietLines({ service, look, maxMemMb, error, now, width: inner, detail, tone });
 }
 
-function BigCard({ service, maxMemMb, error, width: cardWidth, rows, headRows, selected, focused, frame, spinning, now, detail }: BigCardProps) {
+const BigCard = memo(function BigCard({ service, maxMemMb, error, width: cardWidth, rows, headRows, selected, focused, frame, spinning, now, detail }: BigCardProps) {
   const tone = useTone();
   const inner = panelInner(cardWidth);
   const look = statusLook(service.status, frame, spinning, tone);
@@ -116,9 +117,9 @@ function BigCard({ service, maxMemMb, error, width: cardWidth, rows, headRows, s
       ))}
     </Panel>
   );
-}
+});
 
-export function QuietGrid({ apps, grid, errors, columns, selectedIndex, focused, frame, spinning, now, detail }: QuietGridProps) {
+export const QuietGrid = memo(function QuietGrid({ apps, grid, errors, columns, selectedIndex, focused, frame, spinning, now, detail }: QuietGridProps) {
   const tone = useTone();
   const maxMemMb = apps.reduce((max, s) => Math.max(max, s.memMb), 0);
   const height = grid.heights.reduce((sum, h) => sum + h, 0);
@@ -172,4 +173,4 @@ export function QuietGrid({ apps, grid, errors, columns, selectedIndex, focused,
       })}
     </Box>
   );
-}
+});

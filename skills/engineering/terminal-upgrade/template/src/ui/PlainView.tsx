@@ -35,6 +35,10 @@ export interface PlainViewProps {
   frame: number;
   spinning: ReadonlySet<string>;
   now: number;
+  /** Now as the hot colours need it: moves only when one cools (settledNow). */
+  hotNow: number;
+  /** Now as the quiet cards' uptime spans need it: moves only when a span's text would. */
+  spanNow: number;
   /** The memory hogs panel or strip, drawn above the error tray. */
   hogBlock?: ReactNode;
   /** The log pane or an open view (error card, palette) drawn in place of LATEST. */
@@ -42,7 +46,7 @@ export interface PlainViewProps {
 }
 
 export function PlainView(props: PlainViewProps) {
-  const { layout, apps, view, now } = props;
+  const { layout, apps, view, now, hotNow } = props;
   const height = layout.rows - layout.footer;
   return (
     <Box flexDirection="column" width={layout.columns} height={height} overflow="hidden">
@@ -60,11 +64,11 @@ export function PlainView(props: PlainViewProps) {
         />
       ) : null}
       {layout.grid ? (
-        <QuietGrid apps={apps} grid={layout.grid} errors={props.errors} columns={layout.columns} selectedIndex={props.selectedIndex} focused={props.focused} frame={props.frame} spinning={props.spinning} now={now} detail={false} />
+        <QuietGrid apps={apps} grid={layout.grid} errors={props.errors} columns={layout.columns} selectedIndex={props.selectedIndex} focused={props.focused} frame={props.frame} spinning={props.spinning} now={props.spanNow} detail={false} />
       ) : (
-        <PlainStrip apps={apps} layout={layout} selectedIndex={props.selectedIndex} focused={props.focused} frame={props.frame} spinning={props.spinning} now={now} />
+        <PlainStrip apps={apps} layout={layout} selectedIndex={props.selectedIndex} focused={props.focused} frame={props.frame} spinning={props.spinning} now={hotNow} />
       )}
-      {layout.latest < 1 ? null : (view ?? <Latest events={props.events} calls={props.calls} width={layout.columns} rows={layout.latest} now={now} />)}
+      {layout.latest < 1 ? null : (view ?? <Latest events={props.events} calls={props.calls} width={layout.columns} rows={layout.latest} now={hotNow} />)}
       {props.hogBlock ?? null}
       <ErrorTray errors={props.errors} rows={layout.tray} columns={layout.columns} focused={props.errorsFocused} selectedIndex={props.errorIndex} />
     </Box>

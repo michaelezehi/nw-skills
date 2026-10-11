@@ -206,6 +206,42 @@ function mentionsRoot(command: string, root: string): boolean {
   return root.length > 1 && command.includes(root);
 }
 
+interface Classified {
+  name: string;
+  /** A dev tool or a command naming the repo root. */
+  platform: boolean;
+  app: string | undefined;
+}
+
+/** Past this many distinct command lines the cache starts over, so it cannot grow without end. */
+const CLASSIFY_CACHE_MAX = 4096;
+let classifyRoot = '';
+const classifyCache = new Map<string, Classified>();
+
+/**
+ * Name, platform test and app bundle for a command line. Each is pure in the command and
+ * the root, and a process keeps its command line, so a scan two seconds later reads them
+ * from the cache instead of running the regexes and splits again.
+ */
+function classify(command: string, root: string): Classified {
+  if (root !== classifyRoot || classifyCache.size >= CLASSIFY_CACHE_MAX) {
+    classifyCache.clear();
+    classifyRoot = root;
+  }
+  let hit = classifyCache.get(command);
+  if (!hit) {
+    const name = hogName(command);
+    hit = { name, platform: mentionsRoot(command, root) || isDevTool(command, name), app: appName(command) };
+    classifyCache.set(command, hit);
+  }
+  return hit;
+}
+
+/** Test seam: how many command lines the classification cache holds. */
+export function classifiedCount(): number {
+  return classifyCache.size;
+}
+
 /**
  * The processes worth knowing about, largest memory first. Scope: inside a service tree
  * or devdeck itself is `run`; a dev tool or a command naming the repo root is
@@ -218,9 +254,11 @@ export function pickHogs(rows: PsRow[], ctx: HogContext): Hog[] {
   const minCpu = ctx.minCpu ?? HOG_MIN_CPU;
   const max = ctx.max ?? HOG_MAX;
   const children = childrenMap(rows);
+  const present = new Set<number>();
+  for (const row of rows) present.add(row.pid);
   const service = new Map<number, string>();
   for (const [id, root] of Object.entries(ctx.roots)) {
-    if (!rows.some((r) => r.pid === root)) continue;
+    if (!present.has(root)) continue;
     for (const pid of walk(root, children)) if (!service.has(pid)) service.set(pid, id);
   }
   const run = new Set<number>(walk(ctx.self, children));
@@ -236,16 +274,15 @@ export function pickHogs(rows: PsRow[], ctx: HogContext): Hog[] {
     const serviceId = service.get(row.pid);
     if (serviceId !== undefined || run.has(row.pid)) {
       const self = row.pid === ctx.self;
-      singles.push({ ...base, name: self ? 'devdeck' : hogName(command), scope: 'run', ...(serviceId !== undefined ? { serviceId } : {}), ...(self ? { self: true } : {}) });
+      singles.push({ ...base, name: self ? 'devdeck' : classify(command, ctx.root).name, scope: 'run', ...(serviceId !== undefined ? { serviceId } : {}), ...(self ? { self: true } : {}) });
       continue;
     }
-    const name = hogName(command);
-    if (mentionsRoot(command, ctx.root) || isDevTool(command, name)) {
+    const { name, platform, app } = classify(command, ctx.root);
+    if (platform) {
       const orphan = row.ppid === 1 && base.ageSec > ORPHAN_AGE_SEC;
       singles.push({ ...base, name, scope: 'platform', orphan });
       continue;
     }
-    const app = appName(command);
     if (app) {
       const list = apps.get(app);
       if (list) list.push(row);

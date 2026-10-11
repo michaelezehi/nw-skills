@@ -17,7 +17,7 @@ export const KEYS: Array<[string, string]> = [
   ['y', 'copy error or logs'],
   ['Y', 'copy every error'],
   ['r', 'restart the focused service or hog'],
-  ['m', 'memory hogs, the full list'],
+  ['m / M', 'every memory hog / hide or show them'],
   ['s twice / S twice', 'stop the hog / every orphan'],
   ['o', 'open its URL in the browser'],
   ['f', 'filter calls: all, Q, M, A, errors'],

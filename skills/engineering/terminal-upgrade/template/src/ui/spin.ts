@@ -14,6 +14,7 @@ interface Since {
 
 export function useSpinning(services: readonly ServiceState[], now: number): ReadonlySet<string> {
   const since = useRef(new Map<string, Since>());
+  const last = useRef<ReadonlySet<string>>(new Set());
   const spinning = new Set<string>();
   for (const service of services) {
     if (service.status !== 'starting' && service.status !== 'compiling') {
@@ -27,5 +28,8 @@ export function useSpinning(services: readonly ServiceState[], now: number): Rea
     }
     if (now - entry.at < SPIN_MAX_MS) spinning.add(service.id);
   }
+  // The same members keep the same set, so memoised grids see no change.
+  if (spinning.size === last.current.size && [...spinning].every((id) => last.current.has(id))) return last.current;
+  last.current = spinning;
   return spinning;
 }

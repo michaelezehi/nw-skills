@@ -75,8 +75,15 @@ export const HogPanel = memo(function HogPanel({ plan, width, rows, focused, sel
       </Text>
       {rows > 1 ? (
         <Box flexDirection="column" width={width} height={rows - 1} borderStyle="round" borderTop={false} borderColor={tone.line} paddingX={1} overflow="hidden">
-          {plan.rows.map((row) => (
-            <HogLine key={row.hog.pid} row={row} plan={plan} maxMemMb={maxMemMb} selected={focused && row.hog.pid === selectedPid} />
+          {plan.rows.map((row, i) => (
+            <Box key={row.hog.pid} flexDirection="column">
+              {plan.ruled && i > 0 ? (
+                <Text wrap="truncate" color={tone.line}>
+                  {'┈'.repeat(Math.max(0, width - 4))}
+                </Text>
+              ) : null}
+              <HogLine row={row} plan={plan} maxMemMb={maxMemMb} selected={focused && row.hog.pid === selectedPid} />
+            </Box>
           ))}
         </Box>
       ) : null}

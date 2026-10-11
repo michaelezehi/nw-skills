@@ -9,6 +9,8 @@ import type { DeckStore } from './store.ts';
 import type { LineParser, PackageManager, ServiceConfig, ServiceKind, Signal } from './types.ts';
 
 export const RAW_LINES = 2000;
+/** The buffer runs this far past RAW_LINES before one trim, so a line costs no shift. */
+const RAW_SLACK = 500;
 /** Quiet time after which a parser closes a half-read block. */
 const QUIET_MS = 1000;
 const RAW_THROTTLE_MS = 100;
@@ -39,7 +41,10 @@ interface Proc {
   startedAt: number;
   parser: LineParser;
   splitters: LineSplitter[];
+  /** Up to RAW_LINES + RAW_SLACK lines; readers see the newest RAW_LINES. */
   raw: string[];
+  /** The newest RAW_LINES as last read, dropped on every new line. */
+  rawView?: readonly string[];
   listeners: Set<() => void>;
   rawTimer?: NodeJS.Timeout;
   lastRaw: number;
@@ -126,7 +131,8 @@ export function createSupervisor(store: DeckStore, configs: ServiceConfig[], roo
   const ingest = (p: Proc, rawLine: string): void => {
     const line = stripAnsi(rawLine);
     p.raw.push(truncate(line, RAW_LINE_MAX));
-    if (p.raw.length > RAW_LINES) p.raw.splice(0, p.raw.length - RAW_LINES);
+    if (p.raw.length > RAW_LINES + RAW_SLACK) p.raw.splice(0, p.raw.length - RAW_LINES);
+    p.rawView = undefined;
     notifyRaw(p);
     apply(p, () => p.parser.push(line));
   };
@@ -247,7 +253,10 @@ export function createSupervisor(store: DeckStore, configs: ServiceConfig[], roo
     },
 
     rawLines(id) {
-      return procs.get(id)?.raw ?? [];
+      const p = procs.get(id);
+      if (!p) return [];
+      if (p.raw.length <= RAW_LINES) return p.raw;
+      return (p.rawView ??= p.raw.slice(p.raw.length - RAW_LINES));
     },
 
     onRaw(id, cb) {

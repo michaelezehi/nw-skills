@@ -66,6 +66,8 @@ export interface HogPanelPlan {
   /** Hogs that did not fit the panel's rows. */
   hidden: number;
   rule: HogRulePlan;
+  /** A thin rule sits between hog rows, so each hog after the first takes two rows. */
+  ruled: boolean;
 }
 
 /** `2d 9h`, `3h 05m`, `12m`, `40s`. */
@@ -133,13 +135,15 @@ function rulePlan(hogs: readonly Hog[], width: number, hidden: number, armed: Ar
 /** Everything the panel of `width` by `rows` (rules included) draws, with the button positions. */
 export function planHogPanel(hogs: readonly Hog[], width: number, rows: number, selected: number, armed?: Armed): HogPanelPlan | undefined {
   const inner = Math.max(0, width - 4);
-  const visible = Math.max(0, rows - 2);
+  const content = Math.max(0, rows - 2);
+  const ruled = content >= 3;
+  const visible = ruled ? Math.ceil(content / 2) : content;
   const start = windowStart(hogs.length, visible, selected);
   const shown = hogs.slice(start, start + visible);
   const cols = hogColumns(shown, inner);
   const hidden = hogs.length - shown.length;
   const rule = rulePlan(hogs, width, hidden, armed);
-  if (!cols) return { cols: { nameW: 0, counts: false, badge: false, bar: false, cpu: false, age: false, restart: false, hintW: 0 }, rows: [], hidden: hogs.length, rule };
+  if (!cols) return { cols: { nameW: 0, counts: false, badge: false, bar: false, cpu: false, age: false, restart: false, hintW: 0 }, rows: [], hidden: hogs.length, rule, ruled };
   const stopX = inner - STOP_W;
   const restartX = stopX - 1 - RESTART_W;
   const planned = shown.map((hog): HogRowPlan => {
@@ -155,7 +159,7 @@ export function planHogPanel(hogs: readonly Hog[], width: number, rows: number, 
       restartX: cols.restart && hog.serviceId !== undefined && !hog.self ? restartX : undefined,
     };
   });
-  return { cols, rows: planned, hidden, rule };
+  return { cols, rows: planned, hidden, rule, ruled: ruled && planned.length > 1 };
 }
 
 /** One strip item: `vitest orphan 1.7 GB`. */
@@ -206,7 +210,7 @@ export function panelRegions(plan: HogPanelPlan, top: number, width: number): Hi
   const out: HitRegion[] = [];
   if (plan.rule.right) out.push({ y: top, x0: plan.rule.rightX, x1: plan.rule.rightX + cellWidth(plan.rule.right), hit: { kind: 'orphans' } });
   plan.rows.forEach((row, i) => {
-    const y = top + 1 + i;
+    const y = top + 1 + i * (plan.ruled ? 2 : 1);
     if (row.stopX !== undefined) out.push({ y, x0: PANEL_INSET + row.stopX, x1: PANEL_INSET + row.stopX + cellWidth(row.stopLabel), hit: { kind: 'stop', pid: row.hog.pid } });
     if (row.restartX !== undefined) out.push({ y, x0: PANEL_INSET + row.restartX, x1: PANEL_INSET + row.restartX + cellWidth(RESTART_LABEL), hit: { kind: 'restart', pid: row.hog.pid } });
     out.push({ y, x0: 0, x1: width, hit: { kind: 'select', pid: row.hog.pid } });

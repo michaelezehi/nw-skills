@@ -32,6 +32,8 @@ export interface UiState {
   errorId?: number;
   /** Selected memory hog by pid; undefined follows the largest. */
   hogPid?: number;
+  /** The memory hogs block is hidden from the deck; `M` brings it back. */
+  hogsHidden: boolean;
   filter: CallFilter;
   paused: boolean;
   /** Lines scrolled in the error view. */
@@ -62,7 +64,8 @@ export type UiAction =
   | 'pageUp'
   | 'pageDown'
   | 'palette'
-  | 'hogs';
+  | 'hogs'
+  | 'toggleHogs';
 
 export interface UiContext {
   panels: Focus[];
@@ -93,6 +96,7 @@ export const initialUi: UiState = {
   paused: false,
   scroll: 0,
   history: [],
+  hogsHidden: false,
 };
 
 const clamp = (n: number, max: number): number => Math.max(0, Math.min(n, Math.max(0, max - 1)));
@@ -241,6 +245,8 @@ export function reduceUi(state: UiState, action: UiAction, ctx: UiContext): UiSt
       return state.view === 'palette' ? back(state) : open(state, 'palette');
     case 'hogs':
       return state.view === 'hogs' ? back(state) : open(state, 'hogs');
+    case 'toggleHogs':
+      return { ...state, hogsHidden: !state.hogsHidden, focus: state.focus === 'hogs' ? 'services' : state.focus };
   }
 }
 
@@ -295,6 +301,8 @@ export function actionForKey(input: string, key: { upArrow?: boolean; downArrow?
       return 'copyAll';
     case 'm':
       return 'hogs';
+    case 'M':
+      return 'toggleHogs';
     case 's':
       return 'stop';
     case 'S':

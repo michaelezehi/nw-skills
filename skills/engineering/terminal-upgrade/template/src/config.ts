@@ -2,12 +2,14 @@
  * Loads and checks devdeck.config.ts, and turns the package manager it names into the
  * argv devdeck spawns. Nothing here is specific to one repo.
  */
-import { statSync } from 'node:fs';
+import { readFileSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import type { DeckConfig, PackageManager, ServiceConfig, ServiceKind } from './types.ts';
 
 export const CONFIG_FILE = 'devdeck.config.ts';
+/** The same config as plain JSON at a repo root, for a repo that does not carry Devdeck itself. */
+export const JSON_CONFIG_FILE = 'devdeck.config.json';
 
 /**
  * Devdeck cannot run in this repo (EX_CONFIG): no package.json, nothing to run, a bad config,
@@ -80,7 +82,7 @@ export function configProblem(raw: unknown): string | undefined {
 export async function loadConfig(file: string): Promise<LoadedConfig> {
   let mod: { default?: unknown };
   try {
-    mod = (await import(pathToFileURL(file).href)) as { default?: unknown };
+    mod = file.endsWith('.json') ? { default: JSON.parse(readFileSync(file, 'utf8')) as unknown } : ((await import(pathToFileURL(file).href)) as { default?: unknown });
   } catch (err) {
     throw new ConfigError(file, err instanceof Error ? err.message : String(err));
   }

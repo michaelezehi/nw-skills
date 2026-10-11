@@ -17,8 +17,9 @@ import { copyText } from '../clipboard.ts';
 import { EXIT_SIGINT } from '../config.ts';
 import { HOT_MS, ThemeProvider, withHues } from './theme.ts';
 import { computeLayout } from './layout.ts';
+import { formatSpan } from './format.ts';
 import { computePlainLayout } from './plainLayout.ts';
-import { useFrame, useWakeAt } from './useFrame.ts';
+import { settledNow, useFrame, useHeldNow, useWakeAt } from './useFrame.ts';
 import { useSpinning } from './spin.ts';
 import { useLocalNotice, useNotice } from './useNotice.ts';
 import { filterCalls } from './ConvexCalls.tsx';
@@ -82,6 +83,12 @@ export function renderDeck(store: DeckStore, controls: DeckControls, options: De
 
 const ids = (list: readonly { id: number }[]): number[] => list.map((item) => item.id).reverse();
 
+/** Every time a hot colour hangs on: each card's last reload and each reload in the feed. */
+function* hotAts(apps: readonly ServiceState[], events: readonly { kind: string; at: number }[]): Iterable<number | undefined> {
+  for (const s of apps) yield s.lastReload?.at;
+  for (const e of events) if (e.kind === 'reload') yield e.at;
+}
+
 type DeckInput = { action: UiAction; ctx: UiContext } | { hog: number };
 
 function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; controls: DeckControls; theme: Theme; serviceDirs: Record<string, string> }) {
@@ -126,8 +133,16 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
 
   const plain = ui.mode === 'plain';
   const hogs = state.hogs;
-  const layout = computeLayout({ columns, rows, services: apps.length, errors: errors.length, view: ui.view, activity: ui.activity, hogs: hogs.length });
-  const plainLayout = computePlainLayout({ columns, rows, services: apps.length, errors: errors.length, view: ui.view, activity: ui.activity, hogs: hogs.length });
+  // Layouts from primitives, kept while those hold, so the grids and strips that take them stay memoised.
+  const shownHogs = ui.hogsHidden ? 0 : hogs.length;
+  const layout = useMemo(
+    () => computeLayout({ columns, rows, services: apps.length, errors: errors.length, view: ui.view, activity: ui.activity, hogs: shownHogs }),
+    [columns, rows, apps.length, errors.length, ui.view, ui.activity, shownHogs],
+  );
+  const plainLayout = useMemo(
+    () => computePlainLayout({ columns, rows, services: apps.length, errors: errors.length, view: ui.view, activity: ui.activity, hogs: shownHogs }),
+    [columns, rows, apps.length, errors.length, ui.view, ui.activity, shownHogs],
+  );
   const hogPanelShown = plain ? plainLayout.hogPanel : layout.hogPanel;
   const panels = useMemo<Focus[]>(() => {
     const list: Focus[] = ['services'];
@@ -184,6 +199,10 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
     return at !== undefined && at > now && (until === undefined || at > until) ? at : until;
   }, undefined);
   useWakeAt(hotUntil);
+  // The cards and feeds draw time only as a hot colour (and the quiet cards as an uptime
+  // span), so they take clocks that move when that output would, not on every render.
+  const hotNow = settledNow(now, hotAts(apps, events));
+  const spanNow = useHeldNow(now, apps.map((s) => (s.startedAt ? formatSpan(now - s.startedAt) : '')).join(' '));
 
   /** What `y` copies: the open error, the log window, or the selected tray error. */
   const copyPayload = (all: boolean): CopyPayload | undefined => {
@@ -279,8 +298,9 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
   const regions = useRef<HitRegion[]>([]);
   regions.current = [];
   let hogBlock: ReactNode = null;
+  const armed = hogActions.armed;
+  const plan = useMemo(() => (hogRows > 0 && hogPanelShown ? planHogPanel(hogs, columns, hogRows, hogIndex, armed) : undefined), [hogRows, hogPanelShown, hogs, columns, hogIndex, armed]);
   if (hogRows > 0 && hogPanelShown) {
-    const plan = planHogPanel(hogs, columns, hogRows, hogIndex, hogActions.armed);
     if (plan) {
       regions.current = panelRegions(plan, hogTop, columns);
       hogBlock = <HogPanel plan={plan} width={columns} rows={hogRows} focused={focus === 'hogs'} selectedPid={selectedHog?.pid} />;
@@ -290,7 +310,7 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
     hogBlock = <HogStrip hogs={hogs} width={columns} />;
   }
 
-  const shared = { meta: state.meta, hogBlock, apps, watchers, events, calls, errors, callCount: state.callCount, callErrorCount: state.callErrorCount, totalMemMb, totalCpu, errorIndex, frame, spinning, now, view };
+  const shared = { meta: state.meta, hogBlock, apps, watchers, events, calls, errors, callCount: state.callCount, callErrorCount: state.callErrorCount, totalMemMb, totalCpu, errorIndex, frame, spinning, now, hotNow, spanNow, view };
 
   return (
     <ThemeProvider value={tone}>
@@ -303,7 +323,7 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
         ) : (
           <VerboseView {...shared} layout={layout} focus={focus} serviceIndex={serviceIndex} callIndex={callIndex} eventIndex={eventIndex} filter={ui.filter} paused={ui.paused} collapsed={ui.collapsed} />
         )}
-        <Footer errors={errors} columns={columns} mode={ui.mode} activity={ui.activity} view={ui.view} hogs={hogs.length} />
+        <Footer errors={errors} columns={columns} mode={ui.mode} activity={ui.activity} view={ui.view} hogs={hogs.length} hogsHidden={ui.hogsHidden} />
         {notice ? <Notice notice={notice} columns={columns} /> : null}
       </Box>
     </ThemeProvider>

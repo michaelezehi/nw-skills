@@ -197,7 +197,6 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
   logScrollMax.current = 0;
   const view = (() => {
     if (viewRows < 2) return null;
-    if (ui.view === 'keys') return <KeySheet width={columns} rows={viewRows} />;
     if (ui.view === 'palette') return <Palette state={palette.state} width={columns} rows={viewRows} />;
     if (ui.view === 'error' && selectedError) {
       return <ErrorCard error={selectedError} width={columns} rows={viewRows} offset={ui.scroll} scrollMax={scrollMax} link={(text) => linkFor(selectedError.service, text)} />;
@@ -210,12 +209,15 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
   return (
     <ThemeProvider value={tone}>
       <Box flexDirection="column" width={columns} height={rows} overflow="hidden">
-        {plain ? (
+        {ui.view === 'keys' ? (
+          // Help takes the whole screen above the footer, so no layout ever squeezes it out.
+          <KeySheet width={columns} rows={Math.max(1, rows - 1)} />
+        ) : plain ? (
           <PlainView {...shared} layout={plainLayout} selectedIndex={serviceIndex} focused={focus === 'services'} errorsFocused={focus === 'errors'} />
         ) : (
           <VerboseView {...shared} layout={layout} focus={focus} serviceIndex={serviceIndex} callIndex={callIndex} eventIndex={eventIndex} filter={ui.filter} paused={ui.paused} collapsed={ui.collapsed} />
         )}
-        {layout.logPane > 0 && selectedService ? (
+        {ui.view !== 'keys' && layout.logPane > 0 && selectedService ? (
           <LogPane services={apps} selectedIndex={serviceIndex} controls={controls} columns={columns} rows={layout.logPane} scroll={ui.logScroll} paused={ui.paused} scrollMax={logScrollMax} window={logWindow} link={linkFor} />
         ) : null}
         <Footer errors={errors} columns={columns} mode={ui.mode} logs={ui.logs && layout.logPane > 0} view={ui.view} />

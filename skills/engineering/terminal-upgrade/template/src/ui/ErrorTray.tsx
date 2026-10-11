@@ -162,12 +162,20 @@ export function ErrorSummary({ errors, width }: { errors: readonly DevError[]; w
     );
   }
   const latest = errors[errors.length - 1]!;
-  const head = ` ◆ ${errors.length} error${errors.length === 1 ? '' : 's'}  ›  `;
+  const head = ` ◆ ${errors.length} error${errors.length === 1 ? '' : 's'}`;
+  const arrow = '  ›  ';
   const detail = `${latest.service}: ${latest.title}`;
+  // The newest error's title reads whole or not at all.
+  const showDetail = cellWidth(head) + cellWidth(arrow) + cellWidth(detail) <= width;
   return (
     <Text wrap="truncate">
       <Text color={tone.error}>{head}</Text>
-      <Text color={tone.text}>{truncateEnd(detail, Math.max(0, width - cellWidth(head)))}</Text>
+      {showDetail ? (
+        <>
+          <Text color={tone.error}>{arrow}</Text>
+          <Text color={tone.text}>{detail}</Text>
+        </>
+      ) : null}
     </Text>
   );
 }

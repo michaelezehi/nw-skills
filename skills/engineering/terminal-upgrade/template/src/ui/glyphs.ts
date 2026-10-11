@@ -1,4 +1,4 @@
-/** Box characters, ring gauges, capsule bars, sparklines and the block digit font. */
+/** Box characters, the ring gauge, capsule bars, sparklines and the block digit font. */
 
 export const box = {
   tl: '╭',
@@ -19,40 +19,6 @@ export function ring(percent: number): string {
   const p = clamp(percent, 0, 100);
   const step = Math.round((p / 100) * (RING_STEPS.length - 1));
   return RING_STEPS[step]!;
-}
-
-/**
- * 3 by 3 braille ring for the hero gauge. Eight segments light up clockwise
- * from the top as the percentage climbs. The centre cell stays empty.
- */
-const RING_FILLED = ['⣤', '⣄', '⣿', '⠋', '⠛', '⠙', '⣿', '⣠'] as const;
-const RING_EMPTY = ['⠤', '⢄', '⢸', '⠜', '⠤', '⠣', '⡇', '⡠'] as const;
-/** Segment index laid out on a 3x3 grid, row by row. null is the centre. */
-const RING_GRID: Array<number | null> = [7, 0, 1, 6, null, 2, 5, 4, 3];
-
-export interface BrailleCell {
-  glyph: string;
-  on: boolean;
-}
-
-/** Three rows of three cells; `on` marks a lit segment. */
-export function brailleRing(percent: number): BrailleCell[][] {
-  const lit = Math.round((clamp(percent, 0, 100) / 100) * 8);
-  const rows: BrailleCell[][] = [];
-  for (let r = 0; r < 3; r++) {
-    const row: BrailleCell[] = [];
-    for (let c = 0; c < 3; c++) {
-      const seg = RING_GRID[r * 3 + c]!;
-      if (seg === null) {
-        row.push({ glyph: ' ', on: false });
-        continue;
-      }
-      const on = seg < lit;
-      row.push({ glyph: on ? RING_FILLED[seg]! : RING_EMPTY[seg]!, on });
-    }
-    rows.push(row);
-  }
-  return rows;
 }
 
 /** `▕███▁▁▁▏` with `inner` cells between the caps. Returns the three parts so they can be coloured. */

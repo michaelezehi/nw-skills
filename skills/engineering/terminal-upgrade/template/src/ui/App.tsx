@@ -117,7 +117,7 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
   const scrollMax = useRef(0);
   const logScrollMax = useRef(0);
   const logWindow = useRef<readonly string[]>([]);
-  const viewRows = plain ? plainLayout.view : layout.middle;
+  const viewRows = plain ? plainLayout.latest : layout.middle;
   const ctx: UiContext = {
     panels,
     services: apps.length,

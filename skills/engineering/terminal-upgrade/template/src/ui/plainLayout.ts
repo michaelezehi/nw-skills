@@ -1,14 +1,16 @@
 /**
- * Row budget for the plain view: title, a gap, one row per service, the watchers row,
- * a gap, the LATEST heading, as many LATEST rows as fit, the error tray, the log pane
- * and the footer. The sum is always exactly the screen height.
+ * Row budget for the plain deck: the boxed header (or one line of it), the service
+ * cards (or a pill row), the LATEST panel, the error tray, the log pane and the footer.
+ * The sum is always exactly the screen height. When rows run short LATEST gives first,
+ * then the header folds to one line, then the cards fold to pills, then the tray.
  */
-import { logPaneRows, MAX_TRAY_LINES } from './layout.ts';
+import { CLOCK_ROWS } from './glyphs.ts';
+import { logPaneRows, pillPlan, MAX_TRAY_LINES, MIN_CARD_WIDTH } from './layout.ts';
 
 export interface PlainLayoutInput {
   columns: number;
   rows: number;
-  /** App services; watchers share one row. */
+  /** App services; watch packages fold into the header. */
   services: number;
   errors: number;
   logs: boolean;
@@ -17,52 +19,53 @@ export interface PlainLayoutInput {
 export interface PlainLayout {
   columns: number;
   rows: number;
-  title: number;
-  gapTop: number;
+  /** Rows the header takes: the boxed clock, one line, or none. */
+  header: number;
+  /** Rows the service strip takes: cards with their rules, or pill rows. */
   services: number;
-  watchers: number;
-  gapMid: number;
-  heading: number;
+  /** Width of one card; 0 when the strip is pills. */
+  cardWidth: number;
+  pillsPerRow: number;
+  pillWidth: number;
+  /** Rows of the LATEST panel, rules included. An open view (error card, key sheet) gets the same rows. */
   latest: number;
   tray: number;
   logPane: number;
   footer: number;
-  /** Rows an open view (error card, key sheet) gets in place of everything between the title and the tray. */
-  view: number;
 }
 
-type Part = 'title' | 'gapTop' | 'services' | 'watchers' | 'gapMid' | 'heading' | 'tray';
+/** Two body rows and two rules. */
+export const PLAIN_CARD_ROWS = 4;
+export const BOXED_HEADER_ROWS = CLOCK_ROWS + 2;
+/** LATEST keeps a rule, one line and a rule before anything above it folds. */
+const MIN_LATEST = 3;
 
 export function computePlainLayout(input: PlainLayoutInput): PlainLayout {
   const { columns, rows } = input;
   const footer = 1;
   const logPane = logPaneRows(rows, input.logs);
-  const parts: Record<Part, number> = {
-    title: 1,
-    gapTop: 1,
-    services: input.services,
-    watchers: 1,
-    gapMid: 1,
-    heading: 1,
-    tray: Math.min(input.errors, MAX_TRAY_LINES),
-  };
-  let latest = rows - logPane - footer - Object.values(parts).reduce((a, b) => a + b, 0);
-  const give = (part: Part, floor: number) => {
-    while (latest < floor && parts[part] > 0) {
-      parts[part] -= 1;
-      latest += 1;
-    }
-  };
-  // Keep three LATEST rows before spending the gaps; then give up the rest, least useful first.
-  give('gapMid', 3);
-  give('gapTop', 3);
-  for (const part of ['heading', 'watchers', 'tray', 'services', 'title'] as const) give(part, 0);
-  if (latest < 0) latest = 0;
-  // A heading with nothing under it is noise; the row reads better as one more LATEST line.
-  if (latest === 0 && parts.heading > 0) {
-    parts.heading = 0;
-    latest = 1;
+  const avail = rows - logPane - footer;
+  const pills = pillPlan(columns, input.services);
+  const pillRows = Math.ceil(input.services / pills.perRow);
+  let cardWidth = input.services > 0 ? Math.floor(columns / input.services) : 0;
+  if (cardWidth < MIN_CARD_WIDTH) cardWidth = 0;
+
+  let header = BOXED_HEADER_ROWS;
+  let services = cardWidth > 0 ? PLAIN_CARD_ROWS : pillRows;
+  let tray = Math.min(input.errors, MAX_TRAY_LINES);
+  const latestOf = () => avail - header - services - tray;
+
+  if (latestOf() < MIN_LATEST) header = 1;
+  if (latestOf() < MIN_LATEST && cardWidth > 0) {
+    cardWidth = 0;
+    services = pillRows;
   }
-  const view = parts.gapTop + parts.services + parts.watchers + parts.gapMid + parts.heading + latest;
-  return { columns, rows, ...parts, latest, logPane, footer, view };
+  while (latestOf() < MIN_LATEST && tray > 1) tray -= 1;
+  // Very short screens: no tray, then fewer service rows, then no header, so the footer stays.
+  while (latestOf() < 0 && tray > 0) tray -= 1;
+  while (latestOf() < 0 && services > 0) services -= 1;
+  if (latestOf() < 0) header = 0;
+  const latest = Math.max(0, latestOf());
+
+  return { columns, rows, header, services, cardWidth, pillsPerRow: pills.perRow, pillWidth: pills.width, latest, tray, logPane, footer };
 }

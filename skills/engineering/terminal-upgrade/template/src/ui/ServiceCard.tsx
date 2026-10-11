@@ -36,9 +36,17 @@ export function reloadGlyph(service: ServiceState): string {
   return service.kind === 'convex' ? glyph.push : glyph.bolt;
 }
 
-/** "Next.js 16.3.0 · turbo" reads as "Next 16.3 · turbo" in a 20-cell row. */
-export function displayRuntime(runtime: string): string {
-  return runtime.replace(/^Next\.js\b/, 'Next').replace(/\b(\d+\.\d+)\.\d+\b/, '$1');
+/**
+ * "Next.js 16.3.0 · turbopack" reads as "Next 16.3 · turbo". A row too narrow for that
+ * drops the bundler, then the version, rather than cutting the text.
+ */
+export function displayRuntime(runtime: string, width = Infinity): string {
+  const short = runtime
+    .replace(/^Next\.js\b/, 'Next')
+    .replace(/\b(\d+\.\d+)\.\d+\b/, '$1')
+    .replace(/\bturbopack\b/i, 'turbo');
+  const options = [short, short.split(' · ')[0]!, short.split(' ')[0]!];
+  return options.find((option) => cellWidth(option) <= width) ?? '';
 }
 
 export const ServiceCard = memo(function ServiceCard({ service, maxMemMb, width, rows, selected, focused, frame, spinning = true, now = Date.now() }: ServiceCardProps) {
@@ -54,15 +62,15 @@ export const ServiceCard = memo(function ServiceCard({ service, maxMemMb, width,
 
   // Row 1: runtime, or the route being compiled; cpu right aligned.
   const cpu = service.cpu > 0 ? `${Math.round(service.cpu)}%` : '';
+  const runtimeWidth = Math.max(0, inner - cellWidth(cpu) - (cpu ? 1 : 0));
   const runtimeText =
     service.status === 'compiling' && service.detail
       ? service.detail
       : service.runtime
-        ? displayRuntime(service.runtime)
+        ? displayRuntime(service.runtime, runtimeWidth)
         : stopped
           ? `exit ${service.exitCode ?? '?'}`
           : '';
-  const runtimeWidth = Math.max(0, inner - cellWidth(cpu) - (cpu ? 1 : 0));
 
   // Row 2: capsule bar and memory.
   const memText = formatMb(service.memMb);

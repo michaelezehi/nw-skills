@@ -1,6 +1,6 @@
 /**
- * The hero strip: title in the rule, block-digit uptime clock, braille memory ring,
- * CPU, Convex deployment, call count and the watchers chip. Narrow tiers fold it to
+ * The hero strip: title in the rule, block-digit uptime clock, memory and CPU rings,
+ * Convex deployment, call count and the watchers chip. Narrow tiers fold it to
  * one line of plain text.
  */
 import os from 'node:os';
@@ -9,7 +9,7 @@ import { Box, Text } from 'ink';
 import type { DeckMeta, ServiceState } from '../types.ts';
 import { Panel, Row } from './Panel.tsx';
 import { useTone, spaced, type Tone } from './theme.ts';
-import { blockDigits, blockDigitsWidth, brailleRing, ring, CLOCK_ROWS } from './glyphs.ts';
+import { blockDigits, blockDigitsWidth, ring, CLOCK_ROWS } from './glyphs.ts';
 import { cellWidth, formatCount, formatMb, formatUptime, padEnd, padStart, truncateEnd, truncateStart } from './format.ts';
 import { statusLook } from './sprites.ts';
 import { useSecond } from './useFrame.ts';
@@ -46,7 +46,7 @@ export function deckTitle(meta: Pick<DeckMeta, 'title'>): string {
   return title ? `${title} · DEV` : 'DEV';
 }
 
-function nodeLabel(node: string): string {
+export function nodeLabel(node: string): string {
   const major = node.replace(/^v/, '').split('.')[0] ?? node;
   return `node ${major}`;
 }
@@ -82,7 +82,7 @@ export function UptimeText({ startedAt, bold = false }: { startedAt: number; bol
   );
 }
 
-function UptimeClock({ startedAt }: { startedAt: number }) {
+export function UptimeClock({ startedAt }: { startedAt: number }) {
   return <Clock text={useUptime(startedAt)} />;
 }
 
@@ -157,7 +157,12 @@ export function Header(props: HeaderProps) {
         <UptimeClock startedAt={meta.startedAt} />
         <Box width={3} />
         <Stat label="memory" width={15}>
-          <Ring percent={memPercent} value={formatMb(props.totalMemMb)} sub={`${Math.round(memPercent)}% of ${Math.round(TOTAL_MB / 1024)} GB`} />
+          <Text> </Text>
+          <Row>
+            <Text color={memPercent > 75 ? tone.activity : tone.accent}>{ring(memPercent)} </Text>
+            <Text color={tone.text}>{formatMb(props.totalMemMb)}</Text>
+          </Row>
+          <Row color={tone.muted}>{`${Math.round(memPercent)}% of ${Math.round(TOTAL_MB / 1024)} GB`}</Row>
         </Stat>
         <Stat label="cpu" width={10}>
           <Text> </Text>
@@ -189,10 +194,11 @@ export function Header(props: HeaderProps) {
   );
 }
 
-function Stat({ label, width, last = false, children }: { label: string; width: number; last?: boolean; children: ReactNode }) {
+/** A labelled column: the spaced caps label over whatever rows the stat draws, `gap` cells before the next one. */
+export function Stat({ label, width, gap = 2, last = false, children }: { label: string; width: number; gap?: number; last?: boolean; children: ReactNode }) {
   const tone = useTone();
   return (
-    <Box flexDirection="column" width={width} marginRight={last ? 0 : 2} overflow="hidden">
+    <Box flexDirection="column" width={width} marginRight={last ? 0 : gap} overflow="hidden">
       <Row color={tone.muted}>{spaced(label)}</Row>
       {children}
     </Box>
@@ -200,7 +206,7 @@ function Stat({ label, width, last = false, children }: { label: string; width: 
 }
 
 /** The hero number. Digits in paper, colons in amber. */
-function Clock({ text }: { text: string }) {
+export function Clock({ text }: { text: string }) {
   const tone = useTone();
   const rows = blockDigits(text);
   const width = blockDigitsWidth(text);
@@ -217,28 +223,6 @@ function Clock({ text }: { text: string }) {
         </Text>
       ))}
     </Box>
-  );
-}
-
-/** 3x3 braille ring with the value beside its middle row and a sublabel under it. */
-function Ring({ percent, value, sub }: { percent: number; value: string; sub: string }) {
-  const tone = useTone();
-  const cells = brailleRing(percent);
-  const lit = percent > 75 ? tone.activity : tone.accent;
-  const side = ['', value, sub];
-  return (
-    <>
-      {cells.map((row, r) => (
-        <Text key={r} wrap="truncate">
-          {row.map((cell, c) => (
-            <Text key={c} color={cell.on ? lit : tone.line}>
-              {cell.glyph}
-            </Text>
-          ))}
-          <Text color={r === 1 ? tone.text : tone.muted}> {side[r]}</Text>
-        </Text>
-      ))}
-    </>
   );
 }
 

@@ -1,10 +1,12 @@
 import { createStore } from 'zustand/vanilla';
+import { sameHogs } from './sampler.ts';
 import type {
   ConvexCall,
   DeckMeta,
   DeckSnapshot,
   DevError,
   DevEvent,
+  Hog,
   ServiceConfig,
   ServiceState,
   Signal,
@@ -24,12 +26,15 @@ export interface DeckState {
   calls: ConvexCall[];
   callCount: number;
   callErrorCount: number;
+  /** Largest memory and cpu holders on the machine; replaced only when the list changes. */
+  hogs: Hog[];
 
   apply(serviceId: string, signals: Signal[]): void;
   setProcess(serviceId: string, patch: Partial<Pick<ServiceState, 'pid' | 'status' | 'exitCode' | 'startedAt' | 'restarts' | 'detail'>>): void;
   addEvent(serviceId: string, event: Omit<DevEvent, 'id' | 'at' | 'service'>): void;
   addCall(call: Omit<ConvexCall, 'id'>): void;
-  setUsage(usage: Record<string, { memMb: number; cpu: number }>): void;
+  /** Per-service usage, and the hogs from the same scan when given. */
+  setUsage(usage: Record<string, { memMb: number; cpu: number }>, hogs?: Hog[]): void;
   dismissError(id: number): void;
 }
 
@@ -64,6 +69,7 @@ export function createDeckStore(configs: ServiceConfig[], meta: DeckMeta) {
     calls: [],
     callCount: 0,
     callErrorCount: 0,
+    hogs: [],
 
     apply(serviceId, signals) {
       if (signals.length === 0) return;
@@ -142,8 +148,10 @@ export function createDeckStore(configs: ServiceConfig[], meta: DeckMeta) {
       }));
     },
 
-    setUsage(usage) {
+    setUsage(usage, hogs) {
       set((state) => {
+        // An unchanged hog list keeps its reference, so nothing that reads it re-renders.
+        const nextHogs = hogs !== undefined && !sameHogs(state.hogs, hogs) ? { hogs } : {};
         const services = { ...state.services };
         for (const [id, u] of Object.entries(usage)) {
           const current = services[id];
@@ -155,7 +163,7 @@ export function createDeckStore(configs: ServiceConfig[], meta: DeckMeta) {
             memHistory: cap([...current.memHistory, u.memMb], MEM_HISTORY),
           };
         }
-        return { services };
+        return { services, ...nextHogs };
       });
     },
 
@@ -178,6 +186,7 @@ export function toSnapshot(state: DeckState, limit = 20): DeckSnapshot {
     events: state.events.slice(-limit),
     errors: state.errors.slice(-limit),
     calls: state.calls.slice(-limit),
+    hogs: state.hogs,
     totals: {
       memMb: Math.round(services.reduce((sum, s) => sum + s.memMb, 0)),
       cpu: Math.round(services.reduce((sum, s) => sum + s.cpu, 0)),

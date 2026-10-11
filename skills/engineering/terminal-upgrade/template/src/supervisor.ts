@@ -68,6 +68,11 @@ export interface SupervisorOptions {
   parserFor?: (kind: ServiceKind) => LineParser;
   /** Runs each service without its own `command` as `<pm> run dev`. Default pnpm. */
   packageManager?: PackageManager;
+  /**
+   * The environment services start from, taken before devdeck switched its own UI to
+   * NODE_ENV=production. Default: process.env at spawn time.
+   */
+  env?: NodeJS.ProcessEnv;
 }
 
 export function createSupervisor(store: DeckStore, configs: ServiceConfig[], root: string, options: SupervisorOptions = {}): Supervisor {
@@ -147,7 +152,7 @@ export function createSupervisor(store: DeckStore, configs: ServiceConfig[], roo
       cwd: join(root, p.config.dir),
       detached: true,
       stdio: ['ignore', 'pipe', 'pipe'],
-      env: childEnv(),
+      env: childEnv(options.env),
     });
     p.child = child;
     p.pgid = child.pid;

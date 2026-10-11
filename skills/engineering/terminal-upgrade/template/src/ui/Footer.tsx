@@ -12,6 +12,8 @@ export interface FooterProps {
   mode: Mode;
   activity: Activity;
   view: View;
+  /** Hogs in the store; the `m` hint shows when there are any. */
+  hogs?: number;
 }
 
 interface Hint {
@@ -27,7 +29,13 @@ export function activityHint(activity: Activity): string {
   return next === 'logs' ? 'logs' : next === 'quiet' ? 'hide' : 'feed';
 }
 
-export function footerHints(mode: Mode, activity: Activity, columns: number, view: View = 'deck'): Hint[] {
+export function footerHints(mode: Mode, activity: Activity, columns: number, view: View = 'deck', hogs = 0): Hint[] {
+  if (view === 'hogs') {
+    const hints: Hint[] = [{ key: '↑↓', word: 'row' }, { key: 's', word: 'stop' }, { key: 'r', word: 'restart' }];
+    if (columns >= 90) hints.push({ key: 'S', word: 'orphans' });
+    hints.push({ key: 'esc', word: 'close' });
+    return hints;
+  }
   if (view === 'palette') {
     const hints: Hint[] = [{ key: '↑↓', word: 'row' }, { key: '←→', word: 'swatch' }, { key: '#', word: 'hex' }, { key: 'enter', word: 'save' }];
     if (columns >= 90) hints.push({ key: 'r', word: 'brand' });
@@ -38,15 +46,16 @@ export function footerHints(mode: Mode, activity: Activity, columns: number, vie
   if (mode === 'verbose' && columns >= 90 && view === 'deck' && activity === 'feed') hints.push({ key: 'c', word: 'calls' }, { key: 't', word: 'timeline' });
   hints.push({ key: 'l', word: activityHint(activity), active: activity !== 'feed' }, { key: 'e', word: 'errors' });
   if (view === 'error' || (view === 'deck' && activity === 'logs')) hints.push({ key: 'y', word: 'copy' });
+  if (hogs > 0 && columns >= 100 && view === 'deck') hints.push({ key: 'm', word: 'hogs' });
   hints.push({ key: 'h', word: 'help' });
   if (columns >= 120) hints.push({ key: 'C', word: 'palette' }, { key: 'b', word: 'back' }, { key: 'esc', word: 'close' });
   hints.push({ key: 'q', word: 'quit' });
   return hints;
 }
 
-export function Footer({ errors, columns, mode, activity, view }: FooterProps) {
+export function Footer({ errors, columns, mode, activity, view, hogs = 0 }: FooterProps) {
   const tone = useTone();
-  const hints = footerHints(mode, activity, columns, view);
+  const hints = footerHints(mode, activity, columns, view, hogs);
   const hintWidth = hints.reduce((sum, h) => sum + h.key.length + 1 + h.word.length + 2, 0);
   const left = Math.max(10, columns - hintWidth - 2);
   return (

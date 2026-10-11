@@ -13,6 +13,7 @@ import { formatClock, formatMb, formatMbShort, formatMs, padEnd, padStart, trunc
 import { glyph, hotColor, isHot, statusLook } from './sprites.ts';
 import { PILL_WIDTH } from './layout.ts';
 import { portLink } from './links.ts';
+import { serverInTrouble } from './memAlarm.ts';
 
 export interface ServiceCardProps {
   service: ServiceState;
@@ -75,6 +76,7 @@ export const ServiceCard = memo(function ServiceCard({ service, maxMemMb, width,
 
   // Row 2: capsule bar and memory.
   const memText = formatMb(service.memMb);
+  const trouble = serverInTrouble(service.memMb);
   const barInner = Math.max(2, inner - 2 - 1 - 7);
   const bar = capsuleBar(maxMemMb > 0 ? (service.memMb / maxMemMb) * 100 : 0, barInner);
 
@@ -89,7 +91,7 @@ export const ServiceCard = memo(function ServiceCard({ service, maxMemMb, width,
   const sparkWidth = Math.max(0, Math.min(12, inner - cellWidth(tail) - 3));
 
   return (
-    <Panel title={title} width={width} rows={rows} focused={focused && selected} titleColor={selected ? tone.accent : serviceHue(tone, service.id, tone.text)}>
+    <Panel title={title} width={width} rows={rows} focused={focused && selected} titleColor={trouble ? tone.error : selected ? tone.accent : serviceHue(tone, service.id, tone.text)} borderColor={trouble ? tone.error : undefined}>
       <Row>
         <Text color={look.color}>{look.glyph} </Text>
         <Text color={look.color}>{padEnd(look.word, statusWidth)}</Text>
@@ -101,10 +103,10 @@ export const ServiceCard = memo(function ServiceCard({ service, maxMemMb, width,
       </Row>
       <Row>
         <Text color={tone.line}>{capsule.left}</Text>
-        <Text color={service.memMb / Math.max(1, maxMemMb) > 0.85 ? tone.activity : serviceHue(tone, service.id, tone.accent)}>{bar.filled}</Text>
+        <Text color={trouble ? tone.error : service.memMb / Math.max(1, maxMemMb) > 0.85 ? tone.activity : serviceHue(tone, service.id, tone.accent)}>{bar.filled}</Text>
         <Text color={tone.line}>{bar.empty}</Text>
         <Text color={tone.line}>{capsule.right}</Text>
-        <Text color={tone.text}>{padStart(memText, 7)}</Text>
+        <Text color={trouble ? tone.error : tone.text}>{padStart(memText, 7)}</Text>
       </Row>
       <Row>
         <Text color={tone.activity} dimColor={!isHot(reload?.at, now)}>

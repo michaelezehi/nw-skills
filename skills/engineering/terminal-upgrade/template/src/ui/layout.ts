@@ -8,10 +8,11 @@ import { FULL_COLS, MEDIUM_COLS } from './theme.ts';
 import { CLOCK_ROWS } from './glyphs.ts';
 import { gridPlan, gridRows, stripColumns, stripWidths, MIN_BIG_ROWS, type GridPlan } from './grid.ts';
 import type { Activity } from './deckState.ts';
+import { growFromGrid, hogBlock, panelGrowth, HOG_MIN_REGION } from './hogLayout.ts';
 
 export type Tier = 'full' | 'medium' | 'narrow';
 
-export type View = 'deck' | 'error' | 'keys' | 'palette';
+export type View = 'deck' | 'error' | 'keys' | 'palette' | 'hogs';
 
 export interface LayoutInput {
   columns: number;
@@ -21,6 +22,8 @@ export interface LayoutInput {
   view: View;
   /** Feed by default. Logs keeps the feed's rows for the log pane; quiet gives them to the cards. */
   activity?: Activity;
+  /** Hogs in the store: they take the panel or the strip at the bottom. */
+  hogs?: number;
 }
 
 export interface Layout {
@@ -35,6 +38,10 @@ export interface Layout {
   middle: number;
   /** Rows of collapsed error lines in the tray. */
   tray: number;
+  /** Rows of the hogs block above the tray: 0, the one-line strip, or the panel. */
+  hogRows: number;
+  /** The hogs block is the panel, not the strip. */
+  hogPanel: boolean;
   /** Always one row: the key hints and the error summary. */
   footer: number;
   /** Pills per row in the medium and narrow tiers. */
@@ -99,10 +106,31 @@ function quietLayout(input: LayoutInput, tier: Tier, pills: { width: number; per
   while (region() < need && tray > 1) tray -= 1;
   if (region() < need) return undefined;
   const services = region();
-  return { tier, columns, rows, header, services, middle: 0, tray, footer, pillsPerRow: pills.perRow, pillWidth: pills.width, cardWidth: 0, grid: gridPlan(input.services, columns, services), view };
+  return { tier, columns, rows, header, services, middle: 0, tray, hogRows: 0, hogPanel: false, footer, pillsPerRow: pills.perRow, pillWidth: pills.width, cardWidth: 0, grid: gridPlan(input.services, columns, services), view };
 }
 
+/**
+ * The deck's rows. With hogs, the layout is made one row shorter for the strip, then
+ * the strip grows into the panel from the region's spare rows when the panel is allowed.
+ */
 export function computeLayout(input: LayoutInput): Layout {
+  const block = hogBlock(input);
+  if (block === 'none') return deckLayout(input);
+  const base = deckLayout({ ...input, rows: input.rows - 1 });
+  const out: Layout = { ...base, rows: input.rows, hogRows: 1 };
+  if (block !== 'panel') return out;
+  const hogs = input.hogs ?? 0;
+  if (base.grid) {
+    const grown = growFromGrid(hogs, base.services, input.services, input.columns);
+    if (grown.taken === 0) return out;
+    return { ...out, services: grown.services, grid: grown.grid, hogRows: 1 + grown.taken, hogPanel: true };
+  }
+  const taken = panelGrowth(hogs, base.middle - HOG_MIN_REGION);
+  if (taken === 0) return out;
+  return { ...out, middle: base.middle - taken, hogRows: 1 + taken, hogPanel: true };
+}
+
+function deckLayout(input: LayoutInput): Layout {
   const { columns, rows, view } = input;
   const tier = tierFor(columns);
   const footer = 1;
@@ -177,7 +205,7 @@ export function computeLayout(input: LayoutInput): Layout {
   if (middle < 0) middle = 0;
 
   const cardRows = cardWidth > 0 ? stripWidths(input.services, columns, perRow) : undefined;
-  return { tier, columns, rows, header, services, middle, tray, footer, pillsPerRow, pillWidth: pills.width, cardWidth, cardRows, view };
+  return { tier, columns, rows, header, services, middle, tray, hogRows: 0, hogPanel: false, footer, pillsPerRow, pillWidth: pills.width, cardWidth, cardRows, view };
 }
 
 /** Split a middle region of `width` cells into two side-by-side panels with a 1-cell gutter. */

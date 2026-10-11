@@ -11,7 +11,7 @@ import { formatClockMeridiem, formatMs, truncateEnd, cellWidth } from './format.
 export interface NoticeData {
   id: number;
   at: number;
-  kind: 'reload' | 'push' | 'error' | 'recovered' | 'saved' | 'copied' | 'failed';
+  kind: 'reload' | 'push' | 'error' | 'recovered' | 'saved' | 'copied' | 'failed' | 'stopped';
   service: string;
   text: string;
   ms?: number;
@@ -44,6 +44,7 @@ function lookFor(kind: NoticeData['kind'], tone: Tone): { glyph: string; color: 
       return { glyph: '◆', color: tone.error };
     case 'recovered':
     case 'copied':
+    case 'stopped':
       return { glyph: '✓', color: tone.accent };
     case 'saved':
       return { glyph: '●', color: tone.accent };

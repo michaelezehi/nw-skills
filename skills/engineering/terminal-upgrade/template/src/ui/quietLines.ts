@@ -11,6 +11,7 @@ import { capsuleBar, capsule, sparkline } from './glyphs.ts';
 import { cellWidth, formatClock, formatMb, formatMs, formatSpan, padEnd, padStart } from './format.ts';
 import { displayRuntime } from './ServiceCard.tsx';
 import { glyph, type StatusLook } from './sprites.ts';
+import { memoryGlosses, serverInTrouble } from './memAlarm.ts';
 
 export interface Segment {
   text: string;
@@ -59,16 +60,6 @@ function fit(options: readonly string[], room: number, color: string): Segment[]
   return text === undefined ? undefined : [{ text, color }];
 }
 
-/** The glosses that explain the number, longest first. */
-export const MEMORY_GLOSSES = [
-  'RAM held by this server and its child processes',
-  'RAM held by this server and its children',
-  'RAM held by it and its children',
-  'RAM held, children included',
-  'RAM held right now',
-  'RAM in use',
-] as const;
-
 export function reloadLabel(service: ServiceState): string {
   return service.kind === 'convex' ? 'pushes' : 'reloads';
 }
@@ -113,18 +104,19 @@ export function quietLines(input: QuietLineInput): CardLine[] {
   // a row of cards, then a capsule bar against the biggest service when there is room.
   const mem = padStart(formatMb(service.memMb), 6);
   const barRoom = room - cellWidth(mem) - 2 - 2;
-  const memory: Segment[] = [{ text: mem, color: tone.text }];
+  const trouble = serverInTrouble(service.memMb);
+  const memory: Segment[] = [{ text: mem, color: trouble ? tone.error : tone.text, bold: trouble }];
   if (barRoom >= 6) {
     const bar = capsuleBar(input.maxMemMb > 0 ? (service.memMb / input.maxMemMb) * 100 : 0, Math.min(16, barRoom));
     memory.push(
       { text: `  ${capsule.left}`, color: tone.line },
-      { text: bar.filled, color: service.memMb / Math.max(1, input.maxMemMb) > 0.85 ? tone.activity : serviceHue(tone, service.id, tone.accent) },
+      { text: bar.filled, color: trouble ? tone.error : service.memMb / Math.max(1, input.maxMemMb) > 0.85 ? tone.activity : serviceHue(tone, service.id, tone.accent) },
       { text: bar.empty, color: tone.line },
       { text: capsule.right, color: tone.line },
     );
   }
   push(0, 'memory', memory);
-  push(2, '', fit(MEMORY_GLOSSES, room, tone.muted));
+  push(trouble ? 0 : 2, '', fit(memoryGlosses(service.memMb), room, trouble ? tone.error : tone.muted));
 
   // The trend: one cell per sample, newest at the right, up to twenty; sixty samples two
   // seconds apart is two minutes, fewer is what has been seen so far.

@@ -2,7 +2,7 @@
 import type { View } from './layout.ts';
 import { nextFilter, type CallFilter } from './ConvexCalls.tsx';
 
-export type Focus = 'services' | 'calls' | 'timeline' | 'errors';
+export type Focus = 'services' | 'calls' | 'timeline' | 'hogs' | 'errors';
 export type Mode = 'plain' | 'verbose';
 export type Panel = 'calls' | 'timeline';
 /**
@@ -30,6 +30,8 @@ export interface UiState {
   callId?: number;
   eventId?: number;
   errorId?: number;
+  /** Selected memory hog by pid; undefined follows the largest. */
+  hogPid?: number;
   filter: CallFilter;
   paused: boolean;
   /** Lines scrolled in the error view. */
@@ -59,7 +61,8 @@ export type UiAction =
   | 'keys'
   | 'pageUp'
   | 'pageDown'
-  | 'palette';
+  | 'palette'
+  | 'hogs';
 
 export interface UiContext {
   panels: Focus[];
@@ -68,6 +71,8 @@ export interface UiContext {
   calls: readonly number[];
   events: readonly number[];
   errors: readonly number[];
+  /** Hog pids, largest first. */
+  hogs?: readonly number[];
   /** Rows one page scrolls. */
   page: number;
   /** Furthest the open error view can scroll; the view reports it. */
@@ -139,7 +144,14 @@ function moveSelection(state: UiState, ctx: UiContext, step: number): UiState {
       return { ...state, eventId: stepId(ctx.events, state.eventId, step) };
     case 'errors':
       return { ...state, errorId: stepId(ctx.errors, state.errorId, step) };
+    case 'hogs':
+      return { ...state, hogPid: stepId(ctx.hogs ?? [], state.hogPid, step) };
   }
+}
+
+/** Select a hog by pid, as a click on its row does, and focus the hog panel. */
+export function selectHog(state: UiState, pid: number): UiState {
+  return { ...state, hogPid: pid, focus: state.view === 'deck' ? 'hogs' : state.focus };
 }
 
 const selectService = (state: UiState, ctx: UiContext, step: number): UiState => ({
@@ -161,6 +173,7 @@ export function reduceUi(state: UiState, action: UiAction, ctx: UiContext): UiSt
   const inView = state.view !== 'deck';
   const scroll = (step: number) => ({ ...state, scroll: scrollBy(state.scroll, step, ctx.scrollMax) });
   const scrollLog = (step: number) => ({ ...state, logScroll: scrollBy(state.logScroll, step, ctx.logScrollMax) });
+  const stepHog = (step: number) => ({ ...state, hogPid: stepId(ctx.hogs ?? [], state.hogPid, step) });
   switch (action) {
     case 'focusNext':
       return inView ? state : moveFocus(state, ctx, 1);
@@ -168,21 +181,25 @@ export function reduceUi(state: UiState, action: UiAction, ctx: UiContext): UiSt
       return inView ? state : moveFocus(state, ctx, -1);
     case 'up':
       if (state.view === 'error') return scroll(-1);
+      if (state.view === 'hogs') return stepHog(-1);
       if (inView) return state;
       if (state.activity === 'logs') return scrollLog(1);
       return moveSelection(state, ctx, -1);
     case 'down':
       if (state.view === 'error') return scroll(1);
+      if (state.view === 'hogs') return stepHog(1);
       if (inView) return state;
       if (state.activity === 'logs') return scrollLog(-1);
       return moveSelection(state, ctx, 1);
     case 'pageUp':
       if (state.view === 'error') return scroll(-ctx.page);
+      if (state.view === 'hogs') return stepHog(-ctx.page);
       if (inView) return state;
       if (state.activity === 'logs') return scrollLog(ctx.page);
       return moveSelection(state, ctx, -ctx.page);
     case 'pageDown':
       if (state.view === 'error') return scroll(ctx.page);
+      if (state.view === 'hogs') return stepHog(ctx.page);
       if (inView) return state;
       if (state.activity === 'logs') return scrollLog(-ctx.page);
       return moveSelection(state, ctx, ctx.page);
@@ -222,11 +239,13 @@ export function reduceUi(state: UiState, action: UiAction, ctx: UiContext): UiSt
       return state.view === 'keys' ? back(state) : open(state, 'keys');
     case 'palette':
       return state.view === 'palette' ? back(state) : open(state, 'palette');
+    case 'hogs':
+      return state.view === 'hogs' ? back(state) : open(state, 'hogs');
   }
 }
 
 /** Map a key press to an action. Returns undefined for keys the deck ignores. */
-export type KeyAction = UiAction | 'quit' | 'restart' | 'open' | 'copy' | 'copyAll';
+export type KeyAction = UiAction | 'quit' | 'restart' | 'open' | 'copy' | 'copyAll' | 'stop' | 'stopOrphans';
 
 export function actionForKey(input: string, key: { upArrow?: boolean; downArrow?: boolean; leftArrow?: boolean; rightArrow?: boolean; return?: boolean; escape?: boolean; backspace?: boolean; delete?: boolean; tab?: boolean; shift?: boolean; pageUp?: boolean; pageDown?: boolean }): KeyAction | undefined {
   if (key.tab) return key.shift ? 'focusPrev' : 'focusNext';
@@ -274,6 +293,12 @@ export function actionForKey(input: string, key: { upArrow?: boolean; downArrow?
       return 'copy';
     case 'Y':
       return 'copyAll';
+    case 'm':
+      return 'hogs';
+    case 's':
+      return 'stop';
+    case 'S':
+      return 'stopOrphans';
     case 'j':
       return 'down';
     case 'k':

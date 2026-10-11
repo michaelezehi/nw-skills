@@ -137,6 +137,38 @@ export interface DeckMeta {
   convexDeployment?: string;
 }
 
+/**
+ * Where a memory hog lives. `run`: inside a devdeck service tree, or devdeck itself.
+ * `platform`: a dev tool or anything naming the repo root, outside the run (leftovers,
+ * orphans). `system`: everything else, such as browsers and editors.
+ */
+export type HogScope = 'run' | 'platform' | 'system';
+
+/** One process (or one macOS app's processes, summed) holding a lot of memory or cpu. */
+export interface Hog {
+  pid: number;
+  ppid: number;
+  /** Readable name: `vitest`, `tsc`, `Brave Browser`, `devdeck`. */
+  name: string;
+  command: string;
+  memMb: number;
+  cpu: number;
+  /** Seconds since the process started. */
+  ageSec: number;
+  scope: HogScope;
+  /** A dev process reparented to launchd (ppid 1) and alive for over an hour. */
+  orphan: boolean;
+  /** The devdeck service whose tree holds it, so restart can free it. */
+  serviceId?: string;
+  /** Processes summed into this row; set when an app's helpers are grouped. */
+  count?: number;
+  /** Devdeck's own process. */
+  self?: boolean;
+}
+
+/** What killPid did: stopped it, it was already gone, not allowed, or it outlived SIGKILL. */
+export type KillResult = 'stopped' | 'gone' | 'denied' | 'survived';
+
 /** The JSON served on GET /state over .devdeck/devdeck.sock. The Claude mod reads this. */
 export interface DeckSnapshot {
   version: 1;
@@ -146,6 +178,8 @@ export interface DeckSnapshot {
   events: DevEvent[];
   errors: DevError[];
   calls: ConvexCall[];
+  /** Processes holding the most memory or cpu, run, platform and system alike, largest first. */
+  hogs: Hog[];
   /** `errors` counts every open error; the `errors` list above holds only the latest few. */
   totals: { memMb: number; cpu: number; calls: number; callErrors: number; errors: number };
 }
@@ -159,4 +193,9 @@ export interface DeckControls {
   rawLines(id: string): readonly string[];
   /** Fires when a service gets a new raw line. Returns an unsubscribe. */
   onRaw(id: string, cb: () => void): () => void;
+  /**
+   * SIGTERM one pid, SIGKILL it after about 3 s. Refuses pid 1 and below, devdeck itself
+   * and a service root (those restart instead) with 'denied', as it does on EPERM.
+   */
+  killPid(pid: number): Promise<KillResult>;
 }

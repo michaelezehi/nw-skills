@@ -14,6 +14,7 @@ import { osc8 } from './links.ts';
 import { fitLabel } from './PlainCards.tsx';
 import { MIN_BIG_ROWS, type GridPlan } from './grid.ts';
 import { fitLines, quietLines, width, type CardLine, type Segment } from './quietLines.ts';
+import { serverInTrouble } from './memAlarm.ts';
 
 export interface QuietGridProps {
   apps: ServiceState[];
@@ -100,8 +101,9 @@ function BigCard({ service, maxMemMb, error, width: cardWidth, rows, headRows, s
   // A thin rule before each fact group when every group can have one.
   const ruled = body.filter(opensGroup).length <= spare - reserve;
   const rule = '┈'.repeat(inner);
+  const trouble = serverInTrouble(service.memMb);
   return (
-    <Panel title={fitLabel(service, cardWidth - 6)} width={cardWidth} rows={rows} focused={focused && selected} titleColor={selected ? tone.accent : serviceHue(tone, service.id, tone.text)}>
+    <Panel title={fitLabel(service, cardWidth - 6)} width={cardWidth} rows={rows} focused={focused && selected} titleColor={trouble ? tone.error : selected ? tone.accent : serviceHue(tone, service.id, tone.text)} borderColor={trouble ? tone.error : undefined}>
       {head.map((line, i) => (
         <LineRow key={`h${i}`} line={line} inner={inner} />
       ))}

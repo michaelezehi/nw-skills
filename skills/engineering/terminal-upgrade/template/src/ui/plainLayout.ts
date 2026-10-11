@@ -10,6 +10,7 @@ import { CLOCK_ROWS } from './glyphs.ts';
 import { pillPlan, wantsQuiet, MAX_TRAY_LINES, MIN_CARD_WIDTH, type View } from './layout.ts';
 import { gridPlan, gridRows, stripColumns, stripWidths, MIN_BIG_ROWS, type GridPlan } from './grid.ts';
 import type { Activity } from './deckState.ts';
+import { growFromGrid, hogBlock, panelGrowth, HOG_MIN_REGION } from './hogLayout.ts';
 
 export interface PlainLayoutInput {
   columns: number;
@@ -19,6 +20,8 @@ export interface PlainLayoutInput {
   errors: number;
   view: View;
   activity?: Activity;
+  /** Hogs in the store: they take the panel or the strip at the bottom. */
+  hogs?: number;
 }
 
 export interface PlainLayout {
@@ -37,6 +40,10 @@ export interface PlainLayout {
   /** Rows of the region under the cards: LATEST, the log pane, or an open view. 0 in the quiet state. */
   latest: number;
   tray: number;
+  /** Rows of the hogs block above the tray: 0, the one-line strip, or the panel. */
+  hogRows: number;
+  /** The hogs block is the panel, not the strip. */
+  hogPanel: boolean;
   footer: number;
   /** The quiet grid, when the cards have the region. */
   grid?: GridPlan;
@@ -59,10 +66,28 @@ function quietPlainLayout(input: PlainLayoutInput, pills: { width: number; perRo
   while (region() < need && tray > 1) tray -= 1;
   if (region() < need) return undefined;
   const services = region();
-  return { columns, rows, header, services, cardWidth: 0, pillsPerRow: pills.perRow, pillWidth: pills.width, latest: 0, tray, footer, grid: gridPlan(input.services, columns, services) };
+  return { columns, rows, header, services, cardWidth: 0, pillsPerRow: pills.perRow, pillWidth: pills.width, latest: 0, tray, hogRows: 0, hogPanel: false, footer, grid: gridPlan(input.services, columns, services) };
 }
 
+/** The plain deck's rows, hogs reserved the same way as computeLayout does. */
 export function computePlainLayout(input: PlainLayoutInput): PlainLayout {
+  const block = hogBlock(input);
+  if (block === 'none') return plainDeckLayout(input);
+  const base = plainDeckLayout({ ...input, rows: input.rows - 1 });
+  const out: PlainLayout = { ...base, rows: input.rows, hogRows: 1 };
+  if (block !== 'panel') return out;
+  const hogs = input.hogs ?? 0;
+  if (base.grid) {
+    const grown = growFromGrid(hogs, base.services, input.services, input.columns);
+    if (grown.taken === 0) return out;
+    return { ...out, services: grown.services, grid: grown.grid, hogRows: 1 + grown.taken, hogPanel: true };
+  }
+  const taken = panelGrowth(hogs, base.latest - HOG_MIN_REGION);
+  if (taken === 0) return out;
+  return { ...out, latest: base.latest - taken, hogRows: 1 + taken, hogPanel: true };
+}
+
+function plainDeckLayout(input: PlainLayoutInput): PlainLayout {
   const { columns, rows } = input;
   const footer = 1;
   const pills = pillPlan(columns, input.services);
@@ -102,5 +127,5 @@ export function computePlainLayout(input: PlainLayoutInput): PlainLayout {
   const latest = Math.max(0, latestOf());
 
   const cardRows = cardWidth > 0 ? stripWidths(input.services, columns, perRow) : undefined;
-  return { columns, rows, header, services, cardWidth, cardRows, pillsPerRow: pills.perRow, pillWidth: pills.width, latest, tray, footer };
+  return { columns, rows, header, services, cardWidth, cardRows, pillsPerRow: pills.perRow, pillWidth: pills.width, latest, tray, hogRows: 0, hogPanel: false, footer };
 }

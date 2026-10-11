@@ -7,11 +7,14 @@ import { startIpc } from './ipc.ts';
 import { buildMeta } from './meta.ts';
 import { startPlain } from './plain.ts';
 import { parseArgs, planJson, resolveDeck, StartError, type ResolvedDeck } from './resolve.ts';
-import { startSampler } from './sampler.ts';
+import { killPid, startSampler } from './sampler.ts';
 import { cleanedText, prepareStart } from './startup.ts';
 import { createDeckStore } from './store.ts';
 import { createSupervisor } from './supervisor.ts';
 import type { DeckControls } from './types.ts';
+
+// Before the UI import below flips NODE_ENV: services start from the caller's environment.
+const callerEnv: NodeJS.ProcessEnv = { ...process.env };
 
 async function main(): Promise<void> {
   // An in-repo devdeck.config.ts sits in the package dir, one level above src/.
@@ -44,7 +47,7 @@ async function main(): Promise<void> {
   const store = createDeckStore(services, buildMeta(root, config.title, convex?.dir));
   if (check.cleaned > 0) store.getState().addEvent('devdeck', { kind: 'info', text: cleanedText(check.cleaned) });
   for (const text of deck.warnings) store.getState().addEvent('devdeck', { kind: 'info', text });
-  const supervisor = createSupervisor(store, services, root, { packageManager });
+  const supervisor = createSupervisor(store, services, root, { packageManager, env: callerEnv });
   let feed: ReturnType<typeof startConvexFeed> | undefined;
   let ui: { unmount(): void } | undefined;
   let stopPlain: (() => void) | undefined;
@@ -98,11 +101,15 @@ async function main(): Promise<void> {
     quit: (code = 0) => void shutdown(code),
     rawLines: (id) => supervisor.rawLines(id),
     onRaw: (id, cb) => supervisor.onRaw(id, cb),
+    killPid: (pid) => killPid(pid, { self: process.pid, roots: Object.values(supervisor.pids()) }),
   };
 
   const tty = Boolean(process.stdout.isTTY) && process.env.DEVDECK_PLAIN !== '1';
   if (tty) {
     // The UI calls controls.quit on q and Ctrl-C (Ink runs with exitOnCtrlC off).
+    // React and Ink pick their build from NODE_ENV when first loaded, and nothing has
+    // loaded them yet. The development build kept a heap near 900 MB after 25 minutes.
+    process.env.NODE_ENV = 'production';
     const { renderDeck } = await import('./ui/App.tsx');
     const app = renderDeck(store, controls, { serviceDirs: Object.fromEntries(services.map((s) => [s.id, s.dir])) });
     ui = app;

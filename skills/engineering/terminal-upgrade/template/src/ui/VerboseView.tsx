@@ -43,6 +43,8 @@ export interface VerboseViewProps {
   frame: number;
   spinning: ReadonlySet<string>;
   now: number;
+  /** The memory hogs panel or strip, drawn above the error tray. */
+  hogBlock?: ReactNode;
   /** The log pane or an open view (error card, palette) drawn in place of the feeds. */
   view: ReactNode | null;
 }
@@ -77,6 +79,7 @@ export function VerboseView(props: VerboseViewProps) {
         <ServiceStrip apps={apps} layout={layout} maxMemMb={maxMemMb} selectedIndex={props.serviceIndex} focused={focus === 'services'} frame={frame} spinning={spinning} now={now} />
       )}
       {middle}
+      {props.hogBlock ?? null}
       <ErrorTray errors={errors} rows={layout.tray} columns={layout.columns} focused={focus === 'errors'} selectedIndex={props.errorIndex} />
     </Box>
   );

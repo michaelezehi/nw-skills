@@ -13,6 +13,7 @@ import { cellWidth, formatClock, formatMb, formatMs } from './format.ts';
 import type { PlainLayout } from './plainLayout.ts';
 import { CardRows } from './CardRows.tsx';
 import { portLink } from './links.ts';
+import { serverInTrouble } from './memAlarm.ts';
 
 export interface PlainStripProps {
   apps: ServiceState[];
@@ -81,15 +82,16 @@ function PlainCard({ service, width: cardWidth, rows, selected, focused, frame, 
   const port = service.port ? `:${service.port}` : '';
   const showPort = port !== '' && cellWidth(status) + 1 + cellWidth(port) <= inner;
   const mem = formatMb(service.memMb);
+  const trouble = serverInTrouble(service.memMb);
   const tail = cardTail(service, now, inner - cellWidth(mem) - 1, tone);
   return (
-    <Panel title={fitLabel(service, cardWidth - 6)} width={cardWidth} rows={rows} focused={focused && selected} titleColor={selected ? tone.accent : serviceHue(tone, service.id, tone.text)}>
+    <Panel title={fitLabel(service, cardWidth - 6)} width={cardWidth} rows={rows} focused={focused && selected} titleColor={trouble ? tone.error : selected ? tone.accent : serviceHue(tone, service.id, tone.text)} borderColor={trouble ? tone.error : undefined}>
       <Row>
         <Text color={look.color}>{status}</Text>
         {showPort ? <Text color={tone.muted}>{' '.repeat(inner - cellWidth(status) - cellWidth(port))}{portLink(service, port)}</Text> : null}
       </Row>
       <Row>
-        <Text color={tone.text}>{mem}</Text>
+        <Text color={trouble ? tone.error : tone.text}>{mem}</Text>
         <Text>{' '.repeat(Math.max(1, inner - cellWidth(mem) - width(tail)))}</Text>
         {tail.map((s, i) => (
           <Text key={i} color={s.color}>

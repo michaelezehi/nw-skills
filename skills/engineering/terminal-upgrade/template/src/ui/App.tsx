@@ -6,12 +6,12 @@
  * say. Never exits on its own: q and Ctrl-C call controls.quit(). The palette wraps
  * everything in ThemeContext.
  */
-import { useMemo, useReducer, useRef } from 'react';
+import { useMemo, useReducer, useRef, type ReactNode } from 'react';
 import { Box, render, useInput, useWindowSize, type RenderOptions } from 'ink';
 import { useStore } from 'zustand';
 import { useShallow } from 'zustand/react/shallow';
 import type { DeckStore } from '../store.ts';
-import type { DeckControls, ServiceState } from '../types.ts';
+import type { DeckControls, Hog, ServiceState } from '../types.ts';
 import { readTheme, type Theme } from '../themeFile.ts';
 import { copyText } from '../clipboard.ts';
 import { EXIT_SIGINT } from '../config.ts';
@@ -33,7 +33,12 @@ import { VerboseView } from './VerboseView.tsx';
 import { usePalette } from './usePalette.ts';
 import { linkRefs } from './links.ts';
 import { allErrorsPayload, copiedNotice, errorPayload, logPayload, COPY_FAILED, type CopyPayload } from './copyText.ts';
-import { actionForKey, indexOfId, initialUi, reduceUi, type Focus, type UiAction, type UiContext } from './deckState.ts';
+import { actionForKey, indexOfId, initialUi, reduceUi, selectHog, type Focus, type UiAction, type UiContext } from './deckState.ts';
+import { HogPanel, HogStrip } from './HogPanel.tsx';
+import { HogView } from './HogView.tsx';
+import { panelRegions, planHogPanel, stripRegions, type HitRegion, type HogHit } from './hogPlan.ts';
+import { enableMouse, hitTest, isClick, parseMouse } from './mouse.ts';
+import { useHogs } from './useHogs.ts';
 
 export interface DeckHandle {
   waitUntilExit(): Promise<void>;
@@ -45,24 +50,39 @@ export interface DeckOptions extends Partial<RenderOptions> {
   theme?: Theme;
   /** Service id to its dir relative to the repo root, for clickable file paths. */
   serviceDirs?: Record<string, string>;
+  /** Ask the terminal for mouse clicks. Defaults to on for a TTY. */
+  mouse?: boolean;
 }
 
 /** Mount the deck on the alternate screen. Extra render options exist for tests. */
 export function renderDeck(store: DeckStore, controls: DeckControls, options: DeckOptions = {}): DeckHandle {
-  const { theme, serviceDirs = {}, ...renderOptions } = options;
+  const { theme, serviceDirs = {}, mouse, ...renderOptions } = options;
   const instance = render(<Deck store={store} controls={controls} theme={theme ?? readTheme()} serviceDirs={serviceDirs} />, {
     exitOnCtrlC: false,
     alternateScreen: true,
     patchConsole: true,
+    // Every service line is a store update. 10 frames a second is plenty for a dashboard,
+    // and incremental rendering rewrites only the lines that changed.
+    maxFps: 10,
+    incrementalRendering: true,
     ...renderOptions,
   });
+  // Clicks for the hog buttons; turned off again however the deck ends.
+  const out = (renderOptions.stdout ?? process.stdout) as { isTTY?: boolean; write(data: string): unknown };
+  const mouseOff = (mouse ?? Boolean(out.isTTY)) ? enableMouse(out) : () => undefined;
+  void instance.waitUntilExit().then(mouseOff, mouseOff);
   return {
     waitUntilExit: () => instance.waitUntilExit().then(() => undefined),
-    unmount: () => instance.unmount(),
+    unmount: () => {
+      instance.unmount();
+      mouseOff();
+    },
   };
 }
 
 const ids = (list: readonly { id: number }[]): number[] => list.map((item) => item.id).reverse();
+
+type DeckInput = { action: UiAction; ctx: UiContext } | { hog: number };
 
 function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; controls: DeckControls; theme: Theme; serviceDirs: Record<string, string> }) {
   // Data slices only, compared shallowly; the per-second uptime ticks inside the title.
@@ -77,6 +97,7 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
       calls: s.calls,
       callCount: s.callCount,
       callErrorCount: s.callErrorCount,
+      hogs: s.hogs,
     })),
   );
   const { columns, rows } = useWindowSize();
@@ -87,7 +108,7 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
   const watchers = useMemo(() => all.filter((s) => s.kind === 'watch'), [all]);
 
   const [ui, dispatch] = useReducer(
-    (current: typeof initialUi, input: { action: UiAction; ctx: UiContext }) => reduceUi(current, input.action, input.ctx),
+    (current: typeof initialUi, input: DeckInput) => ('hog' in input ? selectHog(current, input.hog) : reduceUi(current, input.action, input.ctx)),
     initialUi,
   );
   const palette = usePalette(theme);
@@ -104,19 +125,23 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
   const errors = state.errors;
 
   const plain = ui.mode === 'plain';
-  const layout = computeLayout({ columns, rows, services: apps.length, errors: errors.length, view: ui.view, activity: ui.activity });
-  const plainLayout = computePlainLayout({ columns, rows, services: apps.length, errors: errors.length, view: ui.view, activity: ui.activity });
+  const hogs = state.hogs;
+  const layout = computeLayout({ columns, rows, services: apps.length, errors: errors.length, view: ui.view, activity: ui.activity, hogs: hogs.length });
+  const plainLayout = computePlainLayout({ columns, rows, services: apps.length, errors: errors.length, view: ui.view, activity: ui.activity, hogs: hogs.length });
+  const hogPanelShown = plain ? plainLayout.hogPanel : layout.hogPanel;
   const panels = useMemo<Focus[]>(() => {
     const list: Focus[] = ['services'];
     if (!plain && layout.tier !== 'narrow') list.push('calls', 'timeline');
+    if (hogPanelShown) list.push('hogs');
     if (errors.length > 0) list.push('errors');
     return list;
-  }, [plain, layout.tier, errors.length]);
+  }, [plain, layout.tier, hogPanelShown, errors.length]);
 
   // Newest-first ids: the selection follows an item by id, so new arrivals do not move it.
   const callIds = useMemo(() => ids(filterCalls(calls, ui.filter)), [calls, ui.filter]);
   const eventIds = useMemo(() => ids(events), [events]);
   const errorIds = useMemo(() => ids(errors), [errors]);
+  const hogIds = useMemo(() => hogs.map((h) => h.pid), [hogs]);
   const scrollMax = useRef(0);
   const logScrollMax = useRef(0);
   const logWindow = useRef<readonly string[]>([]);
@@ -127,6 +152,7 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
     calls: callIds,
     events: eventIds,
     errors: errorIds,
+    hogs: hogIds,
     page: Math.max(1, viewRows - 2),
     // The open view and the log pane write their limits while rendering; read again at the key press.
     scrollMax: 0,
@@ -139,10 +165,15 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
   const selectedService = apps[serviceIndex];
   const selectedError = errors.find((e) => e.id === errorIds[errorIndex]);
   const focus: Focus = panels.includes(ui.focus) ? ui.focus : 'services';
+  const hogIndex = Math.max(0, hogIds.indexOf(ui.hogPid ?? -1));
+  const selectedHog: Hog | undefined = hogs[hogIndex];
+  /** The hog the keys act on: the hog view's or the focused panel's selection. */
+  const hogTarget = ui.view === 'hogs' || (ui.view === 'deck' && focus === 'hogs') ? selectedHog : undefined;
 
   const eventNotice = useNotice(state.events);
   const [localNotice, showNotice] = useLocalNotice();
   const notice = localNotice ?? eventNotice;
+  const hogActions = useHogs(hogs, controls, showNotice, now);
 
   // The only motion is the spinner of a starting or compiling service; the clock runs for it alone.
   const spinning = useSpinning(apps, now);
@@ -171,9 +202,32 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
     });
   };
 
+  const restartHog = (hog: Hog | undefined) => {
+    if (!hog) return;
+    if (hog.serviceId) return controls.restart(hog.serviceId);
+    showNotice({ kind: 'failed', service: '', text: `${hog.name} is not a devdeck service` });
+  };
+  const onHit = (hit: HogHit | undefined) => {
+    if (hit?.kind !== 'stop' && hit?.kind !== 'orphans') hogActions.disarm();
+    if (!hit) return;
+    const hog = 'pid' in hit ? hogs.find((h) => h.pid === hit.pid) : undefined;
+    if ('pid' in hit) dispatch({ hog: hit.pid });
+    if (hit.kind === 'stop') return hogActions.stop(hog);
+    if (hit.kind === 'restart') return restartHog(hog);
+    if (hit.kind === 'orphans') return hogActions.stopOrphans();
+    if (hit.kind === 'open') dispatch({ action: 'hogs', ctx });
+  };
+
   useInput((input, key) => {
     if (key.ctrl && input === 'c') {
       controls.quit(EXIT_SIGINT);
+      return;
+    }
+    const mouse = parseMouse(input);
+    if (mouse) {
+      if (isClick(mouse)) onHit(hitTest(regions.current, mouse.x, mouse.y));
+      // With reports on, the wheel no longer arrives as arrow keys; keep it moving the selection and the logs.
+      else if (mouse.press && (mouse.button === 64 || mouse.button === 65)) dispatch({ action: mouse.button === 64 ? 'up' : 'down', ctx: { ...ctx, scrollMax: scrollMax.current, logScrollMax: logScrollMax.current } });
       return;
     }
     if (paletteOpen) {
@@ -182,8 +236,12 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
       if (taken) return;
     }
     const action = actionForKey(input, key);
+    if (action !== 'stop' && action !== 'stopOrphans') hogActions.disarm();
     if (!action) return;
     if (action === 'quit') return controls.quit();
+    if (action === 'stop') return hogActions.stop(hogTarget);
+    if (action === 'stopOrphans') return (hogPanelShown || ui.view === 'hogs') && hogActions.stopOrphans();
+    if (action === 'restart' && hogTarget) return restartHog(hogTarget);
     if (action === 'restart') return selectedService && controls.restart(selectedService.id);
     if (action === 'open') return selectedService && controls.open(selectedService.id);
     if (action === 'copy' || action === 'copyAll') return copy(action === 'copyAll');
@@ -201,6 +259,10 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
   const view = (() => {
     if (viewRows < 2) return null;
     if (ui.view === 'palette') return <Palette state={palette.state} width={columns} rows={viewRows} />;
+    if (ui.view === 'hogs') {
+      const armed = hogActions.armed;
+      return <HogView hogs={hogs} width={columns} rows={viewRows} selectedPid={selectedHog?.pid} armedPid={armed && armed.target !== 'orphans' ? armed.target : undefined} armedOrphans={armed?.target === 'orphans'} />;
+    }
     if (ui.view === 'error' && selectedError) {
       return <ErrorCard error={selectedError} width={columns} rows={viewRows} offset={ui.scroll} scrollMax={scrollMax} link={(text) => linkFor(selectedError.service, text)} />;
     }
@@ -211,7 +273,24 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
     return null;
   })();
 
-  const shared = { meta: state.meta, apps, watchers, events, calls, errors, callCount: state.callCount, callErrorCount: state.callErrorCount, totalMemMb, totalCpu, errorIndex, frame, spinning, now, view };
+  // The hogs block above the tray, and the cells a click can land on.
+  const hogRows = plain ? plainLayout.hogRows : layout.hogRows;
+  const hogTop = plain ? plainLayout.header + plainLayout.services + plainLayout.latest : layout.header + layout.services + layout.middle;
+  const regions = useRef<HitRegion[]>([]);
+  regions.current = [];
+  let hogBlock: ReactNode = null;
+  if (hogRows > 0 && hogPanelShown) {
+    const plan = planHogPanel(hogs, columns, hogRows, hogIndex, hogActions.armed);
+    if (plan) {
+      regions.current = panelRegions(plan, hogTop, columns);
+      hogBlock = <HogPanel plan={plan} width={columns} rows={hogRows} focused={focus === 'hogs'} selectedPid={selectedHog?.pid} />;
+    }
+  } else if (hogRows > 0) {
+    regions.current = stripRegions(hogTop, columns);
+    hogBlock = <HogStrip hogs={hogs} width={columns} />;
+  }
+
+  const shared = { meta: state.meta, hogBlock, apps, watchers, events, calls, errors, callCount: state.callCount, callErrorCount: state.callErrorCount, totalMemMb, totalCpu, errorIndex, frame, spinning, now, view };
 
   return (
     <ThemeProvider value={tone}>
@@ -224,7 +303,7 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
         ) : (
           <VerboseView {...shared} layout={layout} focus={focus} serviceIndex={serviceIndex} callIndex={callIndex} eventIndex={eventIndex} filter={ui.filter} paused={ui.paused} collapsed={ui.collapsed} />
         )}
-        <Footer errors={errors} columns={columns} mode={ui.mode} activity={ui.activity} view={ui.view} />
+        <Footer errors={errors} columns={columns} mode={ui.mode} activity={ui.activity} view={ui.view} hogs={hogs.length} />
         {notice ? <Notice notice={notice} columns={columns} /> : null}
       </Box>
     </ThemeProvider>

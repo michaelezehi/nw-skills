@@ -1,5 +1,6 @@
 import { execFile, execFileSync } from 'node:child_process';
 import type { DeckStore } from './store.ts';
+import type { Hog, HogScope, KillResult } from './types.ts';
 
 export interface PsRow {
   pid: number;
@@ -7,6 +8,10 @@ export interface PsRow {
   /** Resident set size in KB, as ps reports it. */
   rss: number;
   cpu: number;
+  /** Seconds since start, from `etime`; absent when the table has no such column. */
+  ageSec?: number;
+  /** The full command line, from `command`; absent when the table has no such column. */
+  command?: string;
 }
 
 export interface Usage {
@@ -14,20 +19,44 @@ export interface Usage {
   cpu: number;
 }
 
-export const PS_ARGS =['-A', '-o', 'pid=,ppid=,rss=,%cpu='];
+/** The sampler's one scan: tree, memory, cpu, age and the full command (last, it holds spaces). */
+export const PS_ARGS = ['-A', '-ww', '-o', 'pid=,ppid=,rss=,%cpu=,etime=,command='];
+/** The tree alone, for the exit handler, which only needs parents. */
+export const PS_TREE_ARGS = ['-A', '-o', 'pid=,ppid=,rss=,%cpu='];
 
-/** Parse `ps -A -o pid=,ppid=,rss=,%cpu=` output. Malformed rows are skipped. */
+const ETIME = /^(?:(\d+)-)?(?:(\d+):)?(\d+):(\d+)$/;
+
+/** `[[dd-]hh:]mm:ss` to seconds; undefined when it is not an elapsed time. */
+export function parseEtime(text: string): number | undefined {
+  const m = ETIME.exec(text);
+  if (!m) return undefined;
+  const [, d, h, min, sec] = m;
+  return Number(d ?? 0) * 86400 + Number(h ?? 0) * 3600 + Number(min) * 60 + Number(sec);
+}
+
+const PS_LINE = /^\s*(\S+)\s+(\S+)\s+(\S+)\s+(\S+)(?:\s+(\S+)(?:\s+(.*?))?)?\s*$/;
+
+/**
+ * Parse `ps` output with the PS_ARGS or PS_TREE_ARGS columns. Malformed rows are skipped;
+ * a row without the elapsed time and command columns keeps the first four.
+ */
 export function parsePs(text: string): PsRow[] {
   const rows: PsRow[] = [];
   for (const line of text.split('\n')) {
-    const parts = line.trim().split(/\s+/);
-    if (parts.length < 4) continue;
-    const pid = Number(parts[0]);
-    const ppid = Number(parts[1]);
-    const rss = Number(parts[2]);
-    const cpu = Number(parts[3]?.replace(',', '.'));
+    const m = PS_LINE.exec(line);
+    if (!m) continue;
+    const pid = Number(m[1]);
+    const ppid = Number(m[2]);
+    const rss = Number(m[3]);
+    const cpu = Number(m[4]?.replace(',', '.'));
     if (!Number.isInteger(pid) || !Number.isInteger(ppid)) continue;
-    rows.push({ pid, ppid, rss: Number.isFinite(rss) ? rss : 0, cpu: Number.isFinite(cpu) ? cpu : 0 });
+    const row: PsRow = { pid, ppid, rss: Number.isFinite(rss) ? rss : 0, cpu: Number.isFinite(cpu) ? cpu : 0 };
+    const age = m[5] === undefined ? undefined : parseEtime(m[5]);
+    if (age !== undefined) {
+      row.ageSec = age;
+      row.command = m[6] ?? '';
+    }
+    rows.push(row);
   }
   return rows;
 }
@@ -83,10 +112,197 @@ export function sumTrees(rows: PsRow[], roots: Record<string, number>): Record<s
   return out;
 }
 
+export interface HogContext {
+  /** Repo root: a command line naming it is platform, not system. */
+  root: string;
+  /** Service id to its root pid, as the sampler gets them. */
+  roots: Record<string, number>;
+  /** Devdeck's own pid. */
+  self: number;
+  /** Default 500 MB. */
+  minMemMb?: number;
+  /** Default 80%. */
+  minCpu?: number;
+  /** Default 8. */
+  max?: number;
+}
+
+export const HOG_MIN_MEM_MB = 500;
+export const HOG_MIN_CPU = 80;
+export const HOG_MAX = 8;
+/** A reparented dev process older than this is an orphan. */
+export const ORPHAN_AGE_SEC = 3600;
+
+/** Tools that run by name, from a node script path or as their own binary. */
+const KNOWN_TOOLS = new Set([
+  'tsc', 'tsgo', 'vitest', 'tsup', 'esbuild', 'convex', 'convex-local-backend', 'turbo', 'next', 'next-server',
+  'tsx', 'vite', 'eslint', 'prettier', 'jest', 'webpack', 'remotion', 'chrome-headless-shell', 'storybook', 'playwright',
+]);
+/** Runtimes and tools whose processes count as platform when outside the run. */
+const DEV_TOOLS = new Set([...KNOWN_TOOLS, 'node']);
+/** Node flags that take the next argument as their value. */
+const NODE_VALUE_FLAGS = new Set(['-r', '--require', '--import', '--loader', '--experimental-loader', '-C', '--conditions', '-e', '--eval', '-p', '--print']);
+
+const basename = (path: string): string => path.slice(path.lastIndexOf('/') + 1);
+const stripExt = (file: string): string => file.replace(/\.(?:[cm]?js|[cm]?ts|tsx|jsx)$/, '');
+
+/** The outermost macOS app bundle the executable sits in: `Brave Browser` for its helpers too. */
+export function appName(command: string): string | undefined {
+  const at = command.indexOf('.app/');
+  if (at < 0 || !command.startsWith('/')) return undefined;
+  const prefix = command.slice(0, at);
+  // A second path or a flag before `.app/` means the bundle is an argument, not the executable.
+  if (prefix.includes(' -') || prefix.includes(' /')) return undefined;
+  return prefix.slice(prefix.lastIndexOf('/') + 1) || undefined;
+}
+
+/** The tool a node script path belongs to: `tsc` for typescript/lib/tsc.js, `tsup` for tsup/dist/cli. */
+function toolFromScript(script: string): string {
+  const path = script.replace(/^file:\/\//, '');
+  const base = stripExt(basename(path));
+  if (KNOWN_TOOLS.has(base)) return base;
+  const bin = /\/node_modules\/\.bin\/([^/]+)$/.exec(path);
+  if (bin) return bin[1]!;
+  const at = path.lastIndexOf('/node_modules/');
+  if (at >= 0) {
+    const parts = path.slice(at + '/node_modules/'.length).split('/');
+    const pkg = parts[0]!.startsWith('@') && parts[1] ? `${parts[0]}/${parts[1]}` : parts[0]!;
+    if (pkg && pkg !== '.pnpm') return pkg;
+  }
+  return base || 'node';
+}
+
+/** A readable name for a command line: the process title, the node script's tool, the app, the binary. */
+export function hogName(command: string): string {
+  const titled = /^(\S+) \(([^)]*)\)\s*$/.exec(command);
+  if (titled) {
+    const exe = basename(titled[1]!);
+    return exe === 'node' ? (titled[2]!.trim().split(/\s+/)[0] || exe) : exe;
+  }
+  const app = appName(command);
+  if (app) return app;
+  const args = command.trim().split(/\s+/);
+  const exe = basename(args[0] ?? '');
+  if (exe === 'node' || /^node\d+$/.test(exe)) {
+    for (let i = 1; i < args.length; i++) {
+      const arg = args[i]!;
+      if (arg.startsWith('-')) {
+        if (NODE_VALUE_FLAGS.has(arg)) i += 1;
+        continue;
+      }
+      return toolFromScript(arg);
+    }
+    return 'node';
+  }
+  return exe || command;
+}
+
+function isDevTool(command: string, name: string): boolean {
+  const exe = basename(command.trim().split(/\s+/)[0] ?? '');
+  return DEV_TOOLS.has(exe) || DEV_TOOLS.has(name) || /chrome-headless-shell|remotion/.test(command);
+}
+
+function mentionsRoot(command: string, root: string): boolean {
+  return root.length > 1 && command.includes(root);
+}
+
+/**
+ * The processes worth knowing about, largest memory first. Scope: inside a service tree
+ * or devdeck itself is `run`; a dev tool or a command naming the repo root is
+ * `platform`; anything else is `system`, where one app's helpers sum into one row under
+ * the app's main process. A row counts at `minMemMb` memory or `minCpu` cpu. The list
+ * stops at `max`, but keeps the largest of every scope that has one. Pure.
+ */
+export function pickHogs(rows: PsRow[], ctx: HogContext): Hog[] {
+  const minMem = ctx.minMemMb ?? HOG_MIN_MEM_MB;
+  const minCpu = ctx.minCpu ?? HOG_MIN_CPU;
+  const max = ctx.max ?? HOG_MAX;
+  const children = childrenMap(rows);
+  const service = new Map<number, string>();
+  for (const [id, root] of Object.entries(ctx.roots)) {
+    if (!rows.some((r) => r.pid === root)) continue;
+    for (const pid of walk(root, children)) if (!service.has(pid)) service.set(pid, id);
+  }
+  const run = new Set<number>(walk(ctx.self, children));
+
+  const singles: Hog[] = [];
+  const apps = new Map<string, PsRow[]>();
+  for (const row of rows) {
+    if (row.pid <= 1) continue;
+    const command = row.command ?? '';
+    const memMb = Math.round(row.rss / 1024);
+    const cpu = Math.round(row.cpu * 10) / 10;
+    const base = { pid: row.pid, ppid: row.ppid, command, memMb, cpu, ageSec: row.ageSec ?? 0, orphan: false };
+    const serviceId = service.get(row.pid);
+    if (serviceId !== undefined || run.has(row.pid)) {
+      const self = row.pid === ctx.self;
+      singles.push({ ...base, name: self ? 'devdeck' : hogName(command), scope: 'run', ...(serviceId !== undefined ? { serviceId } : {}), ...(self ? { self: true } : {}) });
+      continue;
+    }
+    const name = hogName(command);
+    if (mentionsRoot(command, ctx.root) || isDevTool(command, name)) {
+      const orphan = row.ppid === 1 && base.ageSec > ORPHAN_AGE_SEC;
+      singles.push({ ...base, name, scope: 'platform', orphan });
+      continue;
+    }
+    const app = appName(command);
+    if (app) {
+      const list = apps.get(app);
+      if (list) list.push(row);
+      else apps.set(app, [row]);
+      continue;
+    }
+    singles.push({ ...base, name, scope: 'system' });
+  }
+
+  for (const [app, members] of apps) {
+    const pids = new Set(members.map((m) => m.pid));
+    // The main process: a member whose parent is outside the app, the largest such one.
+    const tops = members.filter((m) => !pids.has(m.ppid));
+    const main = (tops.length > 0 ? tops : members).reduce((a, b) => (b.rss > a.rss ? b : a));
+    const rss = members.reduce((sum, m) => sum + m.rss, 0);
+    const cpu = members.reduce((sum, m) => sum + m.cpu, 0);
+    singles.push({
+      pid: main.pid,
+      ppid: main.ppid,
+      name: app,
+      command: main.command ?? '',
+      memMb: Math.round(rss / 1024),
+      cpu: Math.round(cpu * 10) / 10,
+      ageSec: main.ageSec ?? 0,
+      scope: 'system',
+      orphan: false,
+      ...(members.length > 1 ? { count: members.length } : {}),
+    });
+  }
+
+  const heavy = singles.filter((h) => h.memMb >= minMem || h.cpu >= minCpu).sort((a, b) => b.memMb - a.memMb || b.cpu - a.cpu || a.pid - b.pid);
+  if (heavy.length <= max) return heavy;
+  const keep = new Set<Hog>();
+  for (const scope of ['run', 'platform', 'system'] as HogScope[]) {
+    const top = heavy.find((h) => h.scope === scope);
+    if (top) keep.add(top);
+  }
+  for (const h of heavy) {
+    if (keep.size >= max) break;
+    keep.add(h);
+  }
+  return heavy.filter((h) => keep.has(h));
+}
+
+/** Same list for the screen: pid, scope, orphan and memory to the nearest 100 MB. */
+export function sameHogs(a: readonly Hog[], b: readonly Hog[]): boolean {
+  if (a.length !== b.length) return false;
+  return a.every((h, i) => {
+    const o = b[i]!;
+    return h.pid === o.pid && h.scope === o.scope && h.orphan === o.orphan && h.name === o.name && Math.round(h.memMb / 100) === Math.round(o.memMb / 100);
+  });
+}
+
 /** One `ps` call, no shell. Resolves to an empty table when ps fails. */
 export function readPs(): Promise<PsRow[]> {
   return new Promise((resolve) => {
-    execFile('ps', PS_ARGS, { timeout: 5000, maxBuffer: 8 * 1024 * 1024 }, (err, stdout) => {
+    execFile('ps', PS_ARGS, { timeout: 5000, maxBuffer: 32 * 1024 * 1024 }, (err, stdout) => {
       resolve(err ? [] : parsePs(stdout));
     });
   });
@@ -180,7 +396,7 @@ export async function terminate(pgids: number[], graceMs: number): Promise<boole
 export function killSync(pgids: number[]): void {
   let rows: PsRow[];
   try {
-    rows = parsePs(execFileSync('ps', PS_ARGS, { encoding: 'utf8', timeout: 2000 }));
+    rows = parsePs(execFileSync('ps', PS_TREE_ARGS, { encoding: 'utf8', timeout: 2000, maxBuffer: 8 * 1024 * 1024 }));
   } catch {
     rows = []; // Without ps, the group kill below still runs.
   }
@@ -190,11 +406,44 @@ export function killSync(pgids: number[]): void {
   }
 }
 
+export interface KillGuard {
+  /** Devdeck's own pid. */
+  self: number;
+  /** Service root pids; those restart instead. */
+  roots: readonly number[];
+}
+
+/**
+ * SIGTERM one pid, wait up to `graceMs` for it to go, then SIGKILL and wait up to 2 s more.
+ * Refuses pid 1 and below, devdeck itself and a service root, and reports EPERM, as 'denied'.
+ */
+export async function killPid(pid: number, guard: KillGuard, graceMs = 3000): Promise<KillResult> {
+  if (!Number.isInteger(pid) || pid <= 1 || pid === guard.self || guard.roots.includes(pid)) return 'denied';
+  const send = (sig: NodeJS.Signals | 0): 'ok' | 'gone' | 'denied' => {
+    try {
+      process.kill(pid, sig);
+      return 'ok';
+    } catch (err) {
+      return (err as NodeJS.ErrnoException).code === 'EPERM' ? 'denied' : 'gone';
+    }
+  };
+  const first = send('SIGTERM');
+  if (first !== 'ok') return first;
+  const alive = (): boolean => send(0) === 'ok';
+  const soft = Date.now() + graceMs;
+  while (alive() && Date.now() < soft) await sleep(50);
+  if (!alive()) return 'stopped';
+  if (send('SIGKILL') === 'denied') return 'denied';
+  const hard = Date.now() + 2000;
+  while (alive() && Date.now() < hard) await sleep(50);
+  return alive() ? 'survived' : 'stopped';
+}
+
 export interface Sampler {
   stop(): void;
 }
 
-/** Every `intervalMs`, sample memory and cpu for the pids `roots()` returns. */
+/** Every `intervalMs`, sample memory and cpu for the pids `roots()` returns, and the hogs from the same scan. */
 export function startSampler(store: DeckStore, roots: () => Record<string, number>, intervalMs = 2000): Sampler {
   let busy = false;
   let stopped = false;
@@ -206,7 +455,10 @@ export function startSampler(store: DeckStore, roots: () => Record<string, numbe
     busy = true;
     try {
       const rows = await readPs();
-      if (!stopped && rows.length > 0) store.getState().setUsage(sumTrees(rows, current));
+      if (!stopped && rows.length > 0) {
+        const state = store.getState();
+        state.setUsage(sumTrees(rows, current), pickHogs(rows, { root: state.meta.root, roots: current, self: process.pid }));
+      }
     } finally {
       busy = false;
     }

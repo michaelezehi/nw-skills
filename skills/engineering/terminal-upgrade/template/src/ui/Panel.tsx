@@ -19,6 +19,8 @@ export interface RuleProps {
   focused?: boolean;
   /** Title colour when not focused. */
   titleColor?: string;
+  /** Outline colour; the line tone when unset. Red marks a panel in trouble. */
+  borderColor?: string;
 }
 
 export interface PanelProps extends RuleProps {
@@ -33,8 +35,9 @@ export function panelInner(width: number): number {
 }
 
 /** `╭ TITLE ─────── right ╮`, exactly `width` cells. */
-export function Rule({ title, right, rightColor, width, focused = false, titleColor }: RuleProps) {
+export function Rule({ title, right, rightColor, width, focused = false, titleColor, borderColor }: RuleProps) {
   const tone = useTone();
+  const line = borderColor ?? tone.line;
   const titleTone = focused ? tone.accent : (titleColor ?? tone.text);
   const label = truncateEnd(title, Math.max(1, width - 6));
   let rightLabel = right ?? '';
@@ -45,17 +48,17 @@ export function Rule({ title, right, rightColor, width, focused = false, titleCo
   const fill = box.h.repeat(Math.max(0, fillWidth));
   return (
     <Text wrap="truncate">
-      <Text color={tone.line}>{box.tl} </Text>
+      <Text color={line}>{box.tl} </Text>
       <Text color={titleTone} bold={focused}>{label}</Text>
-      <Text color={tone.line}> {fill}</Text>
+      <Text color={line}> {fill}</Text>
       {rightLabel ? (
         <>
-          <Text color={tone.line}> </Text>
+          <Text color={line}> </Text>
           <Text color={rightColor ?? tone.muted}>{rightLabel}</Text>
-          <Text color={tone.line}> </Text>
+          <Text color={line}> </Text>
         </>
       ) : null}
-      <Text color={tone.line}>{box.tr}</Text>
+      <Text color={line}>{box.tr}</Text>
     </Text>
   );
 }
@@ -75,7 +78,7 @@ export function Panel({ rows, children, ...rule }: PanelProps) {
         height={rows - 1}
         borderStyle="round"
         borderTop={false}
-        borderColor={tone.line}
+        borderColor={rule.borderColor ?? tone.line}
         paddingX={1}
         overflow="hidden"
       >

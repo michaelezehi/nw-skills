@@ -26,6 +26,8 @@ export interface TileSpec {
   shrinkRight?: boolean;
   /** Label colour; muted when unset. */
   tint?: string;
+  /** Outline colour; red marks a tile in trouble. */
+  border?: string;
 }
 
 /** Rule, sides and one space of padding each side. */
@@ -84,7 +86,7 @@ export function StatTile({ spec, width }: { spec: TileSpec; width: number }) {
   let note = spec.right?.text ?? '';
   if (note && cellWidth(note) > noteRoom) note = spec.shrinkRight && noteRoom >= 6 ? truncateStart(note, noteRoom) : '';
   return (
-    <Panel title={spec.label} width={width} rows={TILE_ROWS} titleColor={spec.tint ?? tone.muted}>
+    <Panel title={spec.label} width={width} rows={TILE_ROWS} titleColor={spec.tint ?? tone.muted} borderColor={spec.border}>
       <Text wrap="truncate">
         {spec.left.map((s, i) => (
           <Text key={i} color={s.color}>

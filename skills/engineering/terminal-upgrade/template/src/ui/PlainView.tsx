@@ -35,6 +35,8 @@ export interface PlainViewProps {
   frame: number;
   spinning: ReadonlySet<string>;
   now: number;
+  /** The memory hogs panel or strip, drawn above the error tray. */
+  hogBlock?: ReactNode;
   /** The log pane or an open view (error card, palette) drawn in place of LATEST. */
   view: ReactNode | null;
 }
@@ -63,6 +65,7 @@ export function PlainView(props: PlainViewProps) {
         <PlainStrip apps={apps} layout={layout} selectedIndex={props.selectedIndex} focused={props.focused} frame={props.frame} spinning={props.spinning} now={now} />
       )}
       {layout.latest < 1 ? null : (view ?? <Latest events={props.events} calls={props.calls} width={layout.columns} rows={layout.latest} now={now} />)}
+      {props.hogBlock ?? null}
       <ErrorTray errors={props.errors} rows={layout.tray} columns={layout.columns} focused={props.errorsFocused} selectedIndex={props.errorIndex} />
     </Box>
   );

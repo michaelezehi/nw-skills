@@ -11,6 +11,7 @@ import { useTone, statHue, type Tone } from './theme.ts';
 import { blockDigits, blockDigitsWidth, ring, CLOCK_ROWS } from './glyphs.ts';
 import { cellWidth, formatCount, formatMb, formatUptime, truncateEnd } from './format.ts';
 import { statusLook } from './sprites.ts';
+import { MACHINE_ALARM_PERCENT } from './memAlarm.ts';
 import { TileRow, type TileSpec } from './StatTiles.tsx';
 import { useSecond } from './useFrame.ts';
 import type { Tier } from './layout.ts';
@@ -152,15 +153,17 @@ export function Header(props: HeaderProps) {
     );
   }
 
+  const memTrouble = memPercent >= MACHINE_ALARM_PERCENT;
   const look = props.convex ? statusLook(props.convex.status, props.frame, props.convexSpinning ?? true, tone) : undefined;
   const convexPort = props.convex?.port ? `:${props.convex.port}` : '';
   const tiles: TileSpec[] = [
     {
       label: 'MEMORY',
-      tint: statHue(tone, 'memory', tone.muted),
+      tint: memTrouble ? tone.error : statHue(tone, 'memory', tone.muted),
+      border: memTrouble ? tone.error : undefined,
       left: [
-        { text: `${ring(memPercent)} `, color: memPercent > 75 ? tone.activity : statHue(tone, 'memory', tone.accent) },
-        { text: formatMb(props.totalMemMb), color: tone.text },
+        { text: `${ring(memPercent)} `, color: memTrouble ? tone.error : memPercent > 75 ? tone.activity : statHue(tone, 'memory', tone.accent) },
+        { text: formatMb(props.totalMemMb), color: memTrouble ? tone.error : tone.text },
       ],
       right: { text: `${Math.round(memPercent)}% of ${Math.round(TOTAL_MB / 1024)} GB`, color: tone.muted },
     },

@@ -12,6 +12,7 @@ import { useTone, statHue, type Tone } from './theme.ts';
 import { blockDigitsWidth, ring, CLOCK_ROWS } from './glyphs.ts';
 import { cellWidth, formatCount, formatMb, formatUptime } from './format.ts';
 import { CLOCK_GAP, TOTAL_MB, UptimeClock, cpuPercentOf, deckTitle, nodeLabel, watcherSummary } from './Header.tsx';
+import { MACHINE_ALARM_PERCENT } from './memAlarm.ts';
 import { TileRow, type TileSpec } from './StatTiles.tsx';
 import { useSecond } from './useFrame.ts';
 
@@ -46,13 +47,15 @@ export function fitTitle(meta: Pick<DeckMeta, 'title'>, room: number): string {
 function tileSpecs(props: PlainHeaderProps, tone: Tone): TileSpec[] {
   const memPercent = (props.totalMemMb / TOTAL_MB) * 100;
   const cpuPercent = cpuPercentOf(props.totalCpu);
+  const memTrouble = memPercent >= MACHINE_ALARM_PERCENT;
   const specs: TileSpec[] = [
     {
       label: 'MEMORY',
-      tint: statHue(tone, 'memory', tone.muted),
+      tint: memTrouble ? tone.error : statHue(tone, 'memory', tone.muted),
+      border: memTrouble ? tone.error : undefined,
       left: [
-        { text: `${ring(memPercent)} `, color: memPercent > 75 ? tone.activity : statHue(tone, 'memory', tone.accent) },
-        { text: formatMb(props.totalMemMb), color: tone.text },
+        { text: `${ring(memPercent)} `, color: memTrouble ? tone.error : memPercent > 75 ? tone.activity : statHue(tone, 'memory', tone.accent) },
+        { text: formatMb(props.totalMemMb), color: memTrouble ? tone.error : tone.text },
       ],
     },
     {

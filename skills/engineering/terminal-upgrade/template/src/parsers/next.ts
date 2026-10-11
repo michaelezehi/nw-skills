@@ -8,6 +8,8 @@ const READY_RE = /^✓\s*Ready in ([\d.]+)\s*(ms|s)\b/;
 const COMPILING_RE = /^○\s*Compiling(?:\s+(\/\S*))?/;
 const COMPILED_RE = /^✓\s*Compiled(?:\s+(\/\S*))?\s+in\s+([\d.]+)\s*(ms|s)\b/;
 const REQUEST_RE = /^(GET|POST|PUT|PATCH|DELETE|HEAD|OPTIONS)\s+(\S+)\s+(\d{3})\s+in\s+([\d.]+)\s*(ms|s)\b/;
+/** Next 16.0 to 16.2 put a "(compile: 900ms, render: 300ms)" breakdown on the request line. */
+const REQUEST_COMPILE_RE = /\bcompile:\s*([\d.]+)\s*(ms|s)\b/;
 const WARN_RE = /^⚠\s*(.*)$/;
 const OTHER_MARK_RE = /^[✓○◐◑◒◓]/;
 /** Startup list header, e.g. "- Experiments (use with caution):". Its items use ⨯ for a disabled flag. */
@@ -21,12 +23,41 @@ const ERROR_START_RE =
 export function createNextParser(): LineParser {
   let block: string[] | null = null;
   let inList = false;
+  /**
+   * The compile a "○ Compiling" line opened. Next 16.3 prints no line when an on-demand
+   * compile ends, so the next request line is what closes it.
+   */
+  let compile: { route: string | undefined } | null = null;
+  /** An error was emitted and nothing has cleared it since. */
+  let errored = false;
 
   const close = (): Signal[] => {
     if (!block) return [];
     const lines = block;
     block = null;
+    errored = true;
     return [errorSignal(lines)];
+  };
+
+  /** A request line ends any open compile: status, reload and recovery follow from it. */
+  const afterRequest = (path: string, status: number, line: string): Signal[] => {
+    const timed = REQUEST_COMPILE_RE.exec(line);
+    const open = compile;
+    compile = null;
+    if (!open && !timed) return [];
+    // An open block is closed and emitted ahead of this line's signals, so it counts as an error here.
+    const failed = errored || block !== null;
+    const out: Signal[] = [
+      { type: 'reload', route: open ? (open.route ?? path) : path, ms: timed ? toMs(timed[1]!, timed[2]!) : undefined },
+    ];
+    if (failed) {
+      // Still failing: hand the card back to error rather than leave it on compiling.
+      if (status >= 400) return open ? [...out, { type: 'status', status: 'error' }] : out;
+      errored = false;
+      return [...out, { type: 'status', status: 'ready' }, { type: 'recovered' }];
+    }
+    if (open) out.push({ type: 'status', status: 'ready' });
+    return out;
   };
 
   /** Close the open block once it reaches the size cap. */
@@ -51,9 +82,14 @@ export function createNextParser(): LineParser {
       ];
     }
     m = COMPILING_RE.exec(t);
-    if (m) return [{ type: 'status', status: 'compiling', detail: m[1] }];
+    if (m) {
+      compile = { route: m[1] };
+      return [{ type: 'status', status: 'compiling', detail: m[1] }];
+    }
     m = COMPILED_RE.exec(t);
     if (m) {
+      compile = null;
+      errored = false;
       return [
         { type: 'reload', route: m[1], ms: toMs(m[2]!, m[3]!) },
         { type: 'status', status: 'ready' },
@@ -62,14 +98,16 @@ export function createNextParser(): LineParser {
     }
     m = REQUEST_RE.exec(t);
     if (m) {
+      const status = Number(m[3]);
       return [
         {
           type: 'event',
           kind: 'request',
           text: `${m[1]} ${m[2]}`,
           ms: toMs(m[4]!, m[5]!),
-          status: Number(m[3]),
+          status,
         },
+        ...afterRequest(m[2]!, status, t),
       ];
     }
     m = WARN_RE.exec(t);

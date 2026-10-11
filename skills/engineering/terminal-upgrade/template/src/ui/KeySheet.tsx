@@ -1,4 +1,4 @@
-/** The `h` help sheet. Keys in text, what they do in muted, two columns when there is room, then the terminal's own gestures. */
+/** The `h` help sheet. Keys in text, what they do in muted, two columns when there is room, then the mouse and the terminal's own gestures. */
 import { Box, Text } from 'ink';
 import { Panel, Row, panelInner } from './Panel.tsx';
 import { useTone } from './theme.ts';
@@ -16,7 +16,9 @@ export const KEYS: Array<[string, string]> = [
   ['e', 'jump to the errors'],
   ['y', 'copy error or logs'],
   ['Y', 'copy every error'],
-  ['r', 'restart the focused service'],
+  ['r', 'restart the focused service or hog'],
+  ['m', 'memory hogs, the full list'],
+  ['s twice / S twice', 'stop the hog / every orphan'],
   ['o', 'open its URL in the browser'],
   ['f', 'filter calls: all, Q, M, A, errors'],
   ['p', 'pause the feed'],
@@ -28,11 +30,12 @@ export const KEYS: Array<[string, string]> = [
   ['q / ctrl-c', 'quit and stop every service'],
 ];
 
-/** What the Mac terminal itself does over the deck; the deck never captures the mouse. */
+/** What the Mac terminal itself does over the deck. The deck takes clicks, so selecting text needs option. */
 export const TERMINAL_KEYS: Array<[string, string]> = [
+  ['option-drag', 'select text, then cmd-c copies it'],
+  ['click', 'Stop, Restart and Stop all orphans'],
   ['cmd-click :3000', 'open that server in the browser'],
   ['cmd-click a path', 'open the file in your editor'],
-  ['drag, then cmd-c', 'select and copy any text'],
   ['cmd-+ / cmd--', 'bigger or smaller text; the deck refits'],
 ];
 
@@ -44,9 +47,19 @@ export function KeySheet({ width, rows }: { width: number; rows: number }) {
   const colWidth = twoColumns ? Math.floor(inner / 2) : inner;
   const perColumn = twoColumns ? Math.ceil(KEYS.length / 2) : KEYS.length;
   const columns = twoColumns ? [KEYS.slice(0, perColumn), KEYS.slice(perColumn)] : [KEYS];
+  // A short screen gives up the blank lines, then the terminal rows from the end, so
+  // nothing is squeezed into the rows above it.
+  const budget = Math.max(0, rows - 2);
+  const termPerRow = twoColumns ? 2 : 1;
+  let lead = 1;
+  let gap = 1;
+  const termRows = () => Math.max(0, budget - lead - perColumn - gap - 1);
+  if (termRows() < Math.ceil(TERMINAL_KEYS.length / termPerRow)) lead = 0;
+  if (termRows() < Math.ceil(TERMINAL_KEYS.length / termPerRow)) gap = 0;
+  const terminal = TERMINAL_KEYS.slice(0, termRows() * termPerRow);
   return (
     <Panel title="HELP" right="esc close" width={width} rows={rows} focused>
-      <Text> </Text>
+      {lead ? <Text> </Text> : null}
       <Box flexDirection="row">
         {columns.map((column, c) => (
           <Box key={c} flexDirection="column" width={colWidth} overflow="hidden">
@@ -61,14 +74,14 @@ export function KeySheet({ width, rows }: { width: number; rows: number }) {
           </Box>
         ))}
       </Box>
-      <Text> </Text>
+      {gap ? <Text> </Text> : null}
       <Row>
         <Text color={tone.accent} bold>
           IN THE TERMINAL
         </Text>
       </Row>
       <Box flexDirection="row" flexWrap="wrap">
-        {TERMINAL_KEYS.map(([key, what]) => (
+        {terminal.map(([key, what]) => (
           <Box key={key} width={colWidth} overflow="hidden">
             <Row>
               <Text color={tone.text} bold>

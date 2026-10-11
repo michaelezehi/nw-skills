@@ -4,15 +4,14 @@
  * one line of plain text.
  */
 import os from 'node:os';
-import type { ReactNode } from 'react';
 import { Box, Text } from 'ink';
 import type { DeckMeta, ServiceState } from '../types.ts';
 import { Panel, Row } from './Panel.tsx';
-import { useTone, spaced, type Tone } from './theme.ts';
+import { useTone, type Tone } from './theme.ts';
 import { blockDigits, blockDigitsWidth, ring, CLOCK_ROWS } from './glyphs.ts';
-import { cellWidth, formatCount, formatMb, formatUptime, padEnd, truncateEnd, truncateStart } from './format.ts';
+import { cellWidth, formatCount, formatMb, formatUptime, truncateEnd } from './format.ts';
 import { statusLook } from './sprites.ts';
-import { portLink } from './links.ts';
+import { TileRow, type TileSpec } from './StatTiles.tsx';
 import { useSecond } from './useFrame.ts';
 import type { Tier } from './layout.ts';
 
@@ -33,8 +32,10 @@ export interface HeaderProps {
   rows: number;
 }
 
-const TOTAL_MB = Math.max(1024, Math.round(os.totalmem() / 1024 / 1024));
+export const TOTAL_MB = Math.max(1024, Math.round(os.totalmem() / 1024 / 1024));
 const CORES = Math.max(1, os.cpus().length);
+/** Cells between the clock and the stat tiles. */
+export const CLOCK_GAP = 2;
 
 /** Summed process cpu as a share of every core, capped at 100. */
 export function cpuPercentOf(totalCpu: number): number {
@@ -147,62 +148,57 @@ export function Header(props: HeaderProps) {
     );
   }
 
-  // Clock, gap, and the fixed stat columns with their 2-cell margins add up to 89 cells;
-  // the Convex column (plus its own margin) takes the rest.
-  const inner = columns - 4;
-  const convexWidth = Math.max(22, inner - (blockDigitsWidth(uptime) + 3) - (15 + 2) - (10 + 2) - (11 + 2) - 15 - 2);
+  const look = props.convex ? statusLook(props.convex.status, props.frame, props.convexSpinning ?? true, tone) : undefined;
+  const convexPort = props.convex?.port ? `:${props.convex.port}` : '';
+  const tiles: TileSpec[] = [
+    {
+      label: 'MEMORY',
+      left: [
+        { text: `${ring(memPercent)} `, color: memPercent > 75 ? tone.activity : tone.accent },
+        { text: formatMb(props.totalMemMb), color: tone.text },
+      ],
+      right: { text: `${Math.round(memPercent)}% of ${Math.round(TOTAL_MB / 1024)} GB`, color: tone.muted },
+    },
+    {
+      label: 'CPU',
+      left: [
+        { text: `${ring(cpuPercent)} `, color: cpuPercent > 75 ? tone.activity : tone.accent },
+        { text: `${Math.round(cpuPercent)}%`, color: tone.text },
+      ],
+      right: { text: `${CORES} cores`, color: tone.muted },
+    },
+    {
+      label: 'CONVEX',
+      left: look
+        ? [
+            { text: `${look.glyph} ${look.word}`, color: look.color },
+            ...(convexPort ? [{ text: ' ', color: tone.muted }, { text: convexPort, color: tone.muted, href: props.convex!.url ?? `http://localhost:${props.convex!.port}` }] : []),
+          ]
+        : [{ text: 'not running', color: tone.muted }],
+      right: { text: meta.convexDeployment ?? 'local', color: tone.muted },
+      shrinkRight: true,
+    },
+    {
+      label: 'CALLS',
+      left: [{ text: formatCount(props.callCount), color: tone.text }],
+      right: props.callErrorCount > 0 ? { text: `${formatCount(props.callErrorCount)} failed`, color: tone.error } : { text: 'none failed', color: tone.muted },
+    },
+    {
+      label: 'WATCHERS',
+      left: [{ text: `${watch.glyph} ${watch.text}`, color: watch.color }],
+      right: watch.names ? { text: watch.names, color: tone.error } : { text: `${props.watchers.length} packages`, color: tone.muted },
+    },
+  ];
+  const room = columns - 4 - blockDigitsWidth(uptime) - CLOCK_GAP;
 
   return (
     <Panel title={title} right={right} width={columns} rows={rows} titleColor={tone.accent}>
       <Box flexDirection="row" height={CLOCK_ROWS} overflow="hidden">
         <UptimeClock startedAt={meta.startedAt} />
-        <Box width={3} />
-        <Stat label="memory" width={15}>
-          <Text> </Text>
-          <Row>
-            <Text color={memPercent > 75 ? tone.activity : tone.accent}>{ring(memPercent)} </Text>
-            <Text color={tone.text}>{formatMb(props.totalMemMb)}</Text>
-          </Row>
-          <Row color={tone.muted}>{`${Math.round(memPercent)}% of ${Math.round(TOTAL_MB / 1024)} GB`}</Row>
-        </Stat>
-        <Stat label="cpu" width={10}>
-          <Text> </Text>
-          <Row>
-            <Text color={cpuPercent > 75 ? tone.activity : tone.accent}>{ring(cpuPercent)} </Text>
-            <Text color={tone.text}>{Math.round(cpuPercent)}%</Text>
-          </Row>
-          <Row color={tone.muted}>{`${CORES} cores`}</Row>
-        </Stat>
-        <ConvexStat convex={props.convex} deployment={meta.convexDeployment} frame={props.frame} spinning={props.convexSpinning ?? true} width={convexWidth} />
-        <Stat label="calls" width={11}>
-          <Text> </Text>
-          <Row color={tone.text}>{formatCount(props.callCount)}</Row>
-          <Row color={props.callErrorCount > 0 ? tone.error : tone.muted}>
-            {props.callErrorCount > 0 ? `${formatCount(props.callErrorCount)} failed` : 'none failed'}
-          </Row>
-        </Stat>
-        <Stat label="watchers" width={15} last>
-          <Text> </Text>
-          <Row>
-            <Text color={watch.color}>
-              {watch.glyph} {watch.text}
-            </Text>
-          </Row>
-          <Row color={watch.names ? tone.error : tone.muted}>{watch.names || `${props.watchers.length} packages`}</Row>
-        </Stat>
+        <Box width={CLOCK_GAP} />
+        <TileRow specs={tiles} room={room} grow="CONVEX" />
       </Box>
     </Panel>
-  );
-}
-
-/** A labelled column: the spaced caps label over whatever rows the stat draws, `gap` cells before the next one. */
-export function Stat({ label, width, gap = 2, last = false, children }: { label: string; width: number; gap?: number; last?: boolean; children: ReactNode }) {
-  const tone = useTone();
-  return (
-    <Box flexDirection="column" width={width} marginRight={last ? 0 : gap} overflow="hidden">
-      <Row color={tone.muted}>{spaced(label)}</Row>
-      {children}
-    </Box>
   );
 }
 
@@ -224,30 +220,5 @@ export function Clock({ text }: { text: string }) {
         </Text>
       ))}
     </Box>
-  );
-}
-
-function ConvexStat(props: { convex?: ServiceState; deployment?: string; frame: number; spinning: boolean; width: number }) {
-  const { convex, deployment, frame, width } = props;
-  const tone = useTone();
-  const inner = width;
-  const look = convex ? statusLook(convex.status, frame, props.spinning, tone) : undefined;
-  const port = convex?.port ? `:${convex.port}` : '';
-  return (
-    <Stat label="convex" width={width}>
-      <Text> </Text>
-      <Row>
-        {look ? (
-          <>
-            <Text color={look.color}>{look.glyph} </Text>
-            <Text color={look.color}>{look.word}</Text>
-            <Text color={tone.muted}>{' '.repeat(Math.max(0, inner - 2 - look.word.length - cellWidth(port)))}{convex ? portLink(convex, port) : port}</Text>
-          </>
-        ) : (
-          <Text color={tone.muted}>not running</Text>
-        )}
-      </Row>
-      <Row color={tone.muted}>{padEnd(truncateStart(deployment ?? 'local', inner), inner)}</Row>
-    </Stat>
   );
 }

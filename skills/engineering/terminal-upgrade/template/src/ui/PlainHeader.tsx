@@ -1,17 +1,18 @@
 /**
  * The plain deck's header: the verbose hero's rule and frame, carrying only the
- * block-digit clock and three stats, memory, cpu and calls. A failing watcher adds a
- * red fourth. Nothing is cut: a stat that cannot fit in full is left out, the rule's
+ * block-digit clock and three stat tiles, memory, cpu and calls. A failing watcher adds a
+ * red fourth. Nothing is cut: a tile that cannot fit in full is left out, the rule's
  * right label goes before the title, and a title too long for the rule drops its suffix.
  * Short on rows, the same facts sit on one line.
  */
 import { Box, Text } from 'ink';
 import type { DeckMeta, ServiceState } from '../types.ts';
-import { Panel, Row } from './Panel.tsx';
-import { useTone, spaced, FULL_COLS, type Tone } from './theme.ts';
-import { blockDigitsWidth, CLOCK_ROWS } from './glyphs.ts';
+import { Panel } from './Panel.tsx';
+import { useTone, type Tone } from './theme.ts';
+import { blockDigitsWidth, ring, CLOCK_ROWS } from './glyphs.ts';
 import { cellWidth, formatCount, formatMb, formatUptime } from './format.ts';
-import { Stat, UptimeClock, cpuPercentOf, deckTitle, nodeLabel, watcherSummary } from './Header.tsx';
+import { CLOCK_GAP, TOTAL_MB, UptimeClock, cpuPercentOf, deckTitle, nodeLabel, watcherSummary } from './Header.tsx';
+import { TileRow, type TileSpec } from './StatTiles.tsx';
 import { useSecond } from './useFrame.ts';
 
 export interface PlainHeaderProps {
@@ -32,14 +33,6 @@ interface Segment {
   color: string;
 }
 
-interface StatSpec {
-  label: string;
-  value: string;
-  valueColor: string;
-  sub?: string;
-  subColor?: string;
-}
-
 const width = (segments: Segment[]): number => segments.reduce((sum, s) => sum + cellWidth(s.text), 0);
 
 /** The deck title whole, or without ` · DEV`, or `DEV`: whichever fits `room`. */
@@ -50,37 +43,36 @@ export function fitTitle(meta: Pick<DeckMeta, 'title'>, room: number): string {
   return cellWidth(bare) <= room ? bare : 'DEV';
 }
 
-function statSpecs(props: PlainHeaderProps, tone: Tone): StatSpec[] {
-  const specs: StatSpec[] = [
-    { label: 'memory', value: formatMb(props.totalMemMb), valueColor: tone.text },
-    { label: 'cpu', value: `${Math.round(cpuPercentOf(props.totalCpu))}%`, valueColor: tone.text },
+function tileSpecs(props: PlainHeaderProps, tone: Tone): TileSpec[] {
+  const memPercent = (props.totalMemMb / TOTAL_MB) * 100;
+  const cpuPercent = cpuPercentOf(props.totalCpu);
+  const specs: TileSpec[] = [
     {
-      label: 'calls',
-      value: formatCount(props.callCount),
-      valueColor: tone.text,
-      sub: props.callErrorCount > 0 ? `${formatCount(props.callErrorCount)} failed` : undefined,
-      subColor: tone.error,
+      label: 'MEMORY',
+      left: [
+        { text: `${ring(memPercent)} `, color: memPercent > 75 ? tone.activity : tone.accent },
+        { text: formatMb(props.totalMemMb), color: tone.text },
+      ],
+    },
+    {
+      label: 'CPU',
+      left: [
+        { text: `${ring(cpuPercent)} `, color: cpuPercent > 75 ? tone.activity : tone.accent },
+        { text: `${Math.round(cpuPercent)}%`, color: tone.text },
+      ],
+    },
+    {
+      label: 'CALLS',
+      // Failures ride on the value line, so a tile too narrow for a note still shows them.
+      left: [
+        { text: formatCount(props.callCount), color: tone.text },
+        ...(props.callErrorCount > 0 ? [{ text: ` ✕${formatCount(props.callErrorCount)}`, color: tone.error }] : []),
+      ],
     },
   ];
   const watch = watcherSummary(props.watchers, tone);
-  if (watch.names) {
-    specs.push({ label: 'watchers', value: watch.text, valueColor: tone.error, sub: cellWidth(watch.names) <= 15 ? watch.names : undefined, subColor: tone.error });
-  }
+  if (watch.names) specs.push({ label: 'WATCHERS', left: [{ text: watch.text, color: tone.error }], right: { text: watch.names, color: tone.error } });
   return specs;
-}
-
-/** Stats left to right, each as wide as its widest line, stopping at the first that does not fit. */
-function fitStats(specs: StatSpec[], room: number, gap: number): Array<StatSpec & { width: number }> {
-  const out: Array<StatSpec & { width: number }> = [];
-  let used = 0;
-  for (const spec of specs) {
-    const w = Math.max(cellWidth(spaced(spec.label)), cellWidth(spec.value), spec.sub ? cellWidth(spec.sub) : 0);
-    const need = (out.length > 0 ? gap : 0) + w;
-    if (used + need > room) break;
-    out.push({ ...spec, width: w });
-    used += need;
-  }
-  return out;
 }
 
 export function PlainHeader(props: PlainHeaderProps) {
@@ -90,21 +82,13 @@ export function PlainHeader(props: PlainHeaderProps) {
   const title = fitTitle(meta, columns - 6);
   const branch = [meta.branch, nodeLabel(meta.node)].filter(Boolean).join(' · ');
   const right = branch && cellWidth(branch) + 3 <= columns - cellWidth(title) - 6 ? branch : undefined;
-  const clockWidth = blockDigitsWidth(formatUptime(props.now - meta.startedAt));
-  const gap = columns >= FULL_COLS ? 6 : 4;
-  const stats = fitStats(statSpecs(props, tone), columns - 4 - clockWidth - gap, gap);
+  const room = columns - 4 - blockDigitsWidth(formatUptime(props.now - meta.startedAt)) - CLOCK_GAP;
   return (
     <Panel title={title} right={right} width={columns} rows={rows} titleColor={tone.accent}>
       <Box flexDirection="row" height={CLOCK_ROWS} overflow="hidden">
         <UptimeClock startedAt={meta.startedAt} />
-        <Box width={gap} />
-        {stats.map((stat, i) => (
-          <Stat key={stat.label} label={stat.label} width={stat.width} gap={gap} last={i === stats.length - 1}>
-            <Text> </Text>
-            <Row color={stat.valueColor}>{stat.value}</Row>
-            {stat.sub ? <Row color={stat.subColor}>{stat.sub}</Row> : null}
-          </Stat>
-        ))}
+        <Box width={CLOCK_GAP} />
+        <TileRow specs={tileSpecs(props, tone)} room={room} />
       </Box>
     </Panel>
   );

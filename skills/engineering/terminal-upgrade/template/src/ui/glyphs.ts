@@ -45,23 +45,23 @@ export function sparkline(samples: readonly number[], width: number): string {
   return ' '.repeat(width - cells.length) + cells.join('');
 }
 
-/** 5-row block font, each digit three cells wide. The colon is one cell. */
+/** 3-row half-block font, each digit three cells wide. The colon is one cell. */
 const DIGITS: Record<string, readonly string[]> = {
-  '0': ['███', '█ █', '█ █', '█ █', '███'],
-  '1': [' █ ', '██ ', ' █ ', ' █ ', '███'],
-  '2': ['███', '  █', '███', '█  ', '███'],
-  '3': ['███', '  █', '███', '  █', '███'],
-  '4': ['█ █', '█ █', '███', '  █', '  █'],
-  '5': ['███', '█  ', '███', '  █', '███'],
-  '6': ['███', '█  ', '███', '█ █', '███'],
-  '7': ['███', '  █', '  █', '  █', '  █'],
-  '8': ['███', '█ █', '███', '█ █', '███'],
-  '9': ['███', '█ █', '███', '  █', '███'],
-  ':': [' ', '█', ' ', '█', ' '],
-  ' ': [' ', ' ', ' ', ' ', ' '],
+  '0': ['█▀█', '█ █', '█▄█'],
+  '1': ['▀█ ', ' █ ', '▄█▄'],
+  '2': ['▀▀█', '█▀▀', '█▄▄'],
+  '3': ['▀▀█', '▀▀█', '▄▄█'],
+  '4': ['█ █', '▀▀█', '  █'],
+  '5': ['█▀▀', '▀▀█', '▄▄█'],
+  '6': ['█▀▀', '█▀█', '█▄█'],
+  '7': ['▀▀█', '  █', '  █'],
+  '8': ['█▀█', '█▀█', '█▄█'],
+  '9': ['█▀█', '▀▀█', '▄▄█'],
+  ':': ['▄', ' ', '▀'],
+  ' ': [' ', ' ', ' '],
 };
 
-export const CLOCK_ROWS = 5;
+export const CLOCK_ROWS = 3;
 
 export interface ClockCell {
   text: string;

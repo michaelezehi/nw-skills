@@ -31,6 +31,8 @@ export type Snap = {
   events: Ev[]
   calls: Call[]
   errors: Err[]
+  /** Every open error Devdeck holds (`totals.errors`); `errors` keeps only the latest few. */
+  errorCount: number
   memMb: number
 }
 

@@ -144,6 +144,8 @@ export function trimSnapshot(text: string, fetchedAt: number): Snap | null {
     events: list(raw.events).slice(-MAX_EVENTS).map(evOf),
     calls: list(raw.calls).slice(-MAX_CALLS).map(callOf),
     errors: list(raw.errors).slice(-MAX_ERRORS).map(r => errOf(r)),
+    // Every open error; the list above keeps only the latest few.
+    errorCount: num(totals.errors, list(raw.errors).length),
     memMb: num(totals.memMb),
   }
 }

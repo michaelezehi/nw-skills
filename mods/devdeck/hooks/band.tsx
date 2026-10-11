@@ -27,7 +27,7 @@ export function band(p: BandInput): JSX.Element {
   const { Box, Text } = p.ui
   const services = bandServices(p.snap)
   const latest = latestOf(p.snap, p.clock)
-  const errors = p.snap.errors.length
+  const errors = p.snap.errorCount
   const errText = `${DIAMOND} ${errors}`
   const mem = fmtMem(p.snap.memMb)
 

@@ -44,7 +44,7 @@ const ERRORS = [
 /** The world beneath the plugin: a session in /repo/apps/web, Devdeck up or not. */
 function world(on: On, isUp: boolean) {
   const clock = mock.clock(on, { now: 1000 })
-  const state = { isUp, isHung: false }
+  const state = { isUp, isHung: false, errorTotal: null as number | null }
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   // What the engine draws when the plugin passes: an empty Box, keyed to find.
   on('ui.render', () => ({ type: 'Box', props: { key: 'engine-own' } }))
@@ -55,7 +55,8 @@ function world(on: On, isUp: boolean) {
   on('http.fetch', async ($, e) => {
     if (state.isHung) await clock.sleep(600_000)
     if (!state.isUp || e.init?.socketPath !== SOCK) return { deny: 'ECONNREFUSED' }
-    const body = e.url.endsWith('/errors') ? ERRORS : SNAPSHOT
+    const snapshot = state.errorTotal === null ? SNAPSHOT : { ...SNAPSHOT, totals: { ...SNAPSHOT.totals, errors: state.errorTotal } }
+    const body = e.url.endsWith('/errors') ? ERRORS : snapshot
     return { value: { status: 200, ok: true, headers: {}, text: JSON.stringify(body) } }
   })
   return { clock, state }
@@ -111,7 +112,50 @@ describe('band', () => {
   })
 })
 
+describe('poller', () => {
+  test('a hung fetch times out and later polls still land', async ($, on) => {
+    const { clock, state } = world(on, true)
+    await $.session.start({ cwd: `${ROOT}/apps/web`, surface: 'terminal', isInteractive: true })
+    await clock.settle()
+    const row = await $.ui.mount({ plugin: 'devdeck', surface: 'terminal', component: 'AbovePrompt', props: BAND })
+    expect(await row.find({ key: 'devdeck-band' })).toBeDefined()
+
+    // Devdeck accepts the request and never answers: the poll gives up after 1.5s.
+    state.isHung = true
+    await clock.advance(3000)
+    await row.redraw()
+    expect(await row.find({ key: 'devdeck-band' })).toBeUndefined()
+
+    // It answers again: the next retry lands, so the poller was not left busy.
+    state.isHung = false
+    await clock.advance(12_000)
+    await row.redraw()
+    expect(await row.find({ key: 'devdeck-band' })).toBeDefined()
+  })
+
+  test('the band and pane count every open error from totals', async ($, on) => {
+    const { clock, state } = world(on, true)
+    state.errorTotal = 41
+    on('ui.open', () => ({ value: { isPlaced: true } }))
+    await $.session.start({ cwd: `${ROOT}/apps/web`, surface: 'terminal', isInteractive: true })
+    await clock.settle()
+    const row = await $.ui.mount({ plugin: 'devdeck', surface: 'terminal', component: 'AbovePrompt', props: BAND })
+    expect((await row.find({ key: 'devdeck-errors' }))?.text).toBe('◆ 41')
+    const panel = await $.ui.mount({ plugin: 'devdeck', surface: 'terminal', component: 'Pane', requestId: 'devdeck', props: PANE } as never)
+    expect(await panel.find({ type: 'Text', text: 'Errors · 41' })).toBeDefined()
+  })
+})
+
 describe('devdeck_status tool', () => {
+  test('answers within the timeout when Devdeck hangs', async ($, on) => {
+    const { clock, state } = world(on, true)
+    state.isHung = true
+    const pending = $.tool.call({ tool: TOOL } as never)
+    await clock.advance(2000)
+    const out = await pending
+    expect(String(out.result)).toMatch(/did not answer GET \/state/)
+  })
+
   test('summarises services and every error body', async ($, on) => {
     world(on, true)
     const out = await $.tool.call({ tool: TOOL } as never)

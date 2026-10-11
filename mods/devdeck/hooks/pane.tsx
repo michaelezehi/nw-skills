@@ -123,8 +123,10 @@ function errorRow(ui: Table, p: PaneInput, snap: Snap, e: Err): JSX.Element {
       {isOpen && (
         <Box key={`errbody-${e.id}`} flexDirection="column" paddingLeft={2}>
           {e.file && <Text color={ASH}>{e.file}</Text>}
-          {e.body.map(line => (
-            <Text color={RED}>{line || ' '}</Text>
+          {e.body.map((line, i) => (
+            <Text key={`errline-${e.id}-${i}`} color={RED}>
+              {line || ' '}
+            </Text>
           ))}
         </Box>
       )}
@@ -152,7 +154,7 @@ export function pane(p: PaneInput): JSX.Element {
       {section(p.ui, 'services', `Services · ${fmtMem(snap.memMb)}`, snap.services.map(s => serviceRow(p.ui, p, snap, s)), 'No services.')}
       {section(p.ui, 'calls', 'Convex calls', calls, 'No calls yet.')}
       {section(p.ui, 'events', 'Events', events, 'No events yet.')}
-      {section(p.ui, 'errors', errors.length ? `Errors · ${errors.length}` : 'Errors', errors, 'No errors.')}
+      {section(p.ui, 'errors', snap.errorCount ? `Errors · ${snap.errorCount}` : 'Errors', errors, 'No errors.')}
     </Box>
   )
 }

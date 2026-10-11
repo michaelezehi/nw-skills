@@ -11,7 +11,7 @@ import { band } from './band'
 import { ANIMATE_MS, activityBetween, isFresh, parseErrors, seenOf, trimSnapshot } from './model'
 import type { Seen } from './model'
 import { pane } from './pane'
-import { ERRORS_URL, FRAME_MS, POLL_MS, RETRY_MS, STATE_URL, ancestors, socketIn } from './socket'
+import { ERRORS_URL, FETCH_TIMEOUT_MS, FRAME_MS, POLL_MS, RETRY_MS, STATE_URL, ancestors, socketIn } from './socket'
 import { NOT_RUNNING, summaryText } from './summary'
 
 const PANE = 'devdeck'
@@ -34,13 +34,25 @@ async function findSocket($: EngineInterface, cwd: string): Promise<string | nul
   return null
 }
 
-/** GET over the socket: the body on a 2xx, else null. Never rejects. */
+/**
+ * GET over the socket: the body on a 2xx, else null. Never rejects, and gives up after
+ * FETCH_TIMEOUT_MS: a Devdeck that accepts the connection and never answers must not
+ * hold the poller busy, or the tool call, for good.
+ */
 async function getText($: EngineInterface, url: string, socketPath: string): Promise<string | null> {
+  let giveUp: (value: null) => void = () => undefined
+  const timedOut = new Promise<null>(resolve => {
+    giveUp = resolve
+  })
+  const timer = $.clock.after(FETCH_TIMEOUT_MS, () => giveUp(null))
+  const fetched = $.http.fetch(url, { socketPath }).then(
+    res => (res.ok ? res.text : null),
+    () => null,
+  )
   try {
-    const res = await $.http.fetch(url, { socketPath })
-    return res.ok ? res.text : null
-  } catch {
-    return null
+    return await Promise.race([fetched, timedOut])
+  } finally {
+    timer.cancel()
   }
 }
 
@@ -71,22 +83,28 @@ function startPoller($: EngineInterface, cwd: string): () => void {
   let isBusy = false
   let seen: Seen | null = null
   let anim: Timer | null = null
+  // Set by the stop: a poll still in flight then writes nothing.
+  let isStopped = false
 
   const now = (): Promise<number> => $.clock.now().catch(() => 0)
 
   const animate = (startedAt: number): void => {
     anim?.cancel()
     let frame = 0
-    anim = $.clock.every(FRAME_MS, () => {
+    const timer = $.clock.every(FRAME_MS, () => {
       frame += 1
       void (async () => {
-        if ((await now()) - startedAt >= ANIMATE_MS) {
-          anim?.cancel()
+        const at = await now()
+        // A tick that resolves after a newer animation started leaves that one alone.
+        if (anim !== timer) return timer.cancel()
+        if (at - startedAt >= ANIMATE_MS) {
+          timer.cancel()
           anim = null
         }
         await update($, frameAtom, () => frame)
       })().catch(() => undefined)
     })
+    anim = timer
   }
 
   const fail = async (at: number): Promise<void> => {
@@ -101,6 +119,7 @@ function startPoller($: EngineInterface, cwd: string): () => void {
     if (socket === null) return fail(at)
 
     const text = await getText($, STATE_URL, socket)
+    if (isStopped) return
     const snap: Snap | null = text === null ? null : trimSnapshot(text, at)
     if (snap === null) return fail(at)
 
@@ -133,13 +152,18 @@ function startPoller($: EngineInterface, cwd: string): () => void {
   run()
 
   return () => {
+    isStopped = true
     timer.cancel()
     anim?.cancel()
+    anim = null
   }
 }
 
 export const register: Register = on => {
-  // Module scope is fine: session.start runs again on every (re)load.
+  // Module scope is fine: session.start runs again on every (re)load, and a hot reload
+  // cancels the old module's clock timers with its environment (see `$.clock` in the
+  // engine types), so the previous poller's tick and animation stop with it. The engine
+  // has no unload event to hook; `stop` covers a second session.start within one load.
   let stop: (() => void) | null = null
 
   on('session.start', async ($, e, next) => {

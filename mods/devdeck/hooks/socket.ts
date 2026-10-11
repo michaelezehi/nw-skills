@@ -8,6 +8,8 @@ export const ERRORS_URL = 'http://devdeck/errors'
 export const POLL_MS = 1000
 export const RETRY_MS = 10_000
 export const FRAME_MS = 250
+/** A GET that has not answered by then counts as a failed poll. */
+export const FETCH_TIMEOUT_MS = 1500
 const MAX_DEPTH = 24
 
 /** Every folder from `dir` up to the root, nearest first. */

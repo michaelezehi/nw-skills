@@ -1,11 +1,5 @@
-// The palette and pure helpers over the trimmed snapshot.
-import type { Activity, Call, Err, Ev, ServiceStatus, Snap, Svc } from '../types'
-
-export const YELLOW = '#fde047'
-export const AMBER = '#f5a524'
-export const PAPER = '#ecebe4'
-export const ASH = '#8a887f'
-export const RED = '#f87171'
+// Pure helpers over the trimmed snapshot.
+import type { Activity, Call, Err, Ev, Palette, ServiceStatus, Snap, Svc } from '../types'
 
 /** The reload marker: a text glyph, since U+26A1 draws as an emoji. */
 export const BOLT = '↯'
@@ -21,11 +15,11 @@ const MAX_CALLS = 8
 const MAX_ERRORS = 30
 const MAX_BODY = 80
 
-export function statusColor(status: ServiceStatus): string {
-  if (status === 'ready') return YELLOW
-  if (status === 'compiling' || status === 'starting') return AMBER
-  if (status === 'error' || status === 'crashed') return RED
-  return ASH
+export function statusColor(status: ServiceStatus, palette: Palette): string {
+  if (status === 'ready') return palette.accent
+  if (status === 'compiling' || status === 'starting') return palette.activity
+  if (status === 'error' || status === 'crashed') return palette.error
+  return palette.muted
 }
 
 export const isFresh = (snap: Snap | null, clock: number): snap is Snap =>
@@ -60,7 +54,7 @@ export const fmtMs = (ms: number | null): string => (ms === null ? '' : `${Math.
 export type Latest = { text: string; color: string; isFailed: boolean }
 
 /** The band's activity text: a reload within 10s or the latest call, whichever is newer. */
-export function latestOf(snap: Snap, clock: number): Latest | null {
+export function latestOf(snap: Snap, clock: number, palette: Palette): Latest | null {
   let reload: { svc: Svc; at: number } | null = null
   for (const svc of snap.services) {
     if (svc.reloadAt === null) continue
@@ -71,11 +65,11 @@ export function latestOf(snap: Snap, clock: number): Latest | null {
 
   if (reload && (call === null || reload.at >= call.at)) {
     const parts = [BOLT, reload.svc.id, reload.svc.reloadRoute ?? '', fmtMs(reload.svc.reloadMs)]
-    return { text: parts.filter(Boolean).join(' '), color: AMBER, isFailed: false }
+    return { text: parts.filter(Boolean).join(' '), color: palette.activity, isFailed: false }
   }
   if (call) {
     const text = `${badgeOf(call.type)} ${call.fn} ${fmtMs(call.ms)}`
-    return { text, color: call.ok ? PAPER : RED, isFailed: !call.ok }
+    return { text, color: call.ok ? palette.text : palette.error, isFailed: !call.ok }
   }
   return null
 }

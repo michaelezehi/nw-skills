@@ -40,6 +40,21 @@ export type ActivityKind = 'reload' | 'mutation' | 'error'
 
 export type Activity = { kind: ActivityKind; at: number }
 
+/** The palette picked in Devdeck (its theme.json `colors`), every token `#rrggbb`. */
+export type Palette = {
+  /** Ready dots, the DEV label, mutation badges. */
+  accent: string
+  /** Compiling and starting, the reload bolt. */
+  activity: string
+  /** Main text. */
+  text: string
+  /** Labels, ports, ages, memory. */
+  muted: string
+  line: string
+  /** Errors and failed calls. */
+  error: string
+}
+
 declare module 'claude-code' {
   interface PluginState {
     devdeck: {
@@ -51,6 +66,8 @@ declare module 'claude-code' {
       /** The sprite's animation frame, ticking only while it animates. */
       frame: number
       activity: Activity | null
+      /** Read at session start, then at most every 10s by the poll loop. */
+      palette: Palette
     }
   }
 }

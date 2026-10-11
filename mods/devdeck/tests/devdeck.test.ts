@@ -1,9 +1,17 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
+import type { Engine, Mounted } from 'claude-code/testing'
 import type { On, RenderPropsOf } from 'claude-code'
 
 const ROOT = '/repo'
 const SOCK = `${ROOT}/.devdeck/devdeck.sock`
 const TOOL = 'mcp__devdeck__devdeck_status'
+const HOME = '/home/me'
+const THEME = `${HOME}/.config/devdeck/theme.json`
+
+const EMBER = {
+  accent: '#ff7a45', activity: '#ffb347', text: '#f4e9e1', muted: '#9c8f86', line: '#4a3f3a', error: '#ff4d4f',
+}
+const themeFile = (colors: Record<string, unknown>) => JSON.stringify({ version: 1, preset: 'ember', colors })
 
 const BAND: RenderPropsOf['AbovePrompt'] = {
   hasSurvey: false, isWorking: false, maxRows: 10, bodyColumns: 100,
@@ -41,10 +49,21 @@ const ERRORS = [
   { id: 8, at: 46_000, service: 'pdf', title: 'Process exited 1', body: ['Process exited 1'] },
 ]
 
-/** The world beneath the plugin: a session in /repo/apps/web, Devdeck up or not. */
-function world(on: On, isUp: boolean) {
+/**
+ * The world beneath the plugin: a session in /repo/apps/web, Devdeck up or not,
+ * and a theme file at `files` paths (none unless a test writes one).
+ */
+function world(on: On, isUp: boolean, env: Record<string, string> = { HOME }) {
   const clock = mock.clock(on, { now: 1000 })
+  mock.env(on, env)
   const state = { isUp, isHung: false, errorTotal: null as number | null }
+  const files = new Map<string, string>()
+  const reads: string[] = []
+  on('fs.read', ($, e) => {
+    reads.push(e.path)
+    const text = files.get(e.path)
+    return text === undefined ? { deny: 'ENOENT' } : { value: text }
+  })
   on('session.start', ($, e) => ({ cwd: e.cwd }))
   // What the engine draws when the plugin passes: an empty Box, keyed to find.
   on('ui.render', () => ({ type: 'Box', props: { key: 'engine-own' } }))
@@ -59,7 +78,19 @@ function world(on: On, isUp: boolean) {
     const body = e.url.endsWith('/errors') ? ERRORS : snapshot
     return { value: { status: 200, ok: true, headers: {}, text: JSON.stringify(body) } }
   })
-  return { clock, state }
+  return { clock, state, files, reads }
+}
+
+/** The colours the band drew: DEV, each service dot, the latest activity, errors and memory. */
+async function bandColors(row: Mounted<'terminal', 'AbovePrompt'>) {
+  const colorIn = async (key: string) => (await row.find({ key }))?.children.map(c => (c as { props?: { color?: unknown } }).props?.color)[0]
+  return {
+    dev: (await row.find({ type: 'Text', text: 'DEV' }))?.props.color,
+    dots: (await row.findAll({ type: 'Text', text: '●' })).map(t => t.props.color),
+    latest: await colorIn('devdeck-latest'),
+    errors: await colorIn('devdeck-errors'),
+    mem: await colorIn('devdeck-mem'),
+  }
 }
 
 describe('band', () => {
@@ -191,5 +222,102 @@ describe('pane', () => {
 
     await panel.press({ key: 'err-7' })
     expect(await panel.find({ key: 'errbody-7' })).toBeUndefined()
+  })
+})
+
+describe('palette', () => {
+  const mount = ($: Engine) => $.ui.mount({ plugin: 'devdeck', surface: 'terminal', component: 'AbovePrompt', props: BAND })
+  const start = ($: Engine) =>
+    $.session.start({ cwd: `${ROOT}/apps/web`, surface: 'terminal', isInteractive: true })
+
+  // Dots in order: web ready, admin compiling, teams stopped, pdf crashed, convex ready.
+  const DEFAULT_COLORS = {
+    dev: '#fde047',
+    dots: ['#fde047', '#f5a524', '#8a887f', '#f87171', '#fde047'],
+    latest: '#f5a524',
+    errors: '#f87171',
+    mem: '#8a887f',
+  }
+
+  test('no theme file draws the default palette', async ($, on) => {
+    const { clock, reads } = world(on, true)
+    await start($)
+    await clock.settle()
+    expect(reads).toEqual([THEME])
+    expect(await bandColors(await mount($))).toEqual(DEFAULT_COLORS)
+  })
+
+  test('an Ember theme file recolours the band, sprite included', async ($, on) => {
+    const { clock, files } = world(on, true)
+    await start($)
+    await clock.settle()
+    const before = (await (await mount($)).find({ key: 'devdeck-sprite' }))?.props.cells
+
+    files.set(THEME, themeFile(EMBER))
+    await clock.advance(10_000)
+    const row = await mount($)
+    expect(await bandColors(row)).toEqual({
+      dev: EMBER.accent,
+      dots: [EMBER.accent, EMBER.activity, EMBER.muted, EMBER.error, EMBER.accent],
+      latest: EMBER.activity,
+      errors: EMBER.error,
+      mem: EMBER.muted,
+    })
+    expect((await row.find({ key: 'devdeck-sprite' }))?.props.cells).not.toBe(before)
+  })
+
+  test('XDG_CONFIG_HOME wins over HOME', async ($, on) => {
+    const { clock, files, reads } = world(on, true, { HOME, XDG_CONFIG_HOME: '/xdg' })
+    files.set('/xdg/devdeck/theme.json', themeFile(EMBER))
+    await start($)
+    await clock.settle()
+    expect(reads).toEqual(['/xdg/devdeck/theme.json'])
+    expect((await bandColors(await mount($))).dev).toBe(EMBER.accent)
+  })
+
+  test('a corrupt theme file draws the defaults', async ($, on) => {
+    const { clock, files } = world(on, true)
+    files.set(THEME, '{ "version": 1, "colors": { "accent": "#ff7a45"')
+    await start($)
+    await clock.settle()
+    expect(await bandColors(await mount($))).toEqual(DEFAULT_COLORS)
+  })
+
+  test('a bad hex falls back for that token alone', async ($, on) => {
+    const { clock, files } = world(on, true)
+    files.set(THEME, themeFile({ ...EMBER, accent: 'orange', error: '#f00' }))
+    await start($)
+    await clock.settle()
+    const colors = await bandColors(await mount($))
+    expect(colors.dev).toBe('#fde047')
+    expect(colors.errors).toBe('#f87171')
+    expect(colors.mem).toBe(EMBER.muted)
+    expect(colors.latest).toBe(EMBER.activity)
+  })
+
+  test('the pane draws in the palette too', async ($, on) => {
+    const { clock, files } = world(on, false)
+    files.set(THEME, themeFile(EMBER))
+    await start($)
+    await clock.settle()
+    const panel = await $.ui.mount({ plugin: 'devdeck', surface: 'terminal', component: 'Pane', requestId: 'devdeck', props: PANE } as never)
+    expect((await panel.find({ type: 'Text', text: 'Devdeck is not running in this project.' }))?.props.color).toBe(EMBER.muted)
+  })
+
+  test('the file is read once per 10s, not on every 1s poll', async ($, on) => {
+    const { clock, files, reads } = world(on, true)
+    await start($)
+    await clock.settle()
+    expect(reads).toHaveLength(1)
+
+    // A pick in Devdeck lands on the next 10s read, not before.
+    files.set(THEME, themeFile(EMBER))
+    await clock.advance(5000)
+    expect(reads).toHaveLength(1)
+    expect((await bandColors(await mount($))).dev).toBe('#fde047')
+
+    await clock.advance(5000)
+    expect(reads).toHaveLength(2)
+    expect((await bandColors(await mount($))).dev).toBe(EMBER.accent)
   })
 })

@@ -11,6 +11,7 @@ import { band } from './band'
 import { ANIMATE_MS, activityBetween, isFresh, parseErrors, seenOf, trimSnapshot } from './model'
 import type { Seen } from './model'
 import { pane } from './pane'
+import { DEFAULT_PALETTE, THEME_MS, parsePalette, samePalette, themePath } from './palette'
 import { ERRORS_URL, FETCH_TIMEOUT_MS, FRAME_MS, POLL_MS, RETRY_MS, STATE_URL, ancestors, socketIn } from './socket'
 import { NOT_RUNNING, summaryText } from './summary'
 
@@ -22,6 +23,19 @@ const expandedAtom = atom({ plugin: 'devdeck', key: 'expanded' } as const, [])
 const clockAtom = atom({ plugin: 'devdeck', key: 'clock' } as const, 0)
 const frameAtom = atom({ plugin: 'devdeck', key: 'frame' } as const, 0)
 const activityAtom = atom({ plugin: 'devdeck', key: 'activity' } as const, null)
+const paletteAtom = atom({ plugin: 'devdeck', key: 'palette' } as const, DEFAULT_PALETTE)
+
+/** The theme file's text, or null when there is no home to find it in or it cannot be read. */
+async function themeText($: EngineInterface): Promise<string | null> {
+  const xdg = await $.env.get('XDG_CONFIG_HOME').catch(() => undefined)
+  const home = await $.env.get('HOME').catch(() => undefined)
+  const path = themePath(xdg, home)
+  if (path === null) return null
+  return $.fs.read(path).then(
+    out => (typeof out === 'string' ? out : null),
+    () => null,
+  )
+}
 
 /** The nearest Devdeck socket at or above `cwd`, or null. */
 async function findSocket($: EngineInterface, cwd: string): Promise<string | null> {
@@ -74,12 +88,14 @@ async function statusText($: EngineInterface): Promise<string> {
 
 /**
  * One module load's loop: a 1s tick that keeps the band's clock, polls when
- * due (1s while Devdeck answers, 10s while it does not), and runs the sprite
- * for 2s after something happens. Returns the stop.
+ * due (1s while Devdeck answers, 10s while it does not), reads the theme file
+ * on the first tick and then every 10s, and runs the sprite for 2s after
+ * something happens. Returns the stop.
  */
 function startPoller($: EngineInterface, cwd: string): () => void {
   let socket: string | null = null
   let nextAt = 0
+  let themeAt = 0
   let isBusy = false
   let seen: Seen | null = null
   let anim: Timer | null = null
@@ -135,8 +151,19 @@ function startPoller($: EngineInterface, cwd: string): () => void {
     }
   }
 
+  /** Stores the theme file's palette when it differs from the one drawn. */
+  const loadTheme = async (): Promise<void> => {
+    const palette = parsePalette(await themeText($))
+    if (isStopped || samePalette(palette, await read($, paletteAtom))) return
+    await update($, paletteAtom, () => palette)
+  }
+
   const tick = async (): Promise<void> => {
     const at = await now()
+    if (at >= themeAt) {
+      themeAt = at + THEME_MS
+      void loadTheme().catch(() => undefined)
+    }
     if ((await read($, snapAtom)) !== null) await update($, clockAtom, () => at)
     if (isBusy || at < nextAt) return
     isBusy = true
@@ -211,6 +238,7 @@ export const register: Register = on => {
       clock,
       frame: await read($, frameAtom),
       activity: await read($, activityAtom),
+      palette: await read($, paletteAtom),
       columns: e.props.bodyColumns,
     })
   }).catch(($, e, next) => next(e))
@@ -224,6 +252,7 @@ export const register: Register = on => {
       clock,
       columns: e.props.bodyColumns,
       expanded: await read($, expandedAtom),
+      palette: await read($, paletteAtom),
       toggle: id =>
         void update($, expandedAtom, ids => (ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id])).catch(
           () => undefined,

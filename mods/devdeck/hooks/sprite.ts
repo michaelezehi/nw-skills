@@ -1,17 +1,15 @@
 // The band's six-cell sprite: a 6x2 pixel drawing packed into one row of half
 // blocks for a terminal Raster. Each kind has four frames; frame 0 is its rest.
-import type { ActivityKind } from '../types'
+import type { ActivityKind, Palette } from '../types'
+
+import { rgbOf } from './palette'
 
 export const SPRITE_COLS = 6
 
+/** The terminal's own colour, not a palette one. */
 const DEFAULT = 0x01000000
-const YELLOW = 0xfde047
-const AMBER = 0xf5a524
-const RED = 0xf87171
-const PAPER = 0xecebe4
-const ASH = 0x8a887f
 
-// '#' the kind's colour, '+' a paper highlight, '.' empty; two rows each.
+// '#' the kind's colour, '+' a text-coloured highlight, '.' empty; two rows each.
 const FRAMES: Record<ActivityKind, string[][]> = {
   reload: [
     ['..###.', '.###..'],
@@ -33,7 +31,7 @@ const FRAMES: Record<ActivityKind, string[][]> = {
   ],
 }
 
-const COLOR: Record<ActivityKind, number> = { reload: AMBER, mutation: YELLOW, error: RED }
+const TOKEN: Record<ActivityKind, keyof Palette> = { reload: 'activity', mutation: 'accent', error: 'error' }
 
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 
@@ -53,12 +51,13 @@ function base64(bytes: Uint8Array): string {
 
 /**
  * The Raster cells for one frame. `kind` null is the idle sprite: the
- * mutation spark at rest, in ash.
+ * mutation spark at rest, in the muted colour.
  */
-export function spriteCells(kind: ActivityKind | null, frame: number): string {
+export function spriteCells(kind: ActivityKind | null, frame: number, palette: Palette): string {
   const rows = kind === null ? FRAMES.mutation[0]! : FRAMES[kind][frame % 4]!
-  const tint = kind === null ? ASH : COLOR[kind]
-  const pixel = (ch: string | undefined): number => (ch === '#' ? tint : ch === '+' ? PAPER : -1)
+  const tint = rgbOf(kind === null ? palette.muted : palette[TOKEN[kind]])
+  const highlight = rgbOf(palette.text)
+  const pixel = (ch: string | undefined): number => (ch === '#' ? tint : ch === '+' ? highlight : -1)
   const words = new Uint32Array(SPRITE_COLS * 3)
 
   for (let x = 0; x < SPRITE_COLS; x++) {

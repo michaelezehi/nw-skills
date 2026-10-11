@@ -2,9 +2,9 @@
 // latest reload or Convex call, the open error count, total memory.
 import type { Elements } from 'claude-code'
 
-import type { Activity, Snap } from '../types'
+import type { Activity, Palette, Snap } from '../types'
 
-import { ANIMATE_MS, ASH, DIAMOND, DOT, PAPER, RED, bandServices, fmtMem, latestOf, statusColor } from './model'
+import { ANIMATE_MS, DIAMOND, DOT, bandServices, fmtMem, latestOf, statusColor } from './model'
 import { SPRITE_COLS, spriteCells } from './sprite'
 
 type Table = Elements['terminal'] | Elements['desktop'] | Elements['vscode'] | Elements['mobile']
@@ -17,6 +17,7 @@ export type BandInput = {
   clock: number
   frame: number
   activity: Activity | null
+  palette: Palette
   columns: number
 }
 
@@ -25,8 +26,9 @@ const MIN_ACTIVITY = 8
 
 export function band(p: BandInput): JSX.Element {
   const { Box, Text } = p.ui
+  const colors = p.palette
   const services = bandServices(p.snap)
-  const latest = latestOf(p.snap, p.clock)
+  const latest = latestOf(p.snap, p.clock, colors)
   const errors = p.snap.errorCount
   const errText = `${DIAMOND} ${errors}`
   const mem = fmtMem(p.snap.memMb)
@@ -57,7 +59,7 @@ export function band(p: BandInput): JSX.Element {
         key="devdeck-sprite"
         columns={SPRITE_COLS}
         rows={1}
-        cells={spriteCells(p.activity?.kind ?? null, isAnimating ? p.frame : 0)}
+        cells={spriteCells(p.activity?.kind ?? null, isAnimating ? p.frame : 0, colors)}
       />
     ) : null
 
@@ -65,14 +67,14 @@ export function band(p: BandInput): JSX.Element {
     <Box key="devdeck-band" flexDirection="row" gap={1} overflow="hidden">
       {sprite}
       <Box flexShrink={0}>
-        <Text bold color={PAPER}>
+        <Text bold color={colors.accent}>
           {LABEL}
         </Text>
       </Box>
       <Box key="devdeck-dots" flexDirection="row" gap={1} flexShrink={0}>
         {services.map(s => (
           <Box key={`dot-${s.id}`}>
-            <Text color={statusColor(s.status)} dimColor={s.status === 'stopped'}>
+            <Text color={statusColor(s.status, colors)} dimColor={s.status === 'stopped'}>
               {DOT}
             </Text>
           </Box>
@@ -87,12 +89,12 @@ export function band(p: BandInput): JSX.Element {
       )}
       {errors > 0 && (
         <Box key="devdeck-errors" flexShrink={0}>
-          <Text color={RED}>{errText}</Text>
+          <Text color={colors.error}>{errText}</Text>
         </Box>
       )}
       {showMem && (
         <Box key="devdeck-mem" flexShrink={0}>
-          <Text color={ASH}>{mem}</Text>
+          <Text color={colors.muted}>{mem}</Text>
         </Box>
       )}
     </Box>

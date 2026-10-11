@@ -1,0 +1,25 @@
+{
+  "name": "devdeck",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Live terminal dashboard for pnpm dev",
+  "bin": {
+    "devdeck": "./src/cli.tsx"
+  },
+  "scripts": {
+    "start": "tsx src/cli.tsx",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "ink": "7.1.1",
+    "react": "19.2.7",
+    "tsx": "^4.23.0",
+    "zustand": "^5.0.14"
+  },
+  "devDependencies": {
+    "@types/node": "^25",
+    "@types/react": "^19.2.0",
+    "typescript": "^5.7.2"
+  }
+}

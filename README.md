@@ -41,6 +41,7 @@ Several skills point at `~/.claude/skills/unlazy/scripts/gate-check.mjs` and `~/
 | [`og`](skills/engineering/og/SKILL.md) | Install a dynamic Open Graph / Twitter social card route into a Next.js project. | Original |
 | [`own-goal`](skills/engineering/own-goal/SKILL.md) | Run a goal or a whole PRD to completion: a verifiable completion condition worked in a loop until met, with an accountability record and a /reviewer gate. | Original |
 | [`qa-cases`](skills/engineering/qa-cases/SKILL.md) | Generate a shareable QA test case .md document for the current project. | Original |
+| [`terminal-upgrade`](skills/engineering/terminal-upgrade/SKILL.md) | Turn `pnpm dev` / `npm run dev` / `yarn dev` / `bun dev` in every repo on the machine into Devdeck, a calm live terminal dashboard. | Original |
 | [`unlazy`](skills/engineering/unlazy/SKILL.md) | Anti-laziness execution discipline, required on every task sized L or XL (the /prd-ch scale) and run on request for anything smaller. | Modified from [Leonxlnx/unlazy](https://github.com/Leonxlnx/unlazy) |
 | [`vercel-react-best-practices`](skills/engineering/vercel-react-best-practices/SKILL.md) | React and Next.js performance optimization guidelines from Vercel Engineering. | Modified from [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) |
 

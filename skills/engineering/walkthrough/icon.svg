@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none" stroke="#0f172a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+  <!-- a winding path with three stops, the last one lit -->
+  <path d="M16 80 q18 -4 22 -18 q4 -14 22 -14 q18 0 22 -16 q2 -8 2 -14"/>
+  <circle cx="16" cy="80" r="5"/>
+  <circle cx="49" cy="51" r="5"/>
+  <circle cx="84" cy="18" r="7" fill="#fde047"/>
+</svg>

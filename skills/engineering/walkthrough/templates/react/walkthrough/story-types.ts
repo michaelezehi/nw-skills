@@ -1,0 +1,89 @@
+/**
+ * The walkthrough's data shapes. A story is one role's journey through the
+ * app; a step is one screen in it. Stories never mix roles: a viewer who
+ * picks the coach tour only ever sees coach steps.
+ */
+
+/** One step as the screens read it: copy already filled in for this viewer. */
+export interface WalkthroughStep {
+  id: string;
+  /** 0-based position in its story. */
+  index: number;
+  /** "Your first report is ready". Sentence case, no jargon, no step number. */
+  title: string;
+  /** The screen this step shows. The guide finds the menu item that opens it. */
+  route: string;
+  /**
+   * Director tier only: the persona to show this step as, or null for the
+   * viewer themselves. A plain user walkthrough leaves it null.
+   */
+  viewAs: string | null;
+  /** How long the step holds when Explain is off. */
+  holdMs: number;
+  explain: {
+    /** A slug for `WalkthroughArt`. Unknown slugs fall back to the default picture. */
+    art: string;
+    /** What just happened, in one or two sentences. */
+    what: string;
+    /** Why it matters to this viewer, in one or two sentences. */
+    why: string;
+  };
+  /**
+   * A card the step raises, in place of the email or notification the real
+   * flow would send. Optional; most steps have none.
+   */
+  prompt?: { title: string; body: string; ctaLabel?: string; ctaRoute?: string };
+}
+
+export interface WalkthroughStory {
+  /** One story per role: 'founder', 'coach', 'investor', 'admin'... */
+  key: string;
+  /** "Founder story". Shown as the reader's eyebrow and in the bar. */
+  label: string;
+  steps: WalkthroughStep[];
+}
+
+export type RunStatus = 'idle' | 'playing' | 'paused' | 'done';
+
+/**
+ * Where a story run stands. `index` counts the steps already shown, so the
+ * step on screen is `steps[index - 1]` and step one has not played at 0.
+ */
+export interface RunView {
+  story: string;
+  storyLabel: string;
+  /** Every step's title, in order, for the journey list. */
+  steps: string[];
+  index: number;
+  total: number;
+  status: RunStatus;
+  /** The step on screen, or null before step one. */
+  lastStep: WalkthroughStep | null;
+  /** Director tier: another tab holds the run. Always false for the local driver. */
+  drivenElsewhere: boolean;
+}
+
+/**
+ * Whatever holds the run. The local driver keeps it in the browser; the
+ * director tier keeps it on the server so data writes can be undone.
+ * Every call that moves the run takes the index the caller saw, so a stale
+ * or doubled call changes nothing.
+ */
+export interface WalkthroughDriver {
+  start(): Promise<RunView>;
+  advance(expectedIndex: number, opts: { step: boolean }): Promise<RunView>;
+  back(expectedIndex: number): Promise<RunView>;
+  pause(): Promise<RunView>;
+  restart(): Promise<RunView>;
+}
+
+/** A message that stands in for an email or notification during the story. */
+export interface WalkthroughPrompt {
+  id: string;
+  title: string;
+  body: string;
+  ctaLabel: string | null;
+  ctaRoute: string | null;
+  /** The picture of the step that raised it. */
+  art: string | null;
+}

@@ -29,7 +29,7 @@ Copy any folder under `skills/<category>/` into `~/.claude/skills/`, and any fil
 
 Several skills point at `~/.claude/skills/unlazy/scripts/gate-check.mjs` and `~/.claude/skills/unslop/SKILL.md`. Install unlazy and unslop first if you take only a few.
 
-## Skills (37)
+## Skills (38)
 
 ### Engineering
 
@@ -44,6 +44,7 @@ Several skills point at `~/.claude/skills/unlazy/scripts/gate-check.mjs` and `~/
 | [`terminal-upgrade`](skills/engineering/terminal-upgrade/SKILL.md) | Turn `pnpm dev` / `npm run dev` / `yarn dev` / `bun dev` in every repo on the machine into Devdeck, a calm live terminal dashboard. | Original |
 | [`unlazy`](skills/engineering/unlazy/SKILL.md) | Anti-laziness execution discipline, required on every task sized L or XL (the /prd-ch scale) and run on request for anything smaller. | Modified from [Leonxlnx/unlazy](https://github.com/Leonxlnx/unlazy) |
 | [`vercel-react-best-practices`](skills/engineering/vercel-react-best-practices/SKILL.md) | React and Next.js performance optimization guidelines from Vercel Engineering. | Modified from [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) |
+| [`walkthrough`](skills/engineering/walkthrough/SKILL.md) | Add a guided walkthrough to any web app, one story per user role: a story bar with arrow keys, a journey reader with "show me how to get there", split prompt cards, and an optional demo tier... | Original |
 
 ### Design and frontend
 

@@ -9,7 +9,8 @@
   },
   "scripts": {
     "start": "tsx src/cli.tsx",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "tsx scripts/build.ts"
   },
   "dependencies": {
     "ink": "7.1.1",
@@ -20,6 +21,8 @@
   "devDependencies": {
     "@types/node": "^25",
     "@types/react": "^19.2.0",
-    "typescript": "^5.7.2"
+    "esbuild": "^0.28.2",
+    "string-width": "8.3.0",
+    "typescript": "7.0.2"
   }
 }

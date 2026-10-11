@@ -19,9 +19,9 @@ export interface Usage {
   cpu: number;
 }
 
-/** The sampler's one scan: tree, memory, cpu, age and the full command (last, it holds spaces). */
+/** The hog scan: tree, memory, cpu, age and the full command (last, it holds spaces). */
 export const PS_ARGS = ['-A', '-ww', '-o', 'pid=,ppid=,rss=,%cpu=,etime=,command='];
-/** The tree alone, for the exit handler, which only needs parents. */
+/** The tree alone, enough for the services' memory and cpu and for the exit handler. About half the ps time and an eighth of the bytes. */
 export const PS_TREE_ARGS = ['-A', '-o', 'pid=,ppid=,rss=,%cpu='];
 
 const ETIME = /^(?:(\d+)-)?(?:(\d+):)?(\d+):(\d+)$/;
@@ -337,9 +337,9 @@ export function sameHogs(a: readonly Hog[], b: readonly Hog[]): boolean {
 }
 
 /** One `ps` call, no shell. Resolves to an empty table when ps fails. */
-export function readPs(): Promise<PsRow[]> {
+export function readPs(args: readonly string[] = PS_ARGS): Promise<PsRow[]> {
   return new Promise((resolve) => {
-    execFile('ps', PS_ARGS, { timeout: 5000, maxBuffer: 32 * 1024 * 1024 }, (err, stdout) => {
+    execFile('ps', [...args], { timeout: 5000, maxBuffer: 32 * 1024 * 1024 }, (err, stdout) => {
       resolve(err ? [] : parsePs(stdout));
     });
   });
@@ -480,21 +480,43 @@ export interface Sampler {
   stop(): void;
 }
 
-/** Every `intervalMs`, sample memory and cpu for the pids `roots()` returns, and the hogs from the same scan. */
-export function startSampler(store: DeckStore, roots: () => Record<string, number>, intervalMs = 2000): Sampler {
+/** Every this many ticks the scan carries the command lines and the hogs are picked again: 6 s at the default interval. */
+export const HOG_EVERY = 3;
+
+export interface SamplerOptions {
+  /** Default 2000. */
+  intervalMs?: number;
+  /** Default HOG_EVERY. */
+  hogEvery?: number;
+  /** Test seam: the table for one tick, with the command column or the tree alone. */
+  scan?: (withCommands: boolean) => Promise<PsRow[]>;
+}
+
+/**
+ * Every `intervalMs`, sample memory and cpu for the pids `roots()` returns from the
+ * process tree alone; every `hogEvery` ticks, the first included, read the command lines
+ * too and pick the hogs from them.
+ */
+export function startSampler(store: DeckStore, roots: () => Record<string, number>, options: SamplerOptions = {}): Sampler {
+  const intervalMs = options.intervalMs ?? 2000;
+  const hogEvery = Math.max(1, options.hogEvery ?? HOG_EVERY);
+  const scan = options.scan ?? ((withCommands: boolean) => readPs(withCommands ? PS_ARGS : PS_TREE_ARGS));
   let busy = false;
   let stopped = false;
+  let ticks = 0;
 
   const tick = async (): Promise<void> => {
     if (busy || stopped) return;
     const current = roots();
     if (Object.keys(current).length === 0) return;
     busy = true;
+    const withHogs = ticks % hogEvery === 0;
+    ticks += 1;
     try {
-      const rows = await readPs();
+      const rows = await scan(withHogs);
       if (!stopped && rows.length > 0) {
         const state = store.getState();
-        state.setUsage(sumTrees(rows, current), pickHogs(rows, { root: state.meta.root, roots: current, self: process.pid }));
+        state.setUsage(sumTrees(rows, current), withHogs ? pickHogs(rows, { root: state.meta.root, roots: current, self: process.pid }) : undefined);
       }
     } finally {
       busy = false;

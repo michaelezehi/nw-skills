@@ -62,6 +62,7 @@ step(`build Devdeck in ${next} and install its dependencies (npm, production onl
   rmSync(next, { recursive: true, force: true });
   mkdirSync(next, { recursive: true });
   cpSync(join(template, 'src'), join(next, 'src'), { recursive: true });
+  if (existsSync(join(template, 'scripts'))) cpSync(join(template, 'scripts'), join(next, 'scripts'), { recursive: true });
   for (const f of ['package.json', 'tsconfig.json']) cpSync(join(template, f), join(next, f));
   if (existsSync(join(template, 'package-lock.json'))) cpSync(join(template, 'package-lock.json'), join(next, 'package-lock.json'));
   try {
@@ -77,6 +78,27 @@ step(`build Devdeck in ${next} and install its dependencies (npm, production onl
     process.exit(1);
   }
 });
+// One bundled file plain node runs: the first frame in about 140 ms instead of 350, and no
+// esbuild child process. Optional: when it cannot be built the launcher runs the source with tsx.
+const bundle = join(app, 'dist', 'devdeck.mjs');
+const [nodeMajor, nodeMinor] = process.versions.node.split('.').map(Number);
+// Under the bundle a repo's devdeck.config.ts loads through node's own type stripping (22.18+).
+const bundleNode = nodeMajor > 22 || (nodeMajor === 22 && nodeMinor >= 18);
+let bundled = false;
+if (bundleNode && existsSync(join(next, 'scripts', 'build.ts'))) {
+  step(`bundle Devdeck into ${bundle}`, () => {
+    const dev = JSON.parse(readFileSync(join(next, 'package.json'), 'utf8')).devDependencies ?? {};
+    const tools = ['esbuild', 'string-width'].filter((name) => dev[name]).map((name) => `${name}@${dev[name]}`);
+    try {
+      execFileSync('npm', ['install', '--no-save', '--no-audit', '--no-fund', '--loglevel=error', ...tools], { cwd: next, stdio: 'inherit' });
+      execFileSync(process.execPath, [join(next, 'node_modules', 'tsx', 'dist', 'cli.mjs'), '--tsconfig', join(next, 'tsconfig.json'), join(next, 'scripts', 'build.ts')], { cwd: next, stdio: 'ignore' });
+      bundled = existsSync(join(next, 'dist', 'devdeck.mjs'));
+    } catch {
+      bundled = false;
+    }
+    if (!bundled) console.error('The bundle did not build; devdeck runs the source through tsx instead.');
+  });
+}
 step(`swap it in as ${app}`, () => {
   rmSync(old, { recursive: true, force: true });
   if (existsSync(app)) renameSync(app, old);
@@ -92,10 +114,14 @@ step(`write the devdeck command to ${join(deck, 'bin', 'devdeck')} (runs on ${pr
     '#!/bin/sh',
     '# Devdeck launcher, written by /terminal-upgrade. Exit 78 means "cannot run here".',
     `NODE_BIN='${process.execPath.replace(/'/g, "'\\''")}'`,
+    `BUNDLE=${bundled ? '"$HOME/.devdeck/app/dist/devdeck.mjs"' : "''"}`,
     'if [ ! -x "$NODE_BIN" ]; then',
+    // Another node may be too old for the bundle's type stripping; the tsx path works on 22.
+    '  BUNDLE=',
     '  NODE_BIN=$(command -v node) || { echo "devdeck: node not found" >&2; exit 78; }',
     '  "$NODE_BIN" -e "process.exit(Number(process.versions.node.split(\'.\')[0]) >= 22 ? 0 : 1)" || { echo "devdeck: needs Node 22 or later; run /terminal-upgrade update" >&2; exit 78; }',
     'fi',
+    '[ -n "$BUNDLE" ] && [ -f "$BUNDLE" ] && exec "$NODE_BIN" "$BUNDLE" "$@"',
     // tsx reads the tsconfig of the directory it starts in, so a repo whose tsconfig sets
     // classic JSX would compile Devdeck to React.createElement with no React in scope.
     'exec "$NODE_BIN" "$HOME/.devdeck/app/node_modules/tsx/dist/cli.mjs" --tsconfig "$HOME/.devdeck/app/tsconfig.json" "$HOME/.devdeck/app/src/cli.tsx" "$@"',

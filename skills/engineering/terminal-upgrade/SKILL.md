@@ -23,7 +23,7 @@ Scripts live in `${CLAUDE_SKILL_DIR}/scripts`, and the Devdeck source in `${CLAU
 
 ## How machine-wide works
 
-- **One copy.** It lives in `~/.devdeck/app`, run by `~/.devdeck/bin/devdeck`.
+- **One copy.** It lives in `~/.devdeck/app`, run by `~/.devdeck/bin/devdeck`. The installer bundles it into `dist/devdeck.mjs`, which plain Node runs (Node 22.18 or later); if the bundle cannot be built, the command runs the source through tsx instead.
 - **Shell hook.** `~/.devdeck/shell.sh` is sourced from `~/.zshrc` (and `~/.bashrc` if present). It wraps `pnpm`, `npm`, `yarn` and `bun`, and runs Devdeck in place of the raw output only when all of these are true:
   - The command is exactly `dev` or `run dev`.
   - stdin and stdout are a terminal. CI, pipes and agent shells such as Claude's Bash tool get the normal output.

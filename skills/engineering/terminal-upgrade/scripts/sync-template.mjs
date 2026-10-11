@@ -14,9 +14,11 @@ cpSync(join(source, 'src'), join(template, 'src'), {
   filter: (p) => !/__tests__|__fixtures__/.test(p),
 });
 cpSync(join(source, 'tsconfig.json'), join(template, 'tsconfig.json'));
+// The bundler: the installer builds dist/devdeck.mjs with it, so launches skip tsx.
+for (const f of ['bundle.ts', 'build.ts']) if (existsSync(join(source, 'scripts', f))) cpSync(join(source, 'scripts', f), join(template, 'scripts', f));
 const pkg = JSON.parse(readFileSync(join(source, 'package.json'), 'utf8'));
 pkg.name = 'devdeck';
-pkg.scripts = { start: pkg.scripts.start, typecheck: pkg.scripts.typecheck };
+pkg.scripts = { start: pkg.scripts.start, typecheck: pkg.scripts.typecheck, ...(pkg.scripts.build ? { build: pkg.scripts.build } : {}) };
 delete pkg.devDependencies?.vitest;
 writeFileSync(join(template, 'package.json'), JSON.stringify(pkg, null, 2) + '\n');
 console.log(`Template refreshed from ${source}`);

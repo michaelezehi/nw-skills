@@ -9,8 +9,9 @@ import { Panel, Row, panelInner } from './Panel.tsx';
 import { PillStrip, reloadGlyph, shortLabel } from './ServiceCard.tsx';
 import { hotColor, statusLook } from './sprites.ts';
 import { useTone, type Tone } from './theme.ts';
-import { cellWidth, formatClock, formatMb, formatMs, padStart } from './format.ts';
+import { cellWidth, formatClock, formatMb, formatMs } from './format.ts';
 import type { PlainLayout } from './plainLayout.ts';
+import { portLink } from './links.ts';
 
 export interface PlainStripProps {
   apps: ServiceState[];
@@ -84,7 +85,7 @@ function PlainCard({ service, width: cardWidth, rows, selected, focused, frame, 
     <Panel title={fitLabel(service, cardWidth - 6)} width={cardWidth} rows={rows} focused={focused && selected} titleColor={selected ? tone.accent : tone.text}>
       <Row>
         <Text color={look.color}>{status}</Text>
-        {showPort ? <Text color={tone.muted}>{padStart(port, inner - cellWidth(status))}</Text> : null}
+        {showPort ? <Text color={tone.muted}>{' '.repeat(inner - cellWidth(status) - cellWidth(port))}{portLink(service, port)}</Text> : null}
       </Row>
       <Row>
         <Text color={tone.text}>{mem}</Text>

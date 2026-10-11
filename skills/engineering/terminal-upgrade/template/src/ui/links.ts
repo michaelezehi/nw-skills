@@ -53,6 +53,12 @@ export function linkRefs(text: string, root: string, dir: string | undefined): s
   return text.replace(FILE_REF, (ref) => osc8(fileUrl(resolveRef(ref, root, dir)), ref));
 }
 
+/** `text` (a printed `:3000`) linked to the service's local URL, so Cmd-click opens it in the browser. */
+export function portLink(service: { port?: number; url?: string }, text: string): string {
+  if (!service.port || !text) return text;
+  return osc8(service.url ?? `http://localhost:${service.port}`, text);
+}
+
 /** Forget what was looked up on disk; tests use it. */
 export function resetLinkCache(): void {
   exists.clear();

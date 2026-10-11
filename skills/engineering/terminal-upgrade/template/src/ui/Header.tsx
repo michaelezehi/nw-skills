@@ -10,8 +10,9 @@ import type { DeckMeta, ServiceState } from '../types.ts';
 import { Panel, Row } from './Panel.tsx';
 import { useTone, spaced, type Tone } from './theme.ts';
 import { blockDigits, blockDigitsWidth, ring, CLOCK_ROWS } from './glyphs.ts';
-import { cellWidth, formatCount, formatMb, formatUptime, padEnd, padStart, truncateEnd, truncateStart } from './format.ts';
+import { cellWidth, formatCount, formatMb, formatUptime, padEnd, truncateEnd, truncateStart } from './format.ts';
 import { statusLook } from './sprites.ts';
+import { portLink } from './links.ts';
 import { useSecond } from './useFrame.ts';
 import type { Tier } from './layout.ts';
 
@@ -240,7 +241,7 @@ function ConvexStat(props: { convex?: ServiceState; deployment?: string; frame: 
           <>
             <Text color={look.color}>{look.glyph} </Text>
             <Text color={look.color}>{look.word}</Text>
-            <Text color={tone.muted}>{padStart(port, Math.max(0, inner - 2 - look.word.length))}</Text>
+            <Text color={tone.muted}>{' '.repeat(Math.max(0, inner - 2 - look.word.length - cellWidth(port)))}{convex ? portLink(convex, port) : port}</Text>
           </>
         ) : (
           <Text color={tone.muted}>not running</Text>

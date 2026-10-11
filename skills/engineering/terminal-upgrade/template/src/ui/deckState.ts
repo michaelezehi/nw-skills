@@ -257,6 +257,7 @@ export function actionForKey(input: string, key: { upArrow?: boolean; downArrow?
     case 'p':
       return 'pause';
     case '?':
+    case 'h':
       return 'keys';
     case 'C':
       return 'palette';

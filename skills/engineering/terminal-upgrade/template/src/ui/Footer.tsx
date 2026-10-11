@@ -32,7 +32,7 @@ export function footerHints(mode: Mode, logs: boolean, columns: number, view: Vi
   if (mode === 'verbose' && columns >= 90 && view === 'deck') hints.push({ key: 'c', word: 'calls' }, { key: 't', word: 'timeline' });
   hints.push({ key: 'l', word: 'logs', active: logs }, { key: 'e', word: 'errors' });
   if (view === 'error' || logs) hints.push({ key: 'y', word: 'copy' });
-  hints.push({ key: '?', word: 'keys' });
+  hints.push({ key: 'h', word: 'help' });
   if (columns >= 120) hints.push({ key: 'C', word: 'palette' }, { key: 'b', word: 'back' }, { key: 'esc', word: 'close' });
   hints.push({ key: 'q', word: 'quit' });
   return hints;

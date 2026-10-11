@@ -112,6 +112,7 @@ Do not start `dev` yourself; the user runs it. Report:
 | `C` | colour palette: 7 presets plus per-colour overrides, saved in `~/.config/devdeck/theme.json` |
 | `b`, `esc` or `x` | back one view / close every view |
 | `r`, `o`, `q` | restart a server, open it in the browser, quit and stop everything |
+| `h` or `?` | help: every key, plus what the terminal does (Cmd-click a port opens it in the browser, Cmd-click a path opens the file) |
 
 - A dev server already running on a port will collide. Stop the old one first.
 - Open a new terminal, or `source ~/.zshrc`, before the first try.

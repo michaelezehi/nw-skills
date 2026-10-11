@@ -1,4 +1,4 @@
-/** The `?` sheet. Keys in text, what they do in muted, two columns when there is room. */
+/** The `h` help sheet. Keys in text, what they do in muted, two columns when there is room, then the terminal's own gestures. */
 import { Box, Text } from 'ink';
 import { Panel, Row, panelInner } from './Panel.tsx';
 import { useTone } from './theme.ts';
@@ -24,8 +24,16 @@ export const KEYS: Array<[string, string]> = [
   ['pgup / pgdn', 'scroll the logs or an error'],
   ['esc / x', 'close the view, or hide the logs'],
   ['backspace / b', 'back to the previous view'],
-  ['?', 'this sheet'],
+  ['h or ?', 'this help'],
   ['q / ctrl-c', 'quit and stop every service'],
+];
+
+/** What the Mac terminal itself does over the deck; the deck never captures the mouse. */
+export const TERMINAL_KEYS: Array<[string, string]> = [
+  ['cmd-click :3000', 'open that server in the browser'],
+  ['cmd-click a path', 'open the file in your editor'],
+  ['drag, then cmd-c', 'select and copy any text'],
+  ['cmd-+ / cmd--', 'bigger or smaller text; the deck refits'],
 ];
 
 export function KeySheet({ width, rows }: { width: number; rows: number }) {
@@ -37,7 +45,7 @@ export function KeySheet({ width, rows }: { width: number; rows: number }) {
   const perColumn = twoColumns ? Math.ceil(KEYS.length / 2) : KEYS.length;
   const columns = twoColumns ? [KEYS.slice(0, perColumn), KEYS.slice(perColumn)] : [KEYS];
   return (
-    <Panel title="KEYS" right="esc close" width={width} rows={rows} focused>
+    <Panel title="HELP" right="esc close" width={width} rows={rows} focused>
       <Text> </Text>
       <Box flexDirection="row">
         {columns.map((column, c) => (
@@ -50,6 +58,24 @@ export function KeySheet({ width, rows }: { width: number; rows: number }) {
                 <Text color={tone.muted}>{what}</Text>
               </Row>
             ))}
+          </Box>
+        ))}
+      </Box>
+      <Text> </Text>
+      <Row>
+        <Text color={tone.accent} bold>
+          IN THE TERMINAL
+        </Text>
+      </Row>
+      <Box flexDirection="row" flexWrap="wrap">
+        {TERMINAL_KEYS.map(([key, what]) => (
+          <Box key={key} width={colWidth} overflow="hidden">
+            <Row>
+              <Text color={tone.text} bold>
+                {padEnd(key, keyWidth)}
+              </Text>
+              <Text color={tone.muted}>{what}</Text>
+            </Row>
           </Box>
         ))}
       </Box>

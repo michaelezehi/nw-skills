@@ -12,6 +12,7 @@ import { capsule, capsuleBar, sparkline } from './glyphs.ts';
 import { formatClock, formatMb, formatMbShort, formatMs, padEnd, padStart, truncateEnd, cellWidth } from './format.ts';
 import { glyph, hotColor, isHot, statusLook } from './sprites.ts';
 import { PILL_WIDTH } from './layout.ts';
+import { portLink } from './links.ts';
 
 export interface ServiceCardProps {
   service: ServiceState;
@@ -92,7 +93,7 @@ export const ServiceCard = memo(function ServiceCard({ service, maxMemMb, width,
       <Row>
         <Text color={look.color}>{look.glyph} </Text>
         <Text color={look.color}>{padEnd(look.word, statusWidth)}</Text>
-        <Text color={tone.muted}>{port}</Text>
+        <Text color={tone.muted}>{portLink(service, port)}</Text>
       </Row>
       <Row>
         <Text color={service.status === 'compiling' ? tone.activity : tone.muted}>{padEnd(truncateEnd(runtimeText, runtimeWidth), runtimeWidth)}</Text>
@@ -133,7 +134,8 @@ export function ServicePill({ service, selected, focused, frame, spinning = true
   const cap = selected ? (focused ? tone.accent : tone.text) : tone.line;
   const compact = width < PILL_WIDTH;
   const label = padEnd(shortLabel(service), compact ? 6 : 7);
-  const port = padEnd(service.port ? `:${service.port}` : '', 5);
+  const portText = service.port ? `:${service.port}` : '';
+  const port = portLink(service, portText) + ' '.repeat(Math.max(0, 5 - cellWidth(portText)));
   const mem = padStart(formatMbShort(service.memMb), 5);
   return (
     <Box width={width} height={1} marginRight={1} overflow="hidden">

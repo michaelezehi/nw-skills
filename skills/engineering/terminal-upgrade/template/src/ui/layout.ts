@@ -6,7 +6,7 @@
  */
 import { FULL_COLS, MEDIUM_COLS } from './theme.ts';
 import { CLOCK_ROWS } from './glyphs.ts';
-import { gridPlan, gridRows, MIN_BIG_ROWS, type GridPlan } from './grid.ts';
+import { gridPlan, gridRows, stripColumns, stripWidths, MIN_BIG_ROWS, type GridPlan } from './grid.ts';
 import type { Activity } from './deckState.ts';
 
 export type Tier = 'full' | 'medium' | 'narrow';
@@ -43,6 +43,8 @@ export interface Layout {
   pillWidth: number;
   /** Width of one card in the full tier; 0 when the strip is pills. */
   cardWidth: number;
+  /** Card widths per row when the strip is cards: one row, or balanced rows when one would crowd them. */
+  cardRows?: number[][];
   /** The quiet grid, when the cards have the region. */
   grid?: GridPlan;
   view: View;
@@ -115,13 +117,15 @@ export function computeLayout(input: LayoutInput): Layout {
   let services: number;
   let pillsPerRow = pills.perRow;
   let cardWidth = 0;
+  let perRow = stripColumns(input.services, columns);
   const pillRows = Math.ceil(input.services / pillsPerRow);
+  const cardRowCount = () => Math.ceil(input.services / Math.max(1, perRow));
 
   if (tier === 'full') {
     header = CLOCK_ROWS + 2;
-    cardWidth = Math.floor(columns / Math.max(1, input.services));
+    cardWidth = Math.floor(columns / Math.max(1, perRow));
     if (cardWidth < MIN_CARD_WIDTH) cardWidth = 0;
-    services = cardWidth > 0 ? CARD_INNER_ROWS + 2 : pillRows;
+    services = cardWidth > 0 ? cardRowCount() * (CARD_INNER_ROWS + 2) : pillRows;
     if (cardWidth > 0) pillsPerRow = 1;
   } else {
     header = tier === 'medium' ? 3 : 1;
@@ -134,6 +138,17 @@ export function computeLayout(input: LayoutInput): Layout {
   // so the middle region keeps at least three rows.
   if (middle < 3 && tier === 'full') {
     header = 3;
+    middle = rows - header - services - tray - footer;
+  }
+  // Wrapped cards that crowd out the region go back to one row while they stay readable.
+  if (middle < 3 && tier === 'full' && cardWidth > 0 && cardRowCount() > 1) {
+    perRow = Math.max(1, input.services);
+    cardWidth = Math.floor(columns / perRow);
+    if (cardWidth < MIN_CARD_WIDTH) {
+      cardWidth = 0;
+      pillsPerRow = pills.perRow;
+    }
+    services = cardWidth > 0 ? CARD_INNER_ROWS + 2 : pillRows;
     middle = rows - header - services - tray - footer;
   }
   if (middle < 3 && tier === 'full' && cardWidth > 0) {
@@ -161,7 +176,8 @@ export function computeLayout(input: LayoutInput): Layout {
   }
   if (middle < 0) middle = 0;
 
-  return { tier, columns, rows, header, services, middle, tray, footer, pillsPerRow, pillWidth: pills.width, cardWidth, view };
+  const cardRows = cardWidth > 0 ? stripWidths(input.services, columns, perRow) : undefined;
+  return { tier, columns, rows, header, services, middle, tray, footer, pillsPerRow, pillWidth: pills.width, cardWidth, cardRows, view };
 }
 
 /** Split a middle region of `width` cells into two side-by-side panels with a 1-cell gutter. */

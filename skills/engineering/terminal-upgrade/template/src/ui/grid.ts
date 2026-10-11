@@ -53,3 +53,27 @@ export function gridPlan(count: number, columns: number, height: number): GridPl
   for (let i = 0; i < count; i += perRow) widths.push(share(columns, Math.min(perRow, count - i)));
   return { widths, heights: share(height, rows) };
 }
+
+/** A compact card narrower than this crowds its runtime, cpu and memory; the strip wraps instead. */
+export const COMFY_CARD = 28;
+
+/**
+ * Cards per row for the compact strip under the feed or the logs: every card on one row
+ * while each keeps COMFY_CARD cells, else the fewest balanced rows that give them that.
+ * Six across 128 columns is 3 + 3, five across 120 is 3 + 2.
+ */
+export function stripColumns(count: number, columns: number): number {
+  if (count <= 1) return Math.max(0, count);
+  for (let rows = 1; rows <= count; rows++) {
+    const perRow = Math.ceil(count / rows);
+    if (Math.floor(columns / perRow) >= COMFY_CARD) return perRow;
+  }
+  return 1;
+}
+
+/** Card widths per row for `count` cards, `perRow` to a row; each row ends at the edge. */
+export function stripWidths(count: number, columns: number, perRow: number): number[][] {
+  const rows: number[][] = [];
+  for (let i = 0; i < count; i += perRow) rows.push(share(columns, Math.min(perRow, count - i)));
+  return rows;
+}

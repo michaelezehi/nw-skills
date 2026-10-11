@@ -2,17 +2,17 @@
  * The quiet state's service cards: with no feed and no logs under them, each card has
  * the room to explain itself, label then value, memory with a bar and a plain gloss,
  * cpu, uptime, reloads and restarts. The grid from grid.ts decides the rows; the last
- * row's cards stretch to the full width. Content starts at the top of the card, with a gap
- * after the status group and, when every fact can have one, a row of air between facts.
+ * row's cards stretch to the full width. A row is as tall as its fullest card, not the
+ * screen, and a thin rule sits before each fact so the card reads as a list.
  */
 import { Box, Text } from 'ink';
 import type { DevError, ServiceState } from '../types.ts';
 import { Panel, Row, Blank, panelInner } from './Panel.tsx';
-import { useTone } from './theme.ts';
-import { statusLook } from './sprites.ts';
+import { useTone, type Tone } from './theme.ts';
+import { statusLook, type StatusLook } from './sprites.ts';
 import { osc8 } from './links.ts';
 import { fitLabel } from './PlainCards.tsx';
-import type { GridPlan } from './grid.ts';
+import { MIN_BIG_ROWS, type GridPlan } from './grid.ts';
 import { fitLines, quietLines, width, type CardLine, type Segment } from './quietLines.ts';
 
 export interface QuietGridProps {
@@ -67,34 +67,48 @@ interface BigCardProps {
   spinning: boolean;
   now: number;
   detail: boolean;
+  /** The tallest head in this card's row. */
+  headRows: number;
 }
 
-function BigCard({ service, maxMemMb, error, width: cardWidth, rows, selected, focused, frame, spinning, now, detail }: BigCardProps) {
+/** Rows a card's lines take, rules included: the head (padded to `headRows`), then each fact group behind a separator. */
+export function naturalRows(lines: readonly CardLine[], headRows: number): number {
+  const body = lines.filter((l) => !l.head);
+  return 2 + headRows + body.length + body.filter(opensGroup).length;
+}
+
+/** A fact with its own label starts a group; a gloss under it does not. */
+function opensGroup(line: CardLine): boolean {
+  return (line.left[0]?.text.trim() ?? '') !== '';
+}
+
+function cardLines(service: ServiceState, inner: number, maxMemMb: number, error: DevError | undefined, now: number, detail: boolean, look: StatusLook, tone: Tone): CardLine[] {
+  return quietLines({ service, look, maxMemMb, error, now, width: inner, detail, tone });
+}
+
+function BigCard({ service, maxMemMb, error, width: cardWidth, rows, headRows, selected, focused, frame, spinning, now, detail }: BigCardProps) {
   const tone = useTone();
   const inner = panelInner(cardWidth);
   const look = statusLook(service.status, frame, spinning, tone);
   const content = Math.max(0, rows - 2);
-  const lines = fitLines(quietLines({ service, look, maxMemMb, error, now, width: inner, detail, tone }), content);
+  const lines = fitLines(cardLines(service, inner, maxMemMb, error, now, detail, look, tone), content);
   const head = lines.filter((l) => l.head);
   const body = lines.filter((l) => !l.head);
   const spare = content - lines.length;
-  // A card with only its status line keeps the second head row blank, so the facts start
-  // on the same row as a neighbour that is compiling or erroring; then one row of air.
-  const reserve = spare >= 2 && head.length === 1 ? 1 : 0;
-  const gap = body.length > 0 && head.length > 0 && spare - reserve > 0 ? 1 : 0;
-  // A row of air before each fact (a gloss stays with its fact) when the card has room for
-  // all of them, so a tall card reads evenly instead of leaving its bottom half empty.
-  const opens = body.map((line, i) => i > 0 && (line.left[0]?.text.trim() ?? '') !== '');
-  const airy = opens.filter(Boolean).length <= spare - reserve - gap;
+  // Pad the head to the row's tallest, so neighbours' facts start on the same row.
+  const reserve = Math.min(Math.max(0, headRows - head.length), spare);
+  // A thin rule before each fact group when every group can have one.
+  const ruled = body.filter(opensGroup).length <= spare - reserve;
+  const rule = '┈'.repeat(inner);
   return (
     <Panel title={fitLabel(service, cardWidth - 6)} width={cardWidth} rows={rows} focused={focused && selected} titleColor={selected ? tone.accent : tone.text}>
       {head.map((line, i) => (
         <LineRow key={`h${i}`} line={line} inner={inner} />
       ))}
-      <Blank count={reserve + gap} />
+      <Blank count={reserve} />
       {body.map((line, i) => (
         <Box key={`b${i}`} flexDirection="column">
-          {airy && opens[i] ? <Blank count={1} /> : null}
+          {ruled && opensGroup(line) ? <Row color={tone.line}>{rule}</Row> : null}
           <LineRow line={line} inner={inner} />
         </Box>
       ))}
@@ -103,9 +117,25 @@ function BigCard({ service, maxMemMb, error, width: cardWidth, rows, selected, f
 }
 
 export function QuietGrid({ apps, grid, errors, columns, selectedIndex, focused, frame, spinning, now, detail }: QuietGridProps) {
+  const tone = useTone();
   const maxMemMb = apps.reduce((max, s) => Math.max(max, s.memMb), 0);
   const height = grid.heights.reduce((sum, h) => sum + h, 0);
   const newest = [...errors].reverse();
+  const errorOf = (id: string) => newest.find((e) => e.service === id);
+  // Each card row is as tall as its fullest card, never more than its share of the screen.
+  let start = 0;
+  const fit = grid.widths.map((row, r) => {
+    const sets = row.map((cardWidth, c) => {
+      const service = apps[start + c];
+      if (!service) return [];
+      const look = statusLook(service.status, frame, spinning.has(service.id), tone);
+      return cardLines(service, panelInner(cardWidth), maxMemMb, errorOf(service.id), now, detail, look, tone);
+    });
+    start += row.length;
+    const headRows = Math.max(1, ...sets.map((lines) => lines.filter((l) => l.head).length));
+    const natural = Math.max(MIN_BIG_ROWS, ...sets.map((lines) => naturalRows(lines, headRows)));
+    return { headRows, rows: Math.min(grid.heights[r]!, natural) };
+  });
   let offset = 0;
   return (
     <Box flexDirection="column" width={columns} height={height} overflow="hidden">
@@ -113,7 +143,7 @@ export function QuietGrid({ apps, grid, errors, columns, selectedIndex, focused,
         const start = offset;
         offset += row.length;
         return (
-          <Box key={r} flexDirection="row" width={columns} height={grid.heights[r]} overflow="hidden">
+          <Box key={r} flexDirection="row" width={columns} height={fit[r]!.rows} overflow="hidden">
             {row.map((cardWidth, c) => {
               const service = apps[start + c];
               if (!service) return <Box key={c} width={cardWidth} />;
@@ -122,9 +152,10 @@ export function QuietGrid({ apps, grid, errors, columns, selectedIndex, focused,
                   key={service.id}
                   service={service}
                   maxMemMb={maxMemMb}
-                  error={newest.find((e) => e.service === service.id)}
+                  error={errorOf(service.id)}
                   width={cardWidth}
-                  rows={grid.heights[r]!}
+                  rows={fit[r]!.rows}
+                  headRows={fit[r]!.headRows}
                   selected={start + c === selectedIndex}
                   focused={focused}
                   frame={spinning.has(service.id) ? frame : 0}

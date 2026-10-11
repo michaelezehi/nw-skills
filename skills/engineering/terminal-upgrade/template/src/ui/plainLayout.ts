@@ -8,7 +8,7 @@
  */
 import { CLOCK_ROWS } from './glyphs.ts';
 import { pillPlan, wantsQuiet, MAX_TRAY_LINES, MIN_CARD_WIDTH, type View } from './layout.ts';
-import { gridPlan, gridRows, MIN_BIG_ROWS, type GridPlan } from './grid.ts';
+import { gridPlan, gridRows, stripColumns, stripWidths, MIN_BIG_ROWS, type GridPlan } from './grid.ts';
 import type { Activity } from './deckState.ts';
 
 export interface PlainLayoutInput {
@@ -30,6 +30,8 @@ export interface PlainLayout {
   services: number;
   /** Width of one card; 0 when the strip is pills or the quiet grid. */
   cardWidth: number;
+  /** Card widths per row when the strip is cards: one row, or balanced rows when one would crowd them. */
+  cardRows?: number[][];
   pillsPerRow: number;
   pillWidth: number;
   /** Rows of the region under the cards: LATEST, the log pane, or an open view. 0 in the quiet state. */
@@ -70,14 +72,23 @@ export function computePlainLayout(input: PlainLayoutInput): PlainLayout {
   }
   const avail = rows - footer;
   const pillRows = Math.ceil(input.services / pills.perRow);
-  let cardWidth = input.services > 0 ? Math.floor(columns / input.services) : 0;
+  let perRow = stripColumns(input.services, columns);
+  const cardRowCount = () => Math.ceil(input.services / Math.max(1, perRow));
+  let cardWidth = input.services > 0 ? Math.floor(columns / Math.max(1, perRow)) : 0;
   if (cardWidth < MIN_CARD_WIDTH) cardWidth = 0;
 
   let header = BOXED_HEADER_ROWS;
-  let services = cardWidth > 0 ? PLAIN_CARD_ROWS : pillRows;
+  let services = cardWidth > 0 ? cardRowCount() * PLAIN_CARD_ROWS : pillRows;
   let tray = Math.min(input.errors, MAX_TRAY_LINES);
   const latestOf = () => avail - header - services - tray;
 
+  // Wrapped cards that crowd out LATEST go back to one row while they stay readable.
+  if (latestOf() < MIN_LATEST && cardWidth > 0 && cardRowCount() > 1) {
+    perRow = Math.max(1, input.services);
+    cardWidth = Math.floor(columns / perRow);
+    if (cardWidth < MIN_CARD_WIDTH) cardWidth = 0;
+    services = cardWidth > 0 ? PLAIN_CARD_ROWS : pillRows;
+  }
   if (latestOf() < MIN_LATEST) header = 1;
   if (latestOf() < MIN_LATEST && cardWidth > 0) {
     cardWidth = 0;
@@ -90,5 +101,6 @@ export function computePlainLayout(input: PlainLayoutInput): PlainLayout {
   if (latestOf() < 0) header = 0;
   const latest = Math.max(0, latestOf());
 
-  return { columns, rows, header, services, cardWidth, pillsPerRow: pills.perRow, pillWidth: pills.width, latest, tray, footer };
+  const cardRows = cardWidth > 0 ? stripWidths(input.services, columns, perRow) : undefined;
+  return { columns, rows, header, services, cardWidth, cardRows, pillsPerRow: pills.perRow, pillWidth: pills.width, latest, tray, footer };
 }

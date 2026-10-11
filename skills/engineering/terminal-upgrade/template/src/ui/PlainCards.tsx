@@ -3,7 +3,7 @@
  * port, then memory and the last thing that happened. A field that cannot fit in full
  * is left out rather than cut. Below card width the strip is the shared pill row.
  */
-import { Box, Text } from 'ink';
+import { Text } from 'ink';
 import type { ServiceState } from '../types.ts';
 import { Panel, Row, panelInner } from './Panel.tsx';
 import { PillStrip, reloadGlyph, shortLabel } from './ServiceCard.tsx';
@@ -11,6 +11,7 @@ import { hotColor, statusLook } from './sprites.ts';
 import { useTone, type Tone } from './theme.ts';
 import { cellWidth, formatClock, formatMb, formatMs } from './format.ts';
 import type { PlainLayout } from './plainLayout.ts';
+import { CardRows } from './CardRows.tsx';
 import { portLink } from './links.ts';
 
 export interface PlainStripProps {
@@ -102,23 +103,27 @@ function PlainCard({ service, width: cardWidth, rows, selected, focused, frame, 
 
 export function PlainStrip({ apps, layout, selectedIndex, focused, frame, spinning, now }: PlainStripProps) {
   if (layout.services < 1 || apps.length === 0) return null;
-  if (layout.cardWidth > 0) {
+  if (layout.cardWidth > 0 && layout.cardRows) {
     return (
-      <Box flexDirection="row" width={layout.columns} height={layout.services} overflow="hidden">
-        {apps.map((service, i) => (
+      <CardRows
+        items={apps}
+        widths={layout.cardRows}
+        columns={layout.columns}
+        height={layout.services}
+        card={(service, i, width, rows) => (
           <PlainCard
             key={service.id}
             service={service}
-            width={i === apps.length - 1 ? layout.columns - layout.cardWidth * (apps.length - 1) : layout.cardWidth}
-            rows={layout.services}
+            width={width}
+            rows={rows}
             selected={i === selectedIndex}
             focused={focused}
             frame={spinning.has(service.id) ? frame : 0}
             spinning={spinning.has(service.id)}
             now={now}
           />
-        ))}
-      </Box>
+        )}
+      />
     );
   }
   return (

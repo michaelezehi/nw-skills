@@ -11,6 +11,7 @@ import type { ConvexCall, DeckMeta, DevError, DevEvent, ServiceState } from '../
 import { splitColumns, splitRows, type Layout } from './layout.ts';
 import { Header } from './Header.tsx';
 import { ServiceCard, PillStrip } from './ServiceCard.tsx';
+import { CardRows } from './CardRows.tsx';
 import { QuietGrid } from './QuietCards.tsx';
 import { ConvexCalls, filterCalls, type CallFilter } from './ConvexCalls.tsx';
 import { Timeline } from './Timeline.tsx';
@@ -170,24 +171,28 @@ interface StripProps {
 
 function ServiceStrip({ apps, layout, maxMemMb, selectedIndex, focused, frame, spinning, now }: StripProps) {
   if (layout.services < 1) return null;
-  if (layout.cardWidth > 0) {
+  if (layout.cardWidth > 0 && layout.cardRows) {
     return (
-      <Box flexDirection="row" width={layout.columns} height={layout.services} overflow="hidden">
-        {apps.map((service, i) => (
+      <CardRows
+        items={apps}
+        widths={layout.cardRows}
+        columns={layout.columns}
+        height={layout.services}
+        card={(service, i, width, rows) => (
           <ServiceCard
             key={service.id}
             service={service}
             maxMemMb={maxMemMb}
-            width={i === apps.length - 1 ? layout.columns - layout.cardWidth * (apps.length - 1) : layout.cardWidth}
-            rows={layout.services}
+            width={width}
+            rows={rows}
             selected={i === selectedIndex}
             focused={focused}
             frame={spinning.has(service.id) ? frame : 0}
             spinning={spinning.has(service.id)}
             now={now}
           />
-        ))}
-      </Box>
+        )}
+      />
     );
   }
   return (

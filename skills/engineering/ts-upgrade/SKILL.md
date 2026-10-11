@@ -141,7 +141,10 @@ TS 7 stops with a config error on these. Fix them so the old compiler still acce
 
 TS 7 defaults: `strict` true, `module` esnext, `types` `[]`, `rootDir` `./`,
 `noUncheckedSideEffectImports` true (CSS side-effect imports then report TS2882: add a
-`declare module '*.css';` or set the option to false explicitly). A config with no
+`declare module '*.css';` or set the option to false explicitly). **Set it before you push
+for any app that imports CSS for side effects (Expo with NativeWind, Next, Vite)**: generated,
+gitignored types (`expo-env.d.ts`, `.expo/types`, `.next/types`) can declare `*.css` on your
+machine and be absent on a fresh CI checkout, so the local check passes and CI fails. A config with no
 `types` loses ambient globals: a Convex project went from 0 errors to 36 (`process`,
 `crypto`). Add `"types": ["node"]` (plus test globals where used) when TS 7 reports them.
 

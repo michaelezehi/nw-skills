@@ -2,7 +2,7 @@
 import { memo } from 'react';
 import { Text } from 'ink';
 import type { DevEvent, DevEventKind } from '../types.ts';
-import { Panel, Row, EmptyRow, Blank, panelInner } from './Panel.tsx';
+import { Panel, Row, panelInner } from './Panel.tsx';
 import { useTone, SLOW_CALL_MS, type Tone } from './theme.ts';
 import { formatClockSeconds, formatMs, padEnd, padStart, truncateEnd } from './format.ts';
 import { glyph, hotColor } from './sprites.ts';
@@ -64,12 +64,7 @@ export const Timeline = memo(function Timeline({ events, paused, width, rows, fo
 
   return (
     <Panel title="TIMELINE" right={paused ? 'paused' : undefined} rightColor={tone.activity} width={width} rows={rows} focused={focused}>
-      {shown.length === 0 ? (
-        <>
-          <Blank count={Math.floor((visible - 1) / 2)} />
-          <EmptyRow width={inner} glyph="○" glyphColor={tone.accent} text="quiet so far" />
-        </>
-      ) : (
+      {shown.length === 0 ? null : (
         shown.map((event, i) => {
           const index = start + i;
           const selected = focused && index === selectedIndex;

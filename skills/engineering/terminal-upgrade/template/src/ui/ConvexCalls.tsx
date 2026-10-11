@@ -94,10 +94,10 @@ export const ConvexCalls = memo(function ConvexCalls({ calls, filter, paused, wi
 
   return (
     <Panel title="CONVEX CALLS" right={right || undefined} rightColor={paused ? tone.activity : tone.muted} width={width} rows={rows} focused={focused}>
-      {shown.length === 0 ? (
+      {shown.length === 0 && filter !== 'all' ? (
         <>
           <Blank count={Math.floor((visible - 1) / 2)} />
-          <EmptyRow width={inner} glyph="◌" glyphColor={tone.accent} text={filter === 'all' ? 'waiting for first call' : 'nothing matches this filter'} />
+          <EmptyRow width={inner} glyph="◌" glyphColor={tone.accent} text="nothing matches this filter" />
         </>
       ) : (
         shown.map((call, i) => {

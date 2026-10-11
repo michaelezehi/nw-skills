@@ -95,7 +95,7 @@ function Feeds(props: VerboseViewProps) {
     <Timeline events={events} paused={paused} focused={focus === 'timeline'} selectedIndex={props.eventIndex} width={w} rows={rows} now={now} />
   );
   const callsRule = (
-    <Rule title={`CONVEX CALLS · ${formatCount(props.callCount)} calls · ${props.callErrorCount > 0 ? `${formatCount(props.callErrorCount)} failed` : 'none failed'}`} right="c to open" width={width} focused={focus === 'calls'} />
+    <Rule title={`CONVEX CALLS · ${formatCount(props.callCount)} calls${props.callErrorCount > 0 ? ` · ${formatCount(props.callErrorCount)} failed` : ''}`} right="c to open" width={width} focused={focus === 'calls'} />
   );
   const last = events[events.length - 1];
   const timelineRule = (

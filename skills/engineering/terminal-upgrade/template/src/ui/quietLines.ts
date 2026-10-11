@@ -75,7 +75,6 @@ export function reloadLabel(service: ServiceState): string {
 
 function reloadOptions(service: ServiceState): string[] {
   const n = service.reloads;
-  if (n === 0) return ['none yet', 'none'];
   const last = service.lastReload;
   if (!last) return [String(n)];
   const at = formatClock(last.at);
@@ -139,15 +138,16 @@ export function quietLines(input: QuietLineInput): CardLine[] {
   }
 
   const cpu = service.cpu > 0 ? `${Math.round(service.cpu)}%` : '';
-  push(1, 'cpu', cpu ? fit([`${cpu} of one core right now`, `${cpu} of one core`, cpu], room, tone.text) : fit(['idle'], room, tone.muted));
+  // A row with nothing to report is left out: no `idle`, `none yet` or `none`.
+  if (cpu) push(1, 'cpu', fit([`${cpu} of one core right now`, `${cpu} of one core`, cpu], room, tone.text));
 
   if (service.startedAt) {
     const span = formatSpan(now - service.startedAt);
     const at = formatClock(service.startedAt);
     push(2, 'up', fit([`${span} · since ${at}`, `since ${at}`, span], room, tone.text));
   }
-  push(1, reloadLabel(service), fit(reloadOptions(service), room, tone.text));
-  push(3, 'restarts', fit([service.restarts === 0 ? 'none' : `${service.restarts} · ${glyph.restart} by hand or after a crash`, String(service.restarts)], room, service.restarts > 0 ? tone.activity : tone.muted));
+  if (service.reloads > 0) push(1, reloadLabel(service), fit(reloadOptions(service), room, tone.text));
+  if (service.restarts > 0) push(3, 'restarts', fit([`${service.restarts} · ${glyph.restart} by hand or after a crash`, String(service.restarts)], room, tone.activity));
 
   return lines;
 }

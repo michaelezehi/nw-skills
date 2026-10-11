@@ -6,7 +6,7 @@
 import { memo } from 'react';
 import { Text } from 'ink';
 import type { ConvexCall, DevEvent } from '../types.ts';
-import { Panel, Row, EmptyRow, Blank, panelInner } from './Panel.tsx';
+import { Panel, Row, panelInner } from './Panel.tsx';
 import { useTone, SLOW_CALL_MS, type Tone } from './theme.ts';
 import { cellWidth, formatClockSeconds, formatMs, padEnd, padStart } from './format.ts';
 import { badgeFor } from './ConvexCalls.tsx';
@@ -89,12 +89,7 @@ export const Latest = memo(function Latest({ events, calls, width: panelWidth, r
 
   return (
     <Panel title="LATEST" width={panelWidth} rows={rows}>
-      {lines.length === 0 ? (
-        <>
-          <Blank count={Math.floor((visible - 1) / 2)} />
-          <EmptyRow width={inner} glyph="○" glyphColor={tone.accent} text="quiet so far" />
-        </>
-      ) : (
+      {lines.length === 0 ? null : (
         lines.map(({ key, at, line, withTime }) => {
           const used = (withTime ? TIME_W + 2 : 0) + 1 + 2 + width(line.body);
           return (

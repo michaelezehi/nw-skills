@@ -114,7 +114,7 @@ export function Header(props: HeaderProps) {
           <Text color={tone.text}>{formatMb(props.totalMemMb)}</Text>
           <Text color={tone.muted}>  cpu </Text>
           <Text color={tone.text}>{Math.round(cpuPercent)}%</Text>
-          <Text color={watch.color}>  {watch.glyph} {watch.text}</Text>
+          {props.watchers.length > 0 ? <Text color={watch.color}>  {watch.glyph} {watch.text}</Text> : null}
         </Text>
       </Box>
     );
@@ -138,11 +138,15 @@ export function Header(props: HeaderProps) {
           <Text color={tone.muted}>CALLS </Text>
           <Text color={tone.text}>{formatCount(props.callCount)}</Text>
           {props.callErrorCount > 0 ? <Text color={tone.error}> {props.callErrorCount} failed</Text> : null}
-          <Text color={tone.line}>  ·  </Text>
-          <Text color={tone.muted}>WATCHERS </Text>
-          <Text color={watch.color}>
-            {watch.glyph} {watch.text}
-          </Text>
+          {props.watchers.length > 0 ? (
+            <>
+              <Text color={tone.line}>  ·  </Text>
+              <Text color={tone.muted}>WATCHERS </Text>
+              <Text color={watch.color}>
+                {watch.glyph} {watch.text}
+              </Text>
+            </>
+          ) : null}
         </Row>
       </Panel>
     );
@@ -181,14 +185,18 @@ export function Header(props: HeaderProps) {
     {
       label: 'CALLS',
       left: [{ text: formatCount(props.callCount), color: tone.text }],
-      right: props.callErrorCount > 0 ? { text: `${formatCount(props.callErrorCount)} failed`, color: tone.error } : { text: 'none failed', color: tone.muted },
-    },
-    {
-      label: 'WATCHERS',
-      left: [{ text: `${watch.glyph} ${watch.text}`, color: watch.color }],
-      right: watch.names ? { text: watch.names, color: tone.error } : { text: `${props.watchers.length} packages`, color: tone.muted },
+      right: props.callErrorCount > 0 ? { text: `${formatCount(props.callErrorCount)} failed`, color: tone.error } : undefined,
     },
   ];
+  if (props.watchers.length > 0) {
+    tiles.push(
+      {
+        label: 'WATCHERS',
+        left: [{ text: `${watch.glyph} ${watch.text}`, color: watch.color }],
+        right: watch.names ? { text: watch.names, color: tone.error } : { text: `${props.watchers.length} packages`, color: tone.muted },
+      },
+    );
+  }
   const room = columns - 4 - blockDigitsWidth(uptime) - CLOCK_GAP;
 
   return (

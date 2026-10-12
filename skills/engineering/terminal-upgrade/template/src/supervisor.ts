@@ -5,7 +5,7 @@ import type { IPty } from 'node-pty';
 import { devCommand } from './config.ts';
 import { createLineSplitter, truncate, type LineSplitter } from './lines.ts';
 import { createParser, stripAnsi } from './parsers/index.ts';
-import { parseProgress, progressMoved } from './progress.ts';
+import { createProgressTracker, progressMoved, type ProgressTracker } from './progress.ts';
 import { detectPrompt, samePrompt } from './prompt.ts';
 import { loadPty } from './pty.ts';
 import { removePids, writePids } from './pidfile.ts';
@@ -55,6 +55,8 @@ interface Proc {
   pgid?: number;
   startedAt: number;
   parser: LineParser;
+  /** Reads progress across the whole output of the latest spawn. */
+  progress: ProgressTracker;
   splitters: LineSplitter[];
   /** Up to RAW_LINES + RAW_SLACK lines; readers see the newest RAW_LINES. */
   raw: string[];
@@ -120,7 +122,7 @@ export function createSupervisor(store: DeckStore, configs: ServiceConfig[], roo
   const procs = new Map<string, Proc>();
   let shutdown: Promise<void> | undefined;
 
-  const makeProc = (config: ServiceConfig): Proc => ({ config, secrets: new Set(), startedAt: 0, parser: parserFor(config.kind), splitters: [], raw: [], listeners: new Set(), lastRaw: 0, stopping: false, restarting: false });
+  const makeProc = (config: ServiceConfig): Proc => ({ config, secrets: new Set(), startedAt: 0, parser: parserFor(config.kind), progress: createProgressTracker(), splitters: [], raw: [], listeners: new Set(), lastRaw: 0, stopping: false, restarting: false });
   for (const config of configs) procs.set(config.id, makeProc(config));
 
   /** A parser bug costs one line of parsing, never the whole dev stack. */
@@ -164,7 +166,7 @@ export function createSupervisor(store: DeckStore, configs: ServiceConfig[], roo
     let line = stripAnsi(rawLine);
     for (const secret of p.secrets) line = line.split(secret).join(SECRET_MASK);
     if (p.term) {
-      const progress = parseProgress(line);
+      const progress = p.progress.feed(line);
       if (progress && progressMoved(store.getState().services[p.config.id]?.progress, progress)) store.getState().setProcess(p.config.id, { progress });
     }
     p.raw.push(truncate(line, RAW_LINE_MAX));
@@ -200,6 +202,7 @@ export function createSupervisor(store: DeckStore, configs: ServiceConfig[], roo
     const id = p.config.id;
     const [cmd, ...args] = devCommand(p.config, pm);
     p.parser = parserFor(p.config.kind);
+    p.progress = createProgressTracker();
     p.stopping = false;
     p.child = undefined;
     let term: IPty;
@@ -269,6 +272,7 @@ export function createSupervisor(store: DeckStore, configs: ServiceConfig[], roo
     p.pgid = child.pid;
     p.startedAt = Date.now();
     p.parser = parserFor(p.config.kind);
+    p.progress = createProgressTracker();
     p.splitters = [];
     p.stopping = false;
     record();

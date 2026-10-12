@@ -40,6 +40,8 @@ export interface ScriptEntry {
 export interface Progress {
   fraction?: number;
   label: string;
+  /** Steps not yet done, when the output counts them (a Docker build's stages). */
+  left?: number;
 }
 
 /** `auto` clears before any service starts, `ask` only reports it, `off` leaves it alone. */

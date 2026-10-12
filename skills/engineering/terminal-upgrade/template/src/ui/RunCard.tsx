@@ -94,6 +94,7 @@ export function RunCard({ service, width, rows, frame, spinning }: RunCardProps)
   const percent = progress?.fraction !== undefined ? Math.round(progress.fraction * 100) : finished && service.exitCode === 0 ? 100 : undefined;
   const step = progress?.label ?? (finished ? '' : 'waiting for a step count in the output');
   const roomy = rows - 2 >= 4;
+  const left = !finished && progress?.left !== undefined ? `  ${progress.left === 0 ? 'last step' : `${progress.left} ${progress.left === 1 ? 'step' : 'steps'} left`}` : '';
 
   const barInner = Math.max(6, Math.min(40, Math.floor((inner - LABEL) / 3)));
   const bar = capsuleBar(percent ?? 0, barInner);
@@ -117,9 +118,10 @@ export function RunCard({ service, width, rows, frame, spinning }: RunCardProps)
       <Text color={tone.line}>{bar.empty}</Text>
       <Text color={tone.line}>{capsule.right}</Text>
       <Text color={tone.text} bold>{percent !== undefined ? ` ${String(percent).padStart(3)}%` : '    –'}</Text>
+      {left ? <Text color={tone.muted}>{left}</Text> : null}
     </>
   );
-  const barWidth = barInner + 2 + 5;
+  const barWidth = barInner + 2 + 5 + cellWidth(left);
   const stepRoom = roomy ? inner - LABEL : inner - LABEL - barWidth - 3;
   const stepText = step && stepRoom > 3 ? truncateEnd(step, stepRoom) : '';
   const factsRow = (

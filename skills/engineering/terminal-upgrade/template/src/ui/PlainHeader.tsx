@@ -77,6 +77,8 @@ function tileSpecs(props: PlainHeaderProps, tone: Tone): TileSpec[] {
       ],
     },
   ];
+  // A run deck has no Convex feed to count.
+  if (props.meta.mode !== undefined) specs.pop();
   const watch = watcherSummary(props.watchers, tone);
   if (watch.names) specs.push({ label: 'WATCHERS', left: [{ text: watch.text, color: tone.error }], right: { text: watch.names, color: tone.error } });
   return specs;
@@ -116,7 +118,8 @@ function PlainHeaderLine(props: PlainHeaderProps) {
     { rank: 5, segments: [{ text: 'cpu ', color: tone.muted }, { text: `${Math.round(cpuPercentOf(props.totalCpu))}%`, color: tone.text }] },
     { rank: 4, segments: [{ text: formatCount(props.callCount), color: tone.text }, { text: ' calls', color: tone.muted }] },
   ];
-  if (props.callErrorCount > 0) groups[3]!.segments.push({ text: ' · ', color: tone.muted }, { text: `${formatCount(props.callErrorCount)} failed`, color: tone.error });
+  if (meta.mode !== undefined) groups.pop();
+  else if (props.callErrorCount > 0) groups[3]!.segments.push({ text: ' · ', color: tone.muted }, { text: `${formatCount(props.callErrorCount)} failed`, color: tone.error });
   if (watch.names) {
     const failing = watch.text.startsWith('1 ') ? 'watcher failed' : 'watchers failed';
     groups.push({ rank: 1, segments: [{ text: `${watch.glyph} ${watch.text.replace('failed', failing)}`, color: tone.error }] });

@@ -12,6 +12,7 @@ import { ErrorTray } from './ErrorTray.tsx';
 import { PlainHeader } from './PlainHeader.tsx';
 import { PlainStrip } from './PlainCards.tsx';
 import { QuietGrid } from './QuietCards.tsx';
+import { RunCard } from './RunCard.tsx';
 import { Latest } from './Latest.tsx';
 import type { PlainLayout } from './plainLayout.ts';
 
@@ -41,6 +42,8 @@ export interface PlainViewProps {
   spanNow: number;
   /** The memory hogs panel or strip, drawn above the error tray. */
   hogBlock?: ReactNode;
+  /** A run deck draws its one command as a RunCard instead of the strip. */
+  runCard?: boolean;
   /** The log pane or an open view (error card, palette) drawn in place of LATEST. */
   view: ReactNode | null;
 }
@@ -65,6 +68,8 @@ export function PlainView(props: PlainViewProps) {
       ) : null}
       {layout.grid ? (
         <QuietGrid apps={apps} grid={layout.grid} errors={props.errors} columns={layout.columns} selectedIndex={props.selectedIndex} focused={props.focused} frame={props.frame} spinning={props.spinning} now={props.spanNow} detail={false} />
+      ) : props.runCard && apps[0] ? (
+        <RunCard service={apps[0]} width={layout.columns} rows={layout.services} frame={props.spinning.has(apps[0].id) ? props.frame : 0} spinning={props.spinning.has(apps[0].id)} />
       ) : (
         <PlainStrip apps={apps} layout={layout} selectedIndex={props.selectedIndex} focused={props.focused} frame={props.frame} spinning={props.spinning} now={hotNow} />
       )}

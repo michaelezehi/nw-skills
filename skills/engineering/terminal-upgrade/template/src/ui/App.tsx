@@ -45,6 +45,7 @@ import { usePrompt } from './usePrompt.ts';
 import { planPrompt, promptRegions } from './promptCard.ts';
 import { PromptCard } from './PromptCard.tsx';
 import { ProgressLine } from './ProgressLine.tsx';
+import { showsRunCard } from './RunCard.tsx';
 import { ScriptList } from './ScriptList.tsx';
 import { useScripts } from './useScripts.ts';
 
@@ -309,7 +310,9 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
   logScrollMax.current = 0;
   // A command's progress takes one row over the region, and a waiting prompt its bottom.
   const progressOf = apps.find((s) => s.progress && s.pid !== undefined);
-  const progressRows = progressOf && viewRows >= 4 ? 1 : 0;
+  // A run deck's card shows the progress itself.
+  const runCard = showsRunCard(state.meta, apps, plain ? plainLayout : layout);
+  const progressRows = progressOf && viewRows >= 4 && !runCard ? 1 : 0;
   const promptPlan = prompter.prompt ? planPrompt(prompter.prompt, prompter.input, columns, viewRows - progressRows) : undefined;
   const innerRows = viewRows - progressRows - (promptPlan?.rows ?? 0);
   const inner = (() => {
@@ -362,7 +365,7 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
     regions.current = [...promptRegions(promptPlan, regionTop + viewRows - promptPlan.rows, columns), ...regions.current];
   }
 
-  const shared = { meta: state.meta, hogBlock, apps, watchers, events, calls, errors, callCount: state.callCount, callErrorCount: state.callErrorCount, totalMemMb, totalCpu, errorIndex, frame, spinning, now, hotNow, spanNow, view };
+  const shared = { meta: state.meta, hogBlock, apps, watchers, events, calls, errors, callCount: state.callCount, callErrorCount: state.callErrorCount, totalMemMb, totalCpu, errorIndex, frame, spinning, now, hotNow, spanNow, view, runCard };
 
   return (
     <ThemeProvider value={tone}>

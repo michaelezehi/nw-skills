@@ -139,10 +139,14 @@ export function Header(props: HeaderProps) {
           <Text color={tone.muted}>CPU </Text>
           <Text color={cpuPercent > 75 ? tone.activity : tone.accent}>{ring(cpuPercent)} </Text>
           <Text color={tone.text}>{Math.round(cpuPercent)}%</Text>
-          <Text color={tone.line}>  ·  </Text>
-          <Text color={tone.muted}>CALLS </Text>
-          <Text color={tone.text}>{formatCount(props.callCount)}</Text>
-          {props.callErrorCount > 0 ? <Text color={tone.error}> {props.callErrorCount} failed</Text> : null}
+          {meta.mode === undefined ? (
+            <>
+              <Text color={tone.line}>  ·  </Text>
+              <Text color={tone.muted}>CALLS </Text>
+              <Text color={tone.text}>{formatCount(props.callCount)}</Text>
+              {props.callErrorCount > 0 ? <Text color={tone.error}> {props.callErrorCount} failed</Text> : null}
+            </>
+          ) : null}
           {props.watchers.length > 0 ? (
             <>
               <Text color={tone.line}>  ·  </Text>
@@ -199,6 +203,9 @@ export function Header(props: HeaderProps) {
       right: props.callErrorCount > 0 ? { text: `${formatCount(props.callErrorCount)} failed`, color: tone.error } : undefined,
     },
   ];
+  // A run deck has no Convex feed, so its tiles would only ever say "not running" and 0.
+  const run = meta.mode !== undefined;
+  if (run) tiles.splice(2, 2);
   if (props.watchers.length > 0) {
     tiles.push(
       {
@@ -216,7 +223,7 @@ export function Header(props: HeaderProps) {
       <Box flexDirection="row" height={CLOCK_ROWS} overflow="hidden">
         <UptimeClock startedAt={meta.startedAt} />
         <Box width={CLOCK_GAP} />
-        <TileRow specs={tiles} room={room} grow="CONVEX" />
+        <TileRow specs={tiles} room={room} grow={run ? undefined : 'CONVEX'} />
       </Box>
     </Panel>
   );

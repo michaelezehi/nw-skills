@@ -87,11 +87,13 @@ export function LogPane({ services, selectedIndex, controls, columns, rows, scro
 
 const linked = (text: string, id: string, link?: (serviceId: string, line: string) => string): string => (link ? link(id, text) : text);
 
-/** `── web   admin   docs   api ───────── 312 lines · live ──` across the full width. */
+const OUTPUT = 'OUTPUT';
+
+/** `── OUTPUT   web   admin   docs   api ───────── 312 lines · live ──` across the full width. */
 function LogRule({ services, selectedIndex, columns, right, rightColor }: { services: ServiceState[]; selectedIndex: number; columns: number; right: string; rightColor: string }) {
   const tone = useTone();
   const names = services.map((s) => s.label.toLowerCase());
-  const namesWidth = names.reduce((sum, n) => sum + cellWidth(n), 0) + 3 * Math.max(0, names.length - 1);
+  const namesWidth = cellWidth(OUTPUT) + names.reduce((sum, n) => sum + cellWidth(n), 0) + 3 * names.length;
   // "── " + names + " " + fill + (" " + right + " ──" | "──")
   let rightLabel = right;
   let fill = columns - 3 - namesWidth - 1 - (rightLabel ? cellWidth(rightLabel) + 4 : 2);
@@ -102,9 +104,12 @@ function LogRule({ services, selectedIndex, columns, right, rightColor }: { serv
   return (
     <Text wrap="truncate">
       <Text color={tone.line}>{box.h}{box.h} </Text>
+      <Text color={tone.text} bold>
+        {OUTPUT}
+      </Text>
       {names.map((name, i) => (
         <Text key={name} color={i === selectedIndex ? tone.accent : tone.muted} bold={i === selectedIndex}>
-          {i > 0 ? '   ' : ''}
+          {'   '}
           {name}
         </Text>
       ))}

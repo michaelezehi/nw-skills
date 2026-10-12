@@ -13,6 +13,7 @@ import { Header } from './Header.tsx';
 import { ServiceCard, PillStrip } from './ServiceCard.tsx';
 import { CardRows } from './CardRows.tsx';
 import { QuietGrid } from './QuietCards.tsx';
+import { RunCard } from './RunCard.tsx';
 import { ConvexCalls, filterCalls, type CallFilter } from './ConvexCalls.tsx';
 import { Timeline } from './Timeline.tsx';
 import { ErrorTray } from './ErrorTray.tsx';
@@ -49,6 +50,8 @@ export interface VerboseViewProps {
   spanNow: number;
   /** The memory hogs panel or strip, drawn above the error tray. */
   hogBlock?: ReactNode;
+  /** A run deck draws its one command as a RunCard instead of the strip. */
+  runCard?: boolean;
   /** The log pane or an open view (error card, palette) drawn in place of the feeds. */
   view: ReactNode | null;
 }
@@ -79,6 +82,8 @@ export function VerboseView(props: VerboseViewProps) {
       />
       {layout.grid ? (
         <QuietGrid apps={apps} grid={layout.grid} errors={errors} columns={layout.columns} selectedIndex={props.serviceIndex} focused={focus === 'services'} frame={frame} spinning={spinning} now={props.spanNow} detail />
+      ) : props.runCard && apps[0] ? (
+        <RunCard service={apps[0]} width={layout.columns} rows={layout.services} frame={props.spinning.has(apps[0].id) ? props.frame : 0} spinning={props.spinning.has(apps[0].id)} />
       ) : (
         <ServiceStrip apps={apps} layout={layout} maxMemMb={maxMemMb} selectedIndex={props.serviceIndex} focused={focus === 'services'} frame={frame} spinning={spinning} now={props.hotNow} />
       )}

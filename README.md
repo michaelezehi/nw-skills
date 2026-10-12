@@ -40,6 +40,7 @@ Several skills point at `~/.claude/skills/unlazy/scripts/gate-check.mjs` and `~/
 | [`convex-backup-cron`](skills/engineering/convex-backup-cron/SKILL.md) | Install a 4x-daily production backup cron for Convex + DigitalOcean Spaces projects. | Original |
 | [`og`](skills/engineering/og/SKILL.md) | Install a dynamic Open Graph / Twitter social card route into a Next.js project. | Original |
 | [`own-goal`](skills/engineering/own-goal/SKILL.md) | Run a goal or a whole PRD to completion: a verifiable completion condition worked in a loop until met, with an accountability record and a /reviewer gate. | Original |
+| [`project-optimisation`](skills/engineering/project-optimisation/SKILL.md) | Find and fix why a JS/TS monorepo is slow, from dev server memory to first-load JS per route: measure, fan out by cause, fix in parallel, re-measure, ship through staging. | Original |
 | [`qa-cases`](skills/engineering/qa-cases/SKILL.md) | Generate a shareable QA test case .md document for the current project. | Original |
 | [`terminal-upgrade`](skills/engineering/terminal-upgrade/SKILL.md) | Turn `pnpm dev` / `npm run dev` / `yarn dev` / `bun dev` in every repo on the machine into Devdeck, a calm live terminal dashboard. | Original |
 | [`ts-upgrade`](skills/engineering/ts-upgrade/SKILL.md) | Move a repo's type checking to TypeScript 7, the native compiler, without breaking ESLint, tsup, Next, Expo, Remotion, Convex, CI or Docker builds, and measure before and after. | Original |

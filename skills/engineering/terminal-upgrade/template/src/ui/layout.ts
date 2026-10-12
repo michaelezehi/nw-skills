@@ -12,7 +12,7 @@ import { growFromGrid, hogBlock, panelGrowth, HOG_MIN_REGION } from './hogLayout
 
 export type Tier = 'full' | 'medium' | 'narrow';
 
-export type View = 'deck' | 'error' | 'keys' | 'palette' | 'hogs';
+export type View = 'deck' | 'error' | 'keys' | 'palette' | 'hogs' | 'scripts';
 
 export interface LayoutInput {
   columns: number;

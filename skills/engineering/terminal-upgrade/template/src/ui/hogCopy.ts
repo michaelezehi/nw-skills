@@ -11,17 +11,28 @@ const TEST_RUNNERS = new Set(['vitest', 'jest', 'playwright']);
 export function hogHints(hog: Hog): string[] {
   if (hog.self) return ['devdeck itself'];
   if (hog.orphan) {
-    return TEST_RUNNERS.has(hog.name) ? ['orphan from an old test run, safe to stop', 'old test run, safe to stop', 'safe to stop'] : ['orphan from an old session, safe to stop', 'old session, safe to stop', 'safe to stop'];
+    return [`left behind by an earlier ${TEST_RUNNERS.has(hog.name) ? 'test run' : 'run'}, stop it`, 'left behind, stop it', 'stop it'];
   }
   if (hog.scope === 'run') {
     if (!hog.serviceId) return ['part of this run'];
-    return COMPILERS.has(hog.name) ? ['restart frees the compiler cache', 'restart frees its cache', 'restart it'] : ['restart frees its memory', 'restart it'];
+    // A restart gives the memory back; only clearing touches the cache on disk.
+    if (clearable(hog)) return [`restart frees memory, clearing frees the ${formatMb(hog.cacheMb!)} cache`, `clearing frees ${formatMb(hog.cacheMb!)}`, 'restart it'];
+    return ['restart frees its memory', 'restart it'];
   }
   if (hog.scope === 'platform') return ['started outside devdeck, stop it if unused', 'stop it if unused'];
   if (BROWSERS.test(hog.name)) return [`browser tabs, close some in ${hog.name.replace(/ Browser$/, '')}`, 'close some tabs', 'close tabs'];
   if (EDITORS.test(hog.name)) return ['editor windows, close some', 'close some windows', 'close windows'];
   if (hog.name === 'claude') return ['a Claude Code session, end it if idle', 'end it if idle'];
   return [`quit ${hog.name} if you are not using it`, 'quit it if unused'];
+}
+
+/** A compiler in a service whose Next dev cache is over the ceiling: its row offers Clear cache. */
+export const clearable = (hog: Hog): boolean => hog.cacheMb !== undefined && hog.serviceId !== undefined && !hog.self && COMPILERS.has(hog.name);
+
+/** The notice after Clear cache: the MB it freed, or why nothing was freed. */
+export function clearNotice(hog: Hog, mb: number | undefined): { ok: boolean; text: string } {
+  const id = hog.serviceId ?? hog.name;
+  return mb === undefined ? { ok: false, text: `${id} had no Next cache to clear, restarted it` } : { ok: true, text: `Cleared the ${id} Next cache, ${formatMb(mb)} freed` };
 }
 
 /** The full hint. */
@@ -37,11 +48,12 @@ export function confirmLines(hog: Hog): string[] {
   return [`press s or click Stop again to stop ${hog.name} (pid ${hog.pid})`, `press s again to stop ${hog.name} (pid ${hog.pid})`, 'press s again to stop'];
 }
 
-/** The notice after one stop. */
+/** The notice after one stop. An orphan tree counts the processes that went with its root: `vitest ×12`. */
 export function killNotice(hog: Hog, result: KillResult): { ok: boolean; text: string } {
+  const tree = hog.pids && hog.pids.length > 1 ? ` ×${hog.pids.length}` : '';
   switch (result) {
     case 'stopped':
-      return { ok: true, text: `Stopped ${hog.name} (pid ${hog.pid}), ${formatMb(hog.memMb)} back` };
+      return { ok: true, text: `Stopped ${hog.name}${tree} (pid ${hog.pid}), ${formatMb(hog.memMb)} back` };
     case 'gone':
       return { ok: true, text: `${hog.name} (pid ${hog.pid}) had already exited` };
     case 'denied':

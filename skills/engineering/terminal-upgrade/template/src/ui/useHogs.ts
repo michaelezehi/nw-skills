@@ -52,7 +52,7 @@ export function useHogs(hogs: readonly Hog[], controls: DeckControls, showNotice
     }
     if (armedNow()?.target === hog.pid) {
       setPending(undefined);
-      void controls.killPid(hog.pid).then((result) => report(killNotice(hog, result)));
+      void controls.killPid(hog.pid, hog.pids).then((result) => report(killNotice(hog, result)));
       return;
     }
     setPending({ armed: { target: hog.pid }, at: Date.now() });
@@ -63,7 +63,7 @@ export function useHogs(hogs: readonly Hog[], controls: DeckControls, showNotice
     if (orphans.length === 0) return;
     if (armedNow()?.target === 'orphans') {
       setPending(undefined);
-      void Promise.all(orphans.map((h) => controls.killPid(h.pid).catch((): KillResult => 'denied'))).then((results) => report(orphansNotice(orphans, results)));
+      void Promise.all(orphans.map((h) => controls.killPid(h.pid, h.pids).catch((): KillResult => 'denied'))).then((results) => report(orphansNotice(orphans, results)));
       return;
     }
     setPending({ armed: { target: 'orphans' }, at: Date.now() });

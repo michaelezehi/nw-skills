@@ -101,20 +101,25 @@ const run = (cmd: string, args: string[]): Promise<string> =>
     execFile(cmd, args, { timeout: 5000, maxBuffer: 8 * 1024 * 1024 }, (_err, stdout) => resolve(String(stdout ?? '')));
   });
 
-/** Working directory of each pid: /proc on Linux, lsof elsewhere. Unknown pids are left out. */
-async function cwds(pids: number[]): Promise<string[]> {
-  const out: string[] = [];
+/** Working directory of each pid: /proc on Linux, one lsof call for the rest. Unknown pids are left out. */
+export async function cwdsByPid(pids: readonly number[]): Promise<Map<number, string>> {
+  const out = new Map<number, string>();
   const rest: number[] = [];
   for (const pid of pids) {
     try {
-      out.push(readlinkSync(`/proc/${pid}/cwd`));
+      out.set(pid, readlinkSync(`/proc/${pid}/cwd`));
     } catch {
       rest.push(pid);
     }
   }
   if (rest.length > 0) {
+    // `p<pid>` opens each process's lines and `n<path>` is its cwd.
     const text = await run('lsof', ['-a', '-d', 'cwd', '-Fn', '-p', rest.join(',')]);
-    for (const line of text.split('\n')) if (line.startsWith('n')) out.push(line.slice(1));
+    let pid = 0;
+    for (const line of text.split('\n')) {
+      if (line.startsWith('p')) pid = Number(line.slice(1));
+      else if (line.startsWith('n') && pid > 0) out.set(pid, line.slice(1));
+    }
   }
   return out;
 }
@@ -129,6 +134,22 @@ const rootsOf = (root: string): string[] => {
   return [...roots];
 };
 
+export interface RepoMatch {
+  /** The path is the repo root or inside it. */
+  holds(path: string): boolean;
+  /** The command line names a path inside the repo. */
+  named(command: string): boolean;
+}
+
+/** Tests against the repo root as given and as its real path, so a symlinked checkout still matches. */
+export function repoMatch(root: string): RepoMatch {
+  const prefixes = rootsOf(root);
+  return {
+    holds: (path) => prefixes.some((p) => path === p || path.startsWith(p + sep)),
+    named: (command) => prefixes.some((p) => command.includes(p + sep)),
+  };
+}
+
 /**
  * True only when the group proves it is a server this repo spawned: its leader (if alive)
  * started when the record says, it does not hold this process, and one of its processes
@@ -142,10 +163,9 @@ export async function belongsToRepo(root: string, record: GroupRecord, rows: Gro
   const leader = members.find((r) => r.pid === record.pgid);
   if (leader && Math.abs(now - leader.age * 1000 - record.startedAt) > LEADER_SLACK_MS) return false;
 
-  const prefixes = rootsOf(root);
-  const inRepo = (path: string): boolean => prefixes.some((p) => path === p || path.startsWith(p + sep));
-  if (members.some((r) => prefixes.some((p) => r.command.includes(p + sep)))) return true;
-  return (await cwds(members.map((r) => r.pid))).some(inRepo);
+  const repo = repoMatch(root);
+  if (members.some((r) => repo.named(r.command))) return true;
+  return [...(await cwdsByPid(members.map((r) => r.pid))).values()].some(repo.holds);
 }
 
 /**

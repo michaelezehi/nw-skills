@@ -2,7 +2,7 @@
  * The memory hogs at the bottom of the deck. With rows to spare it is a card like the
  * service cards: the title and total set into the top rule, one row per hog with its
  * scope colour, an orphan badge, a memory bar scaled to the largest hog, a hint for
- * what to do, and Stop and Restart buttons. Without the rows it is one strip line.
+ * what to do, and Stop, Restart and Clear cache buttons. Without the rows it is one strip line.
  * Geometry comes from hogPlan.ts, which the mouse hit test reads too.
  */
 import { memo } from 'react';
@@ -13,6 +13,7 @@ import { labelOn, useTone, type Tone } from './theme.ts';
 import { cellWidth, formatMb, padEnd, padStart } from './format.ts';
 import {
   BAR_W,
+  CLEAR_LABEL,
   ORPHAN_BADGE,
   RESTART_LABEL,
   STRIP_KEY,
@@ -134,6 +135,12 @@ function HogLine({ row, plan, maxMemMb, selected }: { row: HogRowPlan; plan: Hog
       <Text>{'  '}</Text>
       <Text color={row.confirming ? tone.error : tone.muted}>{padEnd(row.hint, cols.hintW)}</Text>
       <Text> </Text>
+      {cols.clear ? (
+        <>
+          {row.clearX !== undefined ? <Text color={tone.accent}>{CLEAR_LABEL}</Text> : <Text>{' '.repeat(cellWidth(CLEAR_LABEL))}</Text>}
+          <Text> </Text>
+        </>
+      ) : null}
       {cols.restart ? (
         <>
           {row.restartX !== undefined ? <Text color={tone.accent}>{RESTART_LABEL}</Text> : <Text>{' '.repeat(cellWidth(RESTART_LABEL))}</Text>}

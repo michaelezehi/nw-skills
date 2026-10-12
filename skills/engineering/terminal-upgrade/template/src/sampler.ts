@@ -1,6 +1,9 @@
 import { execFile, execFileSync } from 'node:child_process';
+import { classify } from './classify.ts';
 import type { DeckStore } from './store.ts';
 import type { Hog, HogScope, KillResult } from './types.ts';
+
+export { appName, classifiedCount, hogName } from './classify.ts';
 
 export interface PsRow {
   pid: number;
@@ -125,6 +128,8 @@ export interface HogContext {
   minCpu?: number;
   /** Default 8. */
   max?: number;
+  /** Service id to its Next dev cache in MB, for each cache over the ceiling. */
+  caches?: Record<string, number>;
 }
 
 export const HOG_MIN_MEM_MB = 500;
@@ -133,120 +138,35 @@ export const HOG_MAX = 8;
 /** A reparented dev process older than this is an orphan. */
 export const ORPHAN_AGE_SEC = 3600;
 
-/** Tools that run by name, from a node script path or as their own binary. */
-const KNOWN_TOOLS = new Set([
-  'tsc', 'tsgo', 'vitest', 'tsup', 'esbuild', 'convex', 'convex-local-backend', 'turbo', 'next', 'next-server',
-  'tsx', 'vite', 'eslint', 'prettier', 'jest', 'webpack', 'remotion', 'chrome-headless-shell', 'storybook', 'playwright',
-]);
-/** Runtimes and tools whose processes count as platform when outside the run. */
-const DEV_TOOLS = new Set([...KNOWN_TOOLS, 'node']);
-/** Node flags that take the next argument as their value. */
-const NODE_VALUE_FLAGS = new Set(['-r', '--require', '--import', '--loader', '--experimental-loader', '-C', '--conditions', '-e', '--eval', '-p', '--print']);
-
-const basename = (path: string): string => path.slice(path.lastIndexOf('/') + 1);
-const stripExt = (file: string): string => file.replace(/\.(?:[cm]?js|[cm]?ts|tsx|jsx)$/, '');
-
-/** The outermost macOS app bundle the executable sits in: `Brave Browser` for its helpers too. */
-export function appName(command: string): string | undefined {
-  const at = command.indexOf('.app/');
-  if (at < 0 || !command.startsWith('/')) return undefined;
-  const prefix = command.slice(0, at);
-  // A second path or a flag before `.app/` means the bundle is an argument, not the executable.
-  if (prefix.includes(' -') || prefix.includes(' /')) return undefined;
-  return prefix.slice(prefix.lastIndexOf('/') + 1) || undefined;
+export interface OrphanTree {
+  /** The reparented dev tool at the top. */
+  root: PsRow;
+  /** Every pid in the tree, the root first. */
+  pids: number[];
 }
-
-/** The tool a node script path belongs to: `tsc` for typescript/lib/tsc.js, `tsup` for tsup/dist/cli. */
-function toolFromScript(script: string): string {
-  const path = script.replace(/^file:\/\//, '');
-  const base = stripExt(basename(path));
-  if (KNOWN_TOOLS.has(base)) return base;
-  const bin = /\/node_modules\/\.bin\/([^/]+)$/.exec(path);
-  if (bin) return bin[1]!;
-  const at = path.lastIndexOf('/node_modules/');
-  if (at >= 0) {
-    const parts = path.slice(at + '/node_modules/'.length).split('/');
-    const pkg = parts[0]!.startsWith('@') && parts[1] ? `${parts[0]}/${parts[1]}` : parts[0]!;
-    if (pkg && pkg !== '.pnpm') return pkg;
-  }
-  return base || 'node';
-}
-
-/** A readable name for a command line: the process title, the node script's tool, the app, the binary. */
-export function hogName(command: string): string {
-  const titled = /^(\S+) \(([^)]*)\)\s*$/.exec(command);
-  if (titled) {
-    const exe = basename(titled[1]!);
-    return exe === 'node' ? (titled[2]!.trim().split(/\s+/)[0] || exe) : exe;
-  }
-  const app = appName(command);
-  if (app) return app;
-  const args = command.trim().split(/\s+/);
-  const exe = basename(args[0] ?? '');
-  if (exe === 'node' || /^node\d+$/.test(exe)) {
-    for (let i = 1; i < args.length; i++) {
-      const arg = args[i]!;
-      if (arg.startsWith('-')) {
-        if (NODE_VALUE_FLAGS.has(arg)) i += 1;
-        continue;
-      }
-      return toolFromScript(arg);
-    }
-    return 'node';
-  }
-  return exe || command;
-}
-
-function isDevTool(command: string, name: string): boolean {
-  const exe = basename(command.trim().split(/\s+/)[0] ?? '');
-  return DEV_TOOLS.has(exe) || DEV_TOOLS.has(name) || /chrome-headless-shell|remotion/.test(command);
-}
-
-function mentionsRoot(command: string, root: string): boolean {
-  return root.length > 1 && command.includes(root);
-}
-
-interface Classified {
-  name: string;
-  /** A dev tool or a command naming the repo root. */
-  platform: boolean;
-  app: string | undefined;
-}
-
-/** Past this many distinct command lines the cache starts over, so it cannot grow without end. */
-const CLASSIFY_CACHE_MAX = 4096;
-let classifyRoot = '';
-const classifyCache = new Map<string, Classified>();
 
 /**
- * Name, platform test and app bundle for a command line. Each is pure in the command and
- * the root, and a process keeps its command line, so a scan two seconds later reads them
- * from the cache instead of running the regexes and splits again.
+ * Trees an earlier run left behind. Each root is a platform dev tool reparented to launchd
+ * (ppid 1) and alive for over ORPHAN_AGE_SEC; everything under it, workers included, is
+ * part of its tree. A tree holding any pid in `keep` (devdeck, a service) is never one. Pure.
  */
-function classify(command: string, root: string): Classified {
-  if (root !== classifyRoot || classifyCache.size >= CLASSIFY_CACHE_MAX) {
-    classifyCache.clear();
-    classifyRoot = root;
+export function orphanTrees(rows: PsRow[], root: string, keep: ReadonlySet<number> = new Set(), children = childrenMap(rows)): OrphanTree[] {
+  const trees: OrphanTree[] = [];
+  for (const row of rows) {
+    if (row.ppid !== 1 || row.pid <= 1 || (row.ageSec ?? 0) <= ORPHAN_AGE_SEC || keep.has(row.pid)) continue;
+    if (!classify(row.command ?? '', root).platform) continue;
+    const pids = walk(row.pid, children);
+    if (!pids.some((pid) => keep.has(pid))) trees.push({ root: row, pids });
   }
-  let hit = classifyCache.get(command);
-  if (!hit) {
-    const name = hogName(command);
-    hit = { name, platform: mentionsRoot(command, root) || isDevTool(command, name), app: appName(command) };
-    classifyCache.set(command, hit);
-  }
-  return hit;
-}
-
-/** Test seam: how many command lines the classification cache holds. */
-export function classifiedCount(): number {
-  return classifyCache.size;
+  return trees;
 }
 
 /**
  * The processes worth knowing about, largest memory first. Scope: inside a service tree
  * or devdeck itself is `run`; a dev tool or a command naming the repo root is
  * `platform`; anything else is `system`, where one app's helpers sum into one row under
- * the app's main process. A row counts at `minMemMb` memory or `minCpu` cpu. The list
+ * the app's main process. An orphan tree sums into one platform row under its root that
+ * carries every pid in it. A row counts at `minMemMb` memory or `minCpu` cpu. The list
  * stops at `max`, but keeps the largest of every scope that has one. Pure.
  */
 export function pickHogs(rows: PsRow[], ctx: HogContext): Hog[] {
@@ -262,11 +182,14 @@ export function pickHogs(rows: PsRow[], ctx: HogContext): Hog[] {
     for (const pid of walk(root, children)) if (!service.has(pid)) service.set(pid, id);
   }
   const run = new Set<number>(walk(ctx.self, children));
+  const trees = orphanTrees(rows, ctx.root, new Set([...service.keys(), ...run]), children);
+  const orphaned = new Set<number>();
+  for (const tree of trees) for (const pid of tree.pids) orphaned.add(pid);
 
   const singles: Hog[] = [];
   const apps = new Map<string, PsRow[]>();
   for (const row of rows) {
-    if (row.pid <= 1) continue;
+    if (row.pid <= 1 || orphaned.has(row.pid)) continue;
     const command = row.command ?? '';
     const memMb = Math.round(row.rss / 1024);
     const cpu = Math.round(row.cpu * 10) / 10;
@@ -274,13 +197,13 @@ export function pickHogs(rows: PsRow[], ctx: HogContext): Hog[] {
     const serviceId = service.get(row.pid);
     if (serviceId !== undefined || run.has(row.pid)) {
       const self = row.pid === ctx.self;
-      singles.push({ ...base, name: self ? 'devdeck' : classify(command, ctx.root).name, scope: 'run', ...(serviceId !== undefined ? { serviceId } : {}), ...(self ? { self: true } : {}) });
+      const cacheMb = serviceId !== undefined ? ctx.caches?.[serviceId] : undefined;
+      singles.push({ ...base, name: self ? 'devdeck' : classify(command, ctx.root).name, scope: 'run', ...(serviceId !== undefined ? { serviceId } : {}), ...(cacheMb !== undefined ? { cacheMb } : {}), ...(self ? { self: true } : {}) });
       continue;
     }
     const { name, platform, app } = classify(command, ctx.root);
     if (platform) {
-      const orphan = row.ppid === 1 && base.ageSec > ORPHAN_AGE_SEC;
-      singles.push({ ...base, name, scope: 'platform', orphan });
+      singles.push({ ...base, name, scope: 'platform' });
       continue;
     }
     if (app) {
@@ -313,6 +236,29 @@ export function pickHogs(rows: PsRow[], ctx: HogContext): Hog[] {
     });
   }
 
+  const byPid = new Map(rows.map((r) => [r.pid, r]));
+  for (const { root, pids } of trees) {
+    let rss = 0;
+    let cpu = 0;
+    for (const pid of pids) {
+      rss += byPid.get(pid)?.rss ?? 0;
+      cpu += byPid.get(pid)?.cpu ?? 0;
+    }
+    singles.push({
+      pid: root.pid,
+      ppid: root.ppid,
+      name: classify(root.command ?? '', ctx.root).name,
+      command: root.command ?? '',
+      memMb: Math.round(rss / 1024),
+      cpu: Math.round(cpu * 10) / 10,
+      ageSec: root.ageSec ?? 0,
+      scope: 'platform',
+      orphan: true,
+      pids,
+      ...(pids.length > 1 ? { count: pids.length } : {}),
+    });
+  }
+
   const heavy = singles.filter((h) => h.memMb >= minMem || h.cpu >= minCpu).sort((a, b) => b.memMb - a.memMb || b.cpu - a.cpu || a.pid - b.pid);
   if (heavy.length <= max) return heavy;
   const keep = new Set<Hog>();
@@ -327,14 +273,16 @@ export function pickHogs(rows: PsRow[], ctx: HogContext): Hog[] {
   return heavy.filter((h) => keep.has(h));
 }
 
-/** Same list for the screen: pid, scope, orphan and memory to the nearest 100 MB. */
+/** Same list for the screen: pid, scope, orphan, process count, and memory and cache size to the nearest 100 MB. */
 export function sameHogs(a: readonly Hog[], b: readonly Hog[]): boolean {
   if (a.length !== b.length) return false;
   return a.every((h, i) => {
     const o = b[i]!;
-    return h.pid === o.pid && h.scope === o.scope && h.orphan === o.orphan && h.name === o.name && Math.round(h.memMb / 100) === Math.round(o.memMb / 100);
+    return h.pid === o.pid && h.scope === o.scope && h.orphan === o.orphan && h.count === o.count && h.name === o.name && Math.round(h.memMb / 100) === Math.round(o.memMb / 100) && sameCache(h.cacheMb, o.cacheMb);
   });
 }
+
+const sameCache = (a: number | undefined, b: number | undefined): boolean => (a === undefined ? b === undefined : b !== undefined && Math.round(a / 100) === Math.round(b / 100));
 
 /** One `ps` call, no shell. Resolves to an empty table when ps fails. */
 export function readPs(args: readonly string[] = PS_ARGS): Promise<PsRow[]> {
@@ -451,12 +399,13 @@ export interface KillGuard {
 }
 
 /**
- * SIGTERM one pid, wait up to `graceMs` for it to go, then SIGKILL and wait up to 2 s more.
- * Refuses pid 1 and below, devdeck itself and a service root, and reports EPERM, as 'denied'.
+ * SIGTERM every pid, wait up to `graceMs` for them to go, then SIGKILL the rest and wait up
+ * to 2 s more. Refuses the lot when any is pid 1 or below, devdeck itself or a service root,
+ * and reports EPERM, as 'denied'; 'gone' when none was running.
  */
-export async function killPid(pid: number, guard: KillGuard, graceMs = 3000): Promise<KillResult> {
-  if (!Number.isInteger(pid) || pid <= 1 || pid === guard.self || guard.roots.includes(pid)) return 'denied';
-  const send = (sig: NodeJS.Signals | 0): 'ok' | 'gone' | 'denied' => {
+export async function killPids(pids: readonly number[], guard: KillGuard, graceMs = 3000): Promise<KillResult> {
+  if (pids.length === 0 || pids.some((pid) => !Number.isInteger(pid) || pid <= 1 || pid === guard.self || guard.roots.includes(pid))) return 'denied';
+  const send = (pid: number, sig: NodeJS.Signals | 0): 'ok' | 'gone' | 'denied' => {
     try {
       process.kill(pid, sig);
       return 'ok';
@@ -464,16 +413,35 @@ export async function killPid(pid: number, guard: KillGuard, graceMs = 3000): Pr
       return (err as NodeJS.ErrnoException).code === 'EPERM' ? 'denied' : 'gone';
     }
   };
-  const first = send('SIGTERM');
-  if (first !== 'ok') return first;
-  const alive = (): boolean => send(0) === 'ok';
+  const first = pids.map((pid) => send(pid, 'SIGTERM'));
+  const denied = first.includes('denied');
+  let live = pids.filter((_, i) => first[i] === 'ok');
+  if (live.length === 0) return denied ? 'denied' : 'gone';
+  const prune = (): boolean => (live = live.filter((pid) => send(pid, 0) === 'ok')).length > 0;
   const soft = Date.now() + graceMs;
-  while (alive() && Date.now() < soft) await sleep(50);
-  if (!alive()) return 'stopped';
-  if (send('SIGKILL') === 'denied') return 'denied';
+  while (prune() && Date.now() < soft) await sleep(50);
+  if (!prune()) return denied ? 'denied' : 'stopped';
+  if (live.map((pid) => send(pid, 'SIGKILL')).includes('denied')) return 'denied';
   const hard = Date.now() + 2000;
-  while (alive() && Date.now() < hard) await sleep(50);
-  return alive() ? 'survived' : 'stopped';
+  while (prune() && Date.now() < hard) await sleep(50);
+  return prune() ? 'survived' : denied ? 'denied' : 'stopped';
+}
+
+/** killPids for one pid. */
+export const killPid = (pid: number, guard: KillGuard, graceMs = 3000): Promise<KillResult> => killPids([pid], guard, graceMs);
+
+/**
+ * An orphan tree as it stands now, for its Stop: the root and everything under it while
+ * the root lives, which takes in workers started since the scan; else the listed pids
+ * still running.
+ */
+export async function currentTree(root: number, listed: readonly number[]): Promise<number[]> {
+  const rows = await readPs(PS_TREE_ARGS);
+  if (rows.length === 0) return [...listed];
+  const live = descendants(rows, root);
+  if (live.length > 0) return live;
+  const present = new Set(rows.map((r) => r.pid));
+  return listed.filter((pid) => present.has(pid));
 }
 
 export interface Sampler {
@@ -490,6 +458,8 @@ export interface SamplerOptions {
   hogEvery?: number;
   /** Test seam: the table for one tick, with the command column or the tree alone. */
   scan?: (withCommands: boolean) => Promise<PsRow[]>;
+  /** The Next dev caches over the ceiling, by service id, in MB. */
+  caches?: () => Record<string, number>;
 }
 
 /**
@@ -516,7 +486,7 @@ export function startSampler(store: DeckStore, roots: () => Record<string, numbe
       const rows = await scan(withHogs);
       if (!stopped && rows.length > 0) {
         const state = store.getState();
-        state.setUsage(sumTrees(rows, current), withHogs ? pickHogs(rows, { root: state.meta.root, roots: current, self: process.pid }) : undefined);
+        state.setUsage(sumTrees(rows, current), withHogs ? pickHogs(rows, { root: state.meta.root, roots: current, self: process.pid, caches: options.caches?.() }) : undefined);
       }
     } finally {
       busy = false;

@@ -30,6 +30,8 @@ export interface DeckState {
   hogs: Hog[];
 
   apply(serviceId: string, signals: Signal[]): void;
+  /** A card added while the deck runs, last in order. A known id is left as it is. */
+  addService(config: ServiceConfig): void;
   setProcess(serviceId: string, patch: Partial<Pick<ServiceState, 'pid' | 'status' | 'exitCode' | 'startedAt' | 'restarts' | 'detail' | 'prompt' | 'progress'>>): void;
   addEvent(serviceId: string, event: Omit<DevEvent, 'id' | 'at' | 'service'>): void;
   addCall(call: Omit<ConvexCall, 'id'>): void;
@@ -66,6 +68,7 @@ function initialService(config: ServiceConfig): ServiceState {
     cpu: 0,
     memHistory: [],
     restarts: 0,
+    ...(config.pty ? { oneShot: true } : {}),
   };
 }
 
@@ -147,6 +150,10 @@ export function createDeckStore(configs: ServiceConfig[], meta: DeckMeta) {
           errors: cap(errors, MAX_ERRORS),
         };
       });
+    },
+
+    addService(config) {
+      set((state) => (state.services[config.id] ? state : { order: [...state.order, config.id], services: { ...state.services, [config.id]: initialService(config) } }));
     },
 
     setProcess(serviceId, patch) {

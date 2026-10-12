@@ -187,9 +187,8 @@ export function detectConfig(root: string): Detection {
       const warning = scriptWarning(service.id, script);
       if (warning) warnings.push(warning);
     }
-    if (services.length > 0 && runner?.setup) {
-      warnings.push(`The root dev script runs "${runner.setup}" before its workspace runner. Devdeck starts each package directly, so that step does not run.`);
-    }
+    // Devdeck starts each package itself, so it runs what the script chains before its runner first.
+    if (services.length > 0 && runner?.setup) config.setup = runner.setup;
     if (services.length === 0 && rootScript) {
       if (globs.length > 0) warnings.push('No workspace package has a dev script, so the root dev script runs as one service.');
       addRoot(rootScript);

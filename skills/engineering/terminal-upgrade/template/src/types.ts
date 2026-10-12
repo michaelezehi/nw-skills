@@ -29,10 +29,30 @@ export type Prompt =
   | { kind: 'text'; question: string }
   | { kind: 'continue'; question: string };
 
+/** A package script the deck can run. */
+export interface ScriptEntry {
+  name: string;
+  /** The script's command line, shown beside the name. */
+  command: string;
+}
+
 /** How far along a command is. `fraction` 0 to 1 when the output gave a number. */
 export interface Progress {
   fraction?: number;
   label: string;
+}
+
+/** `auto` clears before any service starts, `ask` only reports it, `off` leaves it alone. */
+export type CleanupMode = 'auto' | 'ask' | 'off';
+
+/** What devdeck clears before a start. */
+export interface CleanupConfig {
+  /** Dev-tool trees an earlier run of this repo left under launchd. Default `auto`. */
+  orphans?: CleanupMode;
+  /** Each app's Next dev cache over `cacheCeilingGb`, cleared before its service starts. Default `auto`. */
+  caches?: CleanupMode;
+  /** Past this many GB a Next dev cache is cleared and Convex local storage is reported. Default 8. */
+  cacheCeilingGb?: number;
 }
 
 /** The default export of devdeck.config.ts, which sits in the devdeck package dir. */
@@ -44,6 +64,14 @@ export interface DeckConfig {
   packageManager: PackageManager;
   /** Every long-running dev process, in display order. */
   services: ServiceConfig[];
+  cleanup?: CleanupConfig;
+  /** Tail `convex logs` for the calls panel while the convex service runs. Default true. */
+  convexFeed?: boolean;
+  /**
+   * Run once at the repo root through `sh -c` before any service starts: the steps a root
+   * dev script chains before its workspace runner. A failing setup stops the start.
+   */
+  setup?: string;
 }
 
 export type ServiceStatus = 'starting' | 'ready' | 'compiling' | 'error' | 'stopped' | 'crashed';
@@ -78,6 +106,8 @@ export interface ServiceState {
   memHistory: number[];
   restarts: number;
   exitCode?: number | null;
+  /** A command that runs once (a run deck, a script from the palette) rather than a server. */
+  oneShot?: boolean;
   /** Set while the command waits for an answer. */
   prompt?: Prompt;
   /** The latest progress the output showed. */
@@ -181,10 +211,17 @@ export interface Hog {
   /** Seconds since the process started. */
   ageSec: number;
   scope: HogScope;
-  /** A dev process reparented to launchd (ppid 1) and alive for over an hour. */
+  /**
+   * A dev tool reparented to launchd (ppid 1) and alive for over an hour, summed with
+   * everything under it: an earlier run left it behind.
+   */
   orphan: boolean;
+  /** An orphan tree's every pid, its root first: Stop takes the whole tree. */
+  pids?: number[];
   /** The devdeck service whose tree holds it, so restart can free it. */
   serviceId?: string;
+  /** Its service's Next dev cache in MB, set while that cache is over the ceiling: Clear cache frees it. */
+  cacheMb?: number;
   /** Processes summed into this row; set when an app's helpers are grouped. */
   count?: number;
   /** Devdeck's own process. */
@@ -212,6 +249,11 @@ export interface DeckSnapshot {
 /** Actions the UI may ask of the supervisor. */
 export interface DeckControls {
   restart(id: string): void;
+  /**
+   * Stop the service, clear its Next dev cache, start it again. Resolves to the MB the cache
+   * held, or undefined when there was no cache to clear (the service restarts either way).
+   */
+  clearCache(id: string): Promise<number | undefined>;
   open(id: string): void;
   /** Stop every service and exit with `exitCode` (0 for q, 130 for Ctrl-C). */
   quit(exitCode?: number): void;
@@ -220,12 +262,17 @@ export interface DeckControls {
   onRaw(id: string, cb: () => void): () => void;
   /**
    * SIGTERM one pid, SIGKILL it after about 3 s. Refuses pid 1 and below, devdeck itself
-   * and a service root (those restart instead) with 'denied', as it does on EPERM.
+   * and a service root (those restart instead) with 'denied', as it does on EPERM. With
+   * `tree`, an orphan tree's pids, the whole tree as it stands now goes the same way.
    */
-  killPid(pid: number): Promise<KillResult>;
+  killPid(pid: number, tree?: readonly number[]): Promise<KillResult>;
   /**
    * Type into a service running in a pseudo-terminal. `secret` marks a password: the deck
    * scrubs it from every line it keeps. False when the service takes no input.
    */
   write(id: string, data: string, secret?: boolean): boolean;
+  /** The repo's package scripts, for the palette. */
+  scripts(): ScriptEntry[];
+  /** Run a package script as a card, or rerun its card. The card's id; undefined for an unknown name. */
+  runScript(name: string): string | undefined;
 }

@@ -37,6 +37,7 @@ import { allErrorsPayload, copiedNotice, errorPayload, logPayload, COPY_FAILED, 
 import { actionForKey, indexOfId, initialUi, reduceUi, selectHog, type Focus, type UiAction, type UiContext, type UiState } from './deckState.ts';
 import { HogPanel, HogStrip } from './HogPanel.tsx';
 import { HogView } from './HogView.tsx';
+import { clearNotice } from './hogCopy.ts';
 import { panelRegions, planHogPanel, stripRegions, type HitRegion, type HogHit } from './hogPlan.ts';
 import { enableMouse, hitTest, isClick, parseMouse } from './mouse.ts';
 import { useHogs } from './useHogs.ts';
@@ -44,6 +45,8 @@ import { usePrompt } from './usePrompt.ts';
 import { planPrompt, promptRegions } from './promptCard.ts';
 import { PromptCard } from './PromptCard.tsx';
 import { ProgressLine } from './ProgressLine.tsx';
+import { ScriptList } from './ScriptList.tsx';
+import { useScripts } from './useScripts.ts';
 
 export interface DeckHandle {
   waitUntilExit(): Promise<void>;
@@ -196,6 +199,10 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
   const [localNotice, showNotice] = useLocalNotice();
   const notice = localNotice ?? eventNotice;
   const hogActions = useHogs(hogs, controls, showNotice, now);
+  const scriptPalette = useScripts(ui.view === 'scripts', controls, (name, id) => {
+    dispatch({ action: 'close', ctx });
+    showNotice(id ? { kind: 'saved', service: '', text: `Running ${name}` } : { kind: 'failed', service: '', text: `${name} is not a script here` });
+  });
   const prompter = usePrompt(apps, selectedService, controls, (text) => showNotice({ kind: 'failed', service: '', text }));
 
   // The only motion is the spinner of a starting or compiling service; the clock runs for it alone.
@@ -234,6 +241,13 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
     if (hog.serviceId) return controls.restart(hog.serviceId);
     showNotice({ kind: 'failed', service: '', text: `${hog.name} is not a devdeck service` });
   };
+  const clearHog = (hog: Hog | undefined) => {
+    if (!hog?.serviceId) return;
+    void controls.clearCache(hog.serviceId).then((mb) => {
+      const { ok, text } = clearNotice(hog, mb);
+      showNotice({ kind: ok ? 'stopped' : 'failed', service: '', text });
+    });
+  };
   const onHit = (hit: HogHit | undefined) => {
     if (hit?.kind === 'prompt') return prompter.click(hit.index);
     if (hit?.kind !== 'stop' && hit?.kind !== 'orphans') hogActions.disarm();
@@ -242,6 +256,7 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
     if ('pid' in hit) dispatch({ hog: hit.pid });
     if (hit.kind === 'stop') return hogActions.stop(hog);
     if (hit.kind === 'restart') return restartHog(hog);
+    if (hit.kind === 'clear') return clearHog(hog);
     if (hit.kind === 'orphans') return hogActions.stopOrphans();
     if (hit.kind === 'open') dispatch({ action: 'hogs', ctx });
   };
@@ -268,7 +283,9 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
       if (typeof taken === 'string') return showNotice({ kind: 'saved', service: '', text: `Palette saved · ${taken}` });
       if (taken) return;
     }
-    if (!paletteOpen && ui.view !== 'keys' && prompter.handleKey(input, key)) return;
+    if (key.ctrl && input === 'k') return dispatch({ action: 'scripts', ctx });
+    if (scriptPalette.handleKey(input, key)) return;
+    if (!paletteOpen && ui.view !== 'keys' && ui.view !== 'scripts' && prompter.handleKey(input, key)) return;
     const action = actionForKey(input, key);
     if (action !== 'stop' && action !== 'stopOrphans') hogActions.disarm();
     if (!action) return;
@@ -298,6 +315,7 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
   const inner = (() => {
     if (innerRows < 2) return null;
     if (ui.view === 'palette') return <Palette state={palette.state} width={columns} rows={innerRows} />;
+    if (ui.view === 'scripts') return <ScriptList entries={scriptPalette.entries} query={scriptPalette.query} index={scriptPalette.index} width={columns} rows={innerRows} />;
     if (ui.view === 'hogs') {
       const armed = hogActions.armed;
       return <HogView hogs={hogs} width={columns} rows={innerRows} selectedPid={selectedHog?.pid} armedPid={armed && armed.target !== 'orphans' ? armed.target : undefined} armedOrphans={armed?.target === 'orphans'} />;

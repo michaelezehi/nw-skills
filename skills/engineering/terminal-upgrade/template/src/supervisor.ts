@@ -70,7 +70,10 @@ interface Proc {
 
 export interface Supervisor {
   start(): void;
-  restart(id: string): Promise<void>;
+  /** Start a service that was not in the config, such as a script from the palette. A known id is ignored. */
+  add(config: ServiceConfig): void;
+  /** Stop the service and start it again; `between` runs once it is down, before the new start. */
+  restart(id: string, between?: () => Promise<void>): Promise<void>;
   stopAll(): Promise<void>;
   open(id: string): void;
   rawLines(id: string): readonly string[];
@@ -117,9 +120,8 @@ export function createSupervisor(store: DeckStore, configs: ServiceConfig[], roo
   const procs = new Map<string, Proc>();
   let shutdown: Promise<void> | undefined;
 
-  for (const config of configs) {
-    procs.set(config.id, { config, secrets: new Set(), startedAt: 0, parser: parserFor(config.kind), splitters: [], raw: [], listeners: new Set(), lastRaw: 0, stopping: false, restarting: false });
-  }
+  const makeProc = (config: ServiceConfig): Proc => ({ config, secrets: new Set(), startedAt: 0, parser: parserFor(config.kind), splitters: [], raw: [], listeners: new Set(), lastRaw: 0, stopping: false, restarting: false });
+  for (const config of configs) procs.set(config.id, makeProc(config));
 
   /** A parser bug costs one line of parsing, never the whole dev stack. */
   const apply = (p: Proc, read: () => Signal[]): void => {
@@ -316,13 +318,22 @@ export function createSupervisor(store: DeckStore, configs: ServiceConfig[], roo
       for (const p of procs.values()) if (!p.child) spawnProc(p);
     },
 
-    async restart(id) {
+    add(config) {
+      if (shutdown || procs.has(config.id)) return;
+      const p = makeProc(config);
+      procs.set(config.id, p);
+      spawnProc(p);
+    },
+
+    async restart(id, between) {
       const p = procs.get(id);
       if (!p || p.restarting || shutdown) return;
       p.restarting = true;
       try {
         p.stopping = true;
         if (p.pgid) await reap(p, p.pgid, restartGraceMs);
+        if (shutdown) return;
+        await between?.();
         if (shutdown) return;
         const restarts = (store.getState().services[id]?.restarts ?? 0) + 1;
         spawnProc(p);

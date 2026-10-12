@@ -2,20 +2,22 @@
  * Per-user changes to a detected deck, kept outside every repo in
  * `$XDG_CONFIG_HOME/devdeck/repos.json` (or ~/.config/devdeck/repos.json), keyed by repo root:
  *
- *   { "/abs/repo": { "title": "Acme", "services": { "web": { "port": 3001 }, "docs": null }, "add": [ ...ServiceConfig ] } }
+ *   { "/abs/repo": { "title": "Acme", "services": { "web": { "port": 3001 }, "docs": null }, "add": [ ...ServiceConfig ], "cleanup": { "orphans": "ask" } } }
  *
- * `null` hides a service. Anything malformed is skipped with a warning; a bad file never stops devdeck.
+ * `null` hides a service. `cleanup` and `convexFeed` take the same values as in a config file. Anything malformed is skipped with a warning; a bad file never stops devdeck.
  */
 import { readFileSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
-import { checkService } from './config.ts';
-import type { DeckConfig, ServiceConfig } from './types.ts';
+import { checkCleanup, checkService } from './config.ts';
+import type { CleanupConfig, DeckConfig, ServiceConfig } from './types.ts';
 
 export interface RepoOverride {
   title?: unknown;
   services?: unknown;
   add?: unknown;
+  cleanup?: unknown;
+  convexFeed?: unknown;
 }
 
 export interface Overridden {
@@ -119,5 +121,14 @@ export function applyOverride(config: DeckConfig, override: RepoOverride | undef
     services.push(service);
   }
 
-  return { config: { ...config, title, services }, warnings };
+  let cleanup = config.cleanup;
+  const cleanupProblem = checkCleanup(override.cleanup);
+  if (cleanupProblem) skip('cleanup', cleanupProblem);
+  else if (override.cleanup !== undefined) cleanup = override.cleanup as CleanupConfig;
+
+  let convexFeed = config.convexFeed;
+  if (typeof override.convexFeed === 'boolean') convexFeed = override.convexFeed;
+  else if (override.convexFeed !== undefined) skip('convexFeed', 'it must be true or false');
+
+  return { config: { ...config, title, services, ...(cleanup ? { cleanup } : {}), ...(convexFeed !== undefined ? { convexFeed } : {}) }, warnings };
 }

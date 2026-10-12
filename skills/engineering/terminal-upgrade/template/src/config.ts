@@ -5,7 +5,7 @@
 import { readFileSync, statSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
-import type { DeckConfig, PackageManager, ServiceConfig, ServiceKind } from './types.ts';
+import type { CleanupMode, DeckConfig, PackageManager, ServiceConfig, ServiceKind } from './types.ts';
 
 export const CONFIG_FILE = 'devdeck.config.ts';
 /** The same config as plain JSON at a repo root, for a repo that does not carry Devdeck itself. */
@@ -25,6 +25,7 @@ export const EXIT_SIGHUP = 129;
 
 const MANAGERS: readonly PackageManager[] = ['pnpm', 'npm', 'yarn', 'bun'];
 const KINDS: readonly ServiceKind[] = ['next', 'convex', 'node', 'watch', 'vite'];
+const CLEANUP_MODES: readonly CleanupMode[] = ['auto', 'ask', 'off'];
 
 export interface LoadedConfig {
   config: DeckConfig;
@@ -60,6 +61,18 @@ export function checkService(raw: unknown, i: number): string | undefined {
   return undefined;
 }
 
+/** Why `raw` is not a `cleanup` block, or undefined when it is one or absent. */
+export function checkCleanup(raw: unknown): string | undefined {
+  if (raw === undefined) return undefined;
+  if (!isRecord(raw)) return 'cleanup must be an object';
+  for (const key of ['orphans', 'caches'] as const) {
+    if (raw[key] !== undefined && !CLEANUP_MODES.includes(raw[key] as CleanupMode)) return `cleanup.${key} must be one of ${CLEANUP_MODES.join(', ')}`;
+  }
+  const gb = raw.cacheCeilingGb;
+  if (gb !== undefined && (typeof gb !== 'number' || !Number.isFinite(gb) || gb <= 0)) return 'cleanup.cacheCeilingGb must be a positive number';
+  return undefined;
+}
+
 /** Why `raw` is not a DeckConfig, or undefined when it is one. */
 export function configProblem(raw: unknown): string | undefined {
   if (!isRecord(raw)) return 'the default export must be a config object';
@@ -75,7 +88,9 @@ export function configProblem(raw: unknown): string | undefined {
     if (seen.has(id)) return `services[${i}].id "${id}" is used twice`;
     seen.add(id);
   }
-  return undefined;
+  if (raw.convexFeed !== undefined && typeof raw.convexFeed !== 'boolean') return 'convexFeed must be true or false';
+  if (raw.setup !== undefined && (!isString(raw.setup) || raw.setup.trim() === '')) return 'setup must be a non-empty string';
+  return checkCleanup(raw.cleanup);
 }
 
 /** Import the config's default export, check it, and resolve its root. Throws ConfigError. */
@@ -122,4 +137,9 @@ export function convexCommand(pm: PackageManager, args: readonly string[]): stri
 /** The first convex service, whose dir is where the Convex CLI runs. Undefined when there is none. */
 export function convexService(services: readonly ServiceConfig[]): ServiceConfig | undefined {
   return services.find((s) => s.kind === 'convex');
+}
+
+/** The convex service whose `convex logs` the call feed tails; undefined when there is none or `convexFeed` is false. */
+export function feedService(config: DeckConfig): ServiceConfig | undefined {
+  return config.convexFeed === false ? undefined : convexService(config.services);
 }

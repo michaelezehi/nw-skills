@@ -22,7 +22,7 @@ export const KEYS: Array<[string, string]> = [
   ['o', 'open its URL in the browser'],
   ['f', 'filter calls: all, Q, M, A, errors'],
   ['p', 'pause the feed'],
-  ['C', 'palette'],
+  ['C / :', 'colour palette / run a script'],
   ['pgup / pgdn', 'scroll the logs or an error'],
   ['esc / x', 'close the view, or back to the feed'],
   ['backspace / b', 'back to the previous view'],
@@ -33,7 +33,7 @@ export const KEYS: Array<[string, string]> = [
 /** What the Mac terminal itself does over the deck. The deck takes clicks, so selecting text needs option. */
 export const TERMINAL_KEYS: Array<[string, string]> = [
   ['option-drag', 'select text, then cmd-c copies it'],
-  ['click', 'Stop, Restart and Stop all orphans'],
+  ['click', 'Stop, Restart, Clear cache and Stop all orphans'],
   ['cmd-click :3000', 'open that server in the browser'],
   ['cmd-click a path', 'open the file in your editor'],
   ['cmd-+ / cmd--', 'bigger or smaller text; the deck refits'],

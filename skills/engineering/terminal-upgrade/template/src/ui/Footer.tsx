@@ -42,6 +42,7 @@ export function footerHints(mode: Mode, activity: Activity, columns: number, vie
     hints.push({ key: 'esc', word: 'close' });
     return hints;
   }
+  if (view === 'scripts') return [{ key: '↑↓', word: 'pick' }, { key: 'enter', word: 'run' }, { key: 'esc', word: 'close' }];
   if (view === 'palette') {
     const hints: Hint[] = [{ key: '↑↓', word: 'row' }, { key: '←→', word: 'swatch' }, { key: '#', word: 'hex' }, { key: 'enter', word: 'save' }];
     if (columns >= 90) hints.push({ key: 'r', word: 'brand' });
@@ -57,6 +58,7 @@ export function footerHints(mode: Mode, activity: Activity, columns: number, vie
     hints.push({ key: 'M', word: hogsHidden ? 'show hogs' : 'hide hogs', active: hogsHidden });
   }
   if (typeHint && view === 'deck') hints.push({ key: 'i', word: 'type' });
+  if (columns >= 100 && view === 'deck') hints.push({ key: ':', word: 'run' });
   hints.push({ key: 'h', word: 'help' });
   if (columns >= 120) hints.push({ key: 'C', word: 'palette' }, { key: 'b', word: 'back' }, { key: 'esc', word: 'close' });
   hints.push({ key: 'q', word: 'quit' });

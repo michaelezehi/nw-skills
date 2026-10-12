@@ -7,13 +7,15 @@
  */
 import type { Hog } from '../types.ts';
 import { cellWidth, formatMb } from './format.ts';
-import { confirmLines, hogHints, hogLabel, hogTotal } from './hogCopy.ts';
+import { clearable, confirmLines, hogHints, hogLabel, hogTotal } from './hogCopy.ts';
 
 export const STOP_LABEL = '[ Stop ]';
 export const STOP_ARMED_LABEL = '[ Stop? ]';
 export const RESTART_LABEL = '[ Restart ]';
+export const CLEAR_LABEL = '[ Clear cache ]';
 const STOP_W = cellWidth(STOP_ARMED_LABEL);
 const RESTART_W = cellWidth(RESTART_LABEL);
+const CLEAR_W = cellWidth(CLEAR_LABEL);
 export const ORPHAN_BADGE = ' orphan ';
 const BADGE_W = cellWidth(ORPHAN_BADGE);
 export const BAR_W = 10;
@@ -35,6 +37,8 @@ export interface HogColumns {
   cpu: boolean;
   age: boolean;
   restart: boolean;
+  /** A column for Clear cache, left of Restart. */
+  clear: boolean;
   /** Cells left for the hint. */
   hintW: number;
 }
@@ -49,6 +53,7 @@ export interface HogRowPlan {
   stopX?: number;
   stopLabel: string;
   restartX?: number;
+  clearX?: number;
 }
 
 export interface HogRulePlan {
@@ -85,26 +90,27 @@ export function formatAge(sec: number): string {
 export const formatCpu = (cpu: number): string => `${Math.round(cpu)}%`;
 
 function fixedWidth(c: Omit<HogColumns, 'hintW'>): number {
-  return 2 + c.nameW + 1 + (c.badge ? BADGE_W + 1 : 0) + (c.bar ? BAR_W + 3 : 0) + MEM_W + (c.cpu ? CPU_W : 0) + (c.age ? AGE_W : 0) + 2 + 1 + (c.restart ? RESTART_W + 1 : 0) + STOP_W;
+  return 2 + c.nameW + 1 + (c.badge ? BADGE_W + 1 : 0) + (c.bar ? BAR_W + 3 : 0) + MEM_W + (c.cpu ? CPU_W : 0) + (c.age ? AGE_W : 0) + 2 + 1 + (c.clear ? CLEAR_W + 1 : 0) + (c.restart ? RESTART_W + 1 : 0) + STOP_W;
 }
 
 /**
  * The columns every row shares, for rows `inner` cells wide. While the full hints do not
  * fit, age then cpu go; while the shorter hints do not, the process counts and then
- * the bar go. The restart column goes only when name, memory and Stop cannot fit
- * otherwise. Undefined when even that cannot fit.
+ * the bar go. The clear and then the restart column go only when name, memory and Stop
+ * cannot fit otherwise. Undefined when even that cannot fit.
  */
 export function hogColumns(hogs: readonly Hog[], inner: number): HogColumns | undefined {
   const nameOf = (counts: boolean) => Math.max(0, ...hogs.map((h) => cellWidth(hogLabel(h, counts))));
   const longest = Math.max(0, ...hogs.map((h) => cellWidth(hogHints(h)[0]!)));
   // The second wording is the one worth giving up the counts and the bar for; the third is a last resort.
   const shortest = Math.max(0, ...hogs.map((h) => cellWidth(hogHints(h)[1] ?? hogHints(h)[0]!)));
-  const cols = { nameW: nameOf(true), counts: true, badge: hogs.some((h) => h.orphan), bar: true, cpu: true, age: true, restart: hogs.some((h) => h.serviceId !== undefined && !h.self) };
+  const cols = { nameW: nameOf(true), counts: true, badge: hogs.some((h) => h.orphan), bar: true, cpu: true, age: true, restart: hogs.some((h) => h.serviceId !== undefined && !h.self), clear: hogs.some(clearable) };
   const room = () => inner - fixedWidth(cols);
   if (room() < longest) cols.age = false;
   if (room() < longest) cols.cpu = false;
   if (room() < shortest) Object.assign(cols, { counts: false, nameW: nameOf(false) });
   if (room() < shortest) cols.bar = false;
+  if (room() < 0) cols.clear = false;
   if (room() < 0) cols.restart = false;
   if (room() < 0) return undefined;
   return { ...cols, hintW: room() };
@@ -143,9 +149,10 @@ export function planHogPanel(hogs: readonly Hog[], width: number, rows: number, 
   const cols = hogColumns(shown, inner);
   const hidden = hogs.length - shown.length;
   const rule = rulePlan(hogs, width, hidden, armed);
-  if (!cols) return { cols: { nameW: 0, counts: false, badge: false, bar: false, cpu: false, age: false, restart: false, hintW: 0 }, rows: [], hidden: hogs.length, rule, ruled };
+  if (!cols) return { cols: { nameW: 0, counts: false, badge: false, bar: false, cpu: false, age: false, restart: false, clear: false, hintW: 0 }, rows: [], hidden: hogs.length, rule, ruled };
   const stopX = inner - STOP_W;
   const restartX = stopX - 1 - RESTART_W;
+  const clearX = restartX - 1 - CLEAR_W;
   const planned = shown.map((hog): HogRowPlan => {
     const confirming = armed !== undefined && armed.target === hog.pid;
     const lines = confirming ? confirmLines(hog) : hogHints(hog);
@@ -157,6 +164,7 @@ export function planHogPanel(hogs: readonly Hog[], width: number, rows: number, 
       stopX: hog.self ? undefined : stopX,
       stopLabel: confirming ? STOP_ARMED_LABEL : STOP_LABEL,
       restartX: cols.restart && hog.serviceId !== undefined && !hog.self ? restartX : undefined,
+      clearX: cols.clear && clearable(hog) ? clearX : undefined,
     };
   });
   return { cols, rows: planned, hidden, rule, ruled: ruled && planned.length > 1 };
@@ -198,6 +206,7 @@ export const STRIP_SEP = SEP;
 export type HogHit =
   | { kind: 'stop'; pid: number }
   | { kind: 'restart'; pid: number }
+  | { kind: 'clear'; pid: number }
   | { kind: 'select'; pid: number }
   | { kind: 'orphans' }
   | { kind: 'open' }
@@ -220,6 +229,7 @@ export function panelRegions(plan: HogPanelPlan, top: number, width: number): Hi
     const y = top + 1 + i * (plan.ruled ? 2 : 1);
     if (row.stopX !== undefined) out.push({ y, x0: PANEL_INSET + row.stopX, x1: PANEL_INSET + row.stopX + cellWidth(row.stopLabel), hit: { kind: 'stop', pid: row.hog.pid } });
     if (row.restartX !== undefined) out.push({ y, x0: PANEL_INSET + row.restartX, x1: PANEL_INSET + row.restartX + cellWidth(RESTART_LABEL), hit: { kind: 'restart', pid: row.hog.pid } });
+    if (row.clearX !== undefined) out.push({ y, x0: PANEL_INSET + row.clearX, x1: PANEL_INSET + row.clearX + CLEAR_W, hit: { kind: 'clear', pid: row.hog.pid } });
     out.push({ y, x0: 0, x1: width, hit: { kind: 'select', pid: row.hog.pid } });
   });
   return out;

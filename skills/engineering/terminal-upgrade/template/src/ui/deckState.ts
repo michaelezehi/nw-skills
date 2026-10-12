@@ -65,7 +65,8 @@ export type UiAction =
   | 'pageDown'
   | 'palette'
   | 'hogs'
-  | 'toggleHogs';
+  | 'toggleHogs'
+  | 'scripts';
 
 export interface UiContext {
   panels: Focus[];
@@ -245,6 +246,8 @@ export function reduceUi(state: UiState, action: UiAction, ctx: UiContext): UiSt
       return state.view === 'palette' ? back(state) : open(state, 'palette');
     case 'hogs':
       return state.view === 'hogs' ? back(state) : open(state, 'hogs');
+    case 'scripts':
+      return state.view === 'scripts' ? back(state) : open(state, 'scripts');
     case 'toggleHogs':
       return { ...state, hogsHidden: !state.hogsHidden, focus: state.focus === 'hogs' ? 'services' : state.focus };
   }
@@ -295,6 +298,8 @@ export function actionForKey(input: string, key: { upArrow?: boolean; downArrow?
       return 'keys';
     case 'C':
       return 'palette';
+    case ':':
+      return 'scripts';
     case 'y':
       return 'copy';
     case 'Y':

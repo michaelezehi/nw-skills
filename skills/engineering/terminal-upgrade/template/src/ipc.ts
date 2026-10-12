@@ -3,6 +3,7 @@ import { createServer, request, type IncomingMessage, type ServerResponse } from
 import { join } from 'node:path';
 import { ensureDeckDir } from './pidfile.ts';
 import { toSnapshot, type DeckStore } from './store.ts';
+import { handleAction, type IpcActions } from './ipcActions.ts';
 
 export const socketPath = (root: string): string => join(root, '.devdeck', 'devdeck.sock');
 
@@ -70,9 +71,10 @@ function send(res: ServerResponse, status: number, body: unknown): void {
   res.end(json);
 }
 
-export function handle(store: DeckStore, req: IncomingMessage, res: ServerResponse): void {
+export function handle(store: DeckStore, req: IncomingMessage, res: ServerResponse, actions?: IpcActions): void {
   try {
     const url = new URL(req.url ?? '/', 'http://devdeck');
+    if (actions && handleAction(store, actions, req, res, url)) return;
     if (req.method !== 'GET') return send(res, 404, { error: 'not found' });
     const state = store.getState();
     switch (url.pathname) {
@@ -112,7 +114,7 @@ const removeSocket = (path: string): void => {
  * Serve the snapshot on `<root>/.devdeck/devdeck.sock`. When another live devdeck already
  * answers there, run without IPC and say so in the event log. Never rejects.
  */
-export async function startIpc(store: DeckStore, root: string): Promise<Ipc> {
+export async function startIpc(store: DeckStore, root: string, actions?: IpcActions): Promise<Ipc> {
   const path = socketPath(root);
   const inactive = (text: string): Ipc => {
     store.getState().addEvent('devdeck', { kind: 'info', text });
@@ -131,7 +133,7 @@ export async function startIpc(store: DeckStore, root: string): Promise<Ipc> {
   const server = createServer((req, res) => {
     req.on('error', () => undefined);
     res.on('error', () => undefined);
-    handle(store, req, res);
+    handle(store, req, res, actions);
   });
   server.on('clientError', (_err, socket) => socket.destroy());
 

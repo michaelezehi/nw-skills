@@ -23,14 +23,25 @@ export function osascriptArgs(title: string, body: string): string[] {
   return ['-e', 'on run argv', '-e', 'display notification (item 2 of argv) with title (item 1 of argv)', '-e', 'end run', title, body];
 }
 
-/** A notifier for this platform, or undefined where there is none. Failures are ignored. */
+/**
+ * A notifier for this platform, or undefined where there is none. It never blocks: the
+ * child runs detached from the event loop (unref, so quitting never waits on it), one at
+ * a time with later ones dropped while it runs, and every failure is ignored.
+ */
 export function systemNotifier(platform: NodeJS.Platform = process.platform, run: typeof execFile = execFile): Notify | undefined {
   if (platform !== 'darwin') return undefined;
+  let busy = false;
   return (title, body) => {
+    if (busy) return;
     try {
-      run('osascript', osascriptArgs(title, body), { timeout: 5000 }, () => undefined);
+      busy = true;
+      const child = run('osascript', osascriptArgs(title, body), { timeout: 5000 }, () => {
+        busy = false;
+      });
+      child?.unref?.();
     } catch {
       // No osascript; the deck still shows everything.
+      busy = false;
     }
   };
 }
@@ -89,7 +100,17 @@ export function watchAttention(store: Watchable, options: AttentionOptions = {})
     options.setTitle(next);
   };
 
+  // Attention rides on the store's own update: nothing in it may throw into the
+  // supervisor's output handling, so a failing notifier or title write is dropped.
   const onChange = (state: DeckState, prev: DeckState): void => {
+    try {
+      react(state, prev);
+    } catch {
+      // The deck shows everything without the notification or the title.
+    }
+  };
+
+  const react = (state: DeckState, prev: DeckState): void => {
     showTitle(state);
     if (!options.notify) return;
     for (const id of state.order) {
@@ -115,14 +136,24 @@ export function watchAttention(store: Watchable, options: AttentionOptions = {})
         const question = cur.prompt?.question ?? '';
         const label = cur.label;
         // The entry stays after it fires, so one prompt notifies once.
-        const timer = setTimeout(() => options.notify?.(`${label} is waiting`, question), promptMs);
+        const timer = setTimeout(() => {
+          try {
+            options.notify?.(`${label} is waiting`, question);
+          } catch {
+            // As above: a notification is never worth an error.
+          }
+        }, promptMs);
         timer.unref?.();
         timers.set(id, { key, timer });
       }
     }
   };
 
-  showTitle(store.getState());
+  try {
+    showTitle(store.getState());
+  } catch {
+    // No title; the deck runs on.
+  }
   const unsubscribe = store.subscribe(onChange);
   return () => {
     unsubscribe();

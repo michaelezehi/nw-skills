@@ -153,6 +153,17 @@ describe('band', () => {
     expect(sent).toEqual([option])
   })
 
+  test('no band button takes a digit, so a message starting with a number reaches the chat', async ($, on) => {
+    world(on)
+    await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
+    await $.turn.complete(turn('> [!ACTION] Approve the copy.\n\n> [!ASK] Ship to?\n> - staging\n> - production'))
+    const row = await $.ui.mount({ plugin: 'callouts', surface: 'terminal', component: 'AbovePrompt', props: BAND })
+    const keys = ['done-0', 'later-0', 'opt-btn-1-0', 'opt-btn-1-1']
+    const hotkeys = await Promise.all(keys.map(async key => ((await row.find({ key })) as { props?: { hotkey?: string } } | undefined)?.props?.hotkey))
+    expect(hotkeys).toEqual(['d', 'x', undefined, undefined])
+    for (const k of hotkeys) if (k) expect(k).toMatch(/^[a-z]$/)
+  })
+
   test('wrapText keeps every word and splits one longer than the width', () => {
     expect(wrapText('one two three', 8)).toEqual(['one two', 'three'])
     expect(wrapText('abcdefghijkl', 8)).toEqual(['abcdefgh', 'ijkl'])

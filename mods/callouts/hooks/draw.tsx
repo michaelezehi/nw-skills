@@ -40,7 +40,7 @@ export function calloutBlock(ui: Table, c: Callout, palette: Palette, key: strin
   }
   const hint =
     c.kind === 'action'
-      ? 'Answer above the prompt: 1 Done'
+      ? 'Answer above the prompt: Done'
       : c.kind === 'ask'
         ? 'Pick an answer above the prompt'
         : c.kind === 'secret'
@@ -61,7 +61,7 @@ export function calloutBlock(ui: Table, c: Callout, palette: Palette, key: strin
       ))}
       {c.options.map((option, i) => (
         <Text key={`${key}-opt-${i}`} color={INK} backgroundColor={palette.accent}>
-          {`  ${i + 1}  ${option}`}
+          {`  ${String.fromCharCode(97 + i)}  ${option}`}
         </Text>
       ))}
       <Text key={`${key}-hint`} color={INK} backgroundColor={palette.accent} italic>
@@ -116,7 +116,9 @@ export function wrapText(text: string, width: number): string[] {
  * Everything still open, above the prompt: a yellow header with the count, then each item
  * in full, its question wrapped onto as many rows as it needs and each option on its own
  * row. Nothing is cut: a band taller than the room scrolls. The first item's buttons take
- * the hotkeys (1 to 9, x).
+ * the hotkeys: letters, which fire only while the band holds the focus (ctrl+x tab or a
+ * click). Never digits: the engine lets a bare digit in an empty prompt press a band
+ * Button, so a message starting "1." would answer the band instead of reaching the chat.
  */
 export function band(p: BandInput): JSX.Element | null {
   const { Box, Text, Button, Input } = p.ui
@@ -153,15 +155,15 @@ export function band(p: BandInput): JSX.Element | null {
     if (c.kind === 'action') {
       rows.push(
         <Box key={`answers-${i}`} flexDirection="row" gap={2} paddingLeft={2}>
-          <Button key={`done-${i}`} {...hot('1')} onPress={() => p.answer(i, `Done: ${c.title}`)}>
-            {chip(first ? '1  Done' : 'Done')}
+          <Button key={`done-${i}`} {...hot('d')} onPress={() => p.answer(i, `Done: ${c.title}`)}>
+            {chip(first ? 'd  Done' : 'Done')}
           </Button>
           {later}
         </Box>,
       )
     } else if (c.kind === 'ask') {
       for (const [n, option] of c.options.slice(0, 9).entries()) {
-        const label = `${n + 1}`
+        const label = String.fromCharCode(97 + n)
         const lines = wrapText(option, width - 2 - (label.length + 2) - 1)
         rows.push(
           <Box key={`opt-${i}-${n}`} flexDirection="row" gap={1} paddingLeft={2}>

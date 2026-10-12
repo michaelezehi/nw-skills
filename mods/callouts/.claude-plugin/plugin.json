@@ -1,0 +1,9 @@
+{
+  "name": "callouts",
+  "version": "0.1.0",
+  "description": "Makes what needs you impossible to miss: `> [!ACTION]`, `> [!ASK]` and `> [!INPUT]` blocks in a reply draw as bright yellow cards with a flag, stay pinned above the prompt with buttons or a field to answer, and `> [!DONE]` draws as a finished banner. Colours follow the Devdeck theme",
+  "types": "./types/index.d.ts",
+  "author": {
+    "name": "Michael Ezehi"
+  }
+}

@@ -54,6 +54,12 @@
       "source": "./mods/devdeck",
       "description": "Live mirror of a Devdeck dev dashboard: service dots, the latest hot reload or Convex call above the prompt, /devdeck for the full pane, and tools to read it, run package scripts in it and restart services",
       "category": "productivity"
+    },
+    {
+      "name": "callouts",
+      "source": "./mods/callouts",
+      "description": "Makes what needs you impossible to miss: action, question and input blocks in a reply draw as bright yellow cards with a flag and stay pinned above the prompt with buttons or a field to answer; done blocks draw as a finished banner",
+      "category": "productivity"
     }
   ]
 }

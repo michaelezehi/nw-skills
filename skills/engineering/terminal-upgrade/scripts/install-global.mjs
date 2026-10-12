@@ -144,7 +144,7 @@ if (!ex) {
     appendFileSync(ex, (cur && !cur.endsWith('\n') ? '\n' : '') + IGNORE_BLOCK);
   });
 }
-report('Open a new terminal (or `source ~/.zshrc`), then run `pnpm dev` at any repo root. `DEVDECK=0 pnpm dev` skips it once.');
+report('Open a new terminal (or `source ~/.zshrc`), then run `pnpm dev`, or any script such as `pnpm build`, at a repo root. `DEVDECK=0 pnpm build` skips it once.');
 
 function indent(text) { return text.trimEnd().split('\n').map((l) => `      ${l}`).join('\n'); }
 function report(nextStep) {

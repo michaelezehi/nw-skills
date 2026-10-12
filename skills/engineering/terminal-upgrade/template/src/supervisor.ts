@@ -1,8 +1,13 @@
 import { spawn, type ChildProcess } from 'node:child_process';
+import { constants } from 'node:os';
 import { join } from 'node:path';
+import type { IPty } from 'node-pty';
 import { devCommand } from './config.ts';
 import { createLineSplitter, truncate, type LineSplitter } from './lines.ts';
 import { createParser, stripAnsi } from './parsers/index.ts';
+import { parseProgress, progressMoved } from './progress.ts';
+import { detectPrompt, samePrompt } from './prompt.ts';
+import { loadPty } from './pty.ts';
 import { removePids, writePids } from './pidfile.ts';
 import { killSync, terminate } from './sampler.ts';
 import type { DeckStore } from './store.ts';
@@ -13,6 +18,10 @@ export const RAW_LINES = 2000;
 const RAW_SLACK = 500;
 /** Quiet time after which a parser closes a half-read block. */
 const QUIET_MS = 1000;
+/** Quiet time after which a pseudo-terminal's output is read for a prompt: past a spinner frame. */
+const PROMPT_QUIET_MS = 400;
+/** What a scrubbed password reads as. */
+export const SECRET_MASK = '••••';
 const RAW_THROTTLE_MS = 100;
 /** Stored raw lines are cut to this many characters. */
 export const RAW_LINE_MAX = 2048;
@@ -36,6 +45,12 @@ export function childEnv(base: NodeJS.ProcessEnv = process.env): NodeJS.ProcessE
 interface Proc {
   config: ServiceConfig;
   child?: ChildProcess;
+  /** The pseudo-terminal, for a service that runs in one. */
+  term?: IPty;
+  termAlive?: boolean;
+  promptTimer?: NodeJS.Timeout;
+  /** Passwords typed into this service, scrubbed from every line it keeps. */
+  secrets: Set<string>;
   /** Group id of the latest spawn, kept after exit so orphans can still be reaped. */
   pgid?: number;
   startedAt: number;
@@ -63,6 +78,10 @@ export interface Supervisor {
   /** Live root pid per service, for the sampler. */
   pids(): Record<string, number>;
   killAllSync(): void;
+  /** Type into a pseudo-terminal service; see DeckControls.write. */
+  write(id: string, data: string, secret?: boolean): boolean;
+  /** The service runs in a live pseudo-terminal. */
+  takesInput(id: string): boolean;
 }
 
 export interface SupervisorOptions {
@@ -78,6 +97,15 @@ export interface SupervisorOptions {
    * NODE_ENV=production. Default: process.env at spawn time.
    */
   env?: NodeJS.ProcessEnv;
+  /**
+   * Keep `.devdeck/pids.json` for the next run's cleanup. Default true. `devdeck run` turns it
+   * off so a one-off command never overwrites the dev deck's record.
+   */
+  pidFile?: boolean;
+  /** Size of a service's pseudo-terminal. Default 120 by 30. */
+  ptySize?: { cols: number; rows: number };
+  /** A service exited without being asked to: its exit code, or null with the signal. */
+  onExit?: (id: string, code: number | null, signal: NodeJS.Signals | null) => void;
 }
 
 export function createSupervisor(store: DeckStore, configs: ServiceConfig[], root: string, options: SupervisorOptions = {}): Supervisor {
@@ -85,11 +113,12 @@ export function createSupervisor(store: DeckStore, configs: ServiceConfig[], roo
   const restartGraceMs = options.restartGraceMs ?? 3000;
   const parserFor = options.parserFor ?? createParser;
   const pm = options.packageManager ?? 'pnpm';
+  const pidFile = options.pidFile ?? true;
   const procs = new Map<string, Proc>();
   let shutdown: Promise<void> | undefined;
 
   for (const config of configs) {
-    procs.set(config.id, { config, startedAt: 0, parser: parserFor(config.kind), splitters: [], raw: [], listeners: new Set(), lastRaw: 0, stopping: false, restarting: false });
+    procs.set(config.id, { config, secrets: new Set(), startedAt: 0, parser: parserFor(config.kind), splitters: [], raw: [], listeners: new Set(), lastRaw: 0, stopping: false, restarting: false });
   }
 
   /** A parser bug costs one line of parsing, never the whole dev stack. */
@@ -105,6 +134,7 @@ export function createSupervisor(store: DeckStore, configs: ServiceConfig[], roo
 
   /** Keep `.devdeck/pids.json` in step with the groups still to be reaped, for the next run. */
   const record = (): void => {
+    if (!pidFile) return;
     const groups = [...procs.values()].flatMap((p) => (p.pgid ? [{ id: p.config.id, pgid: p.pgid, dir: p.config.dir, startedAt: p.startedAt }] : []));
     writePids(root, groups);
   };
@@ -129,7 +159,12 @@ export function createSupervisor(store: DeckStore, configs: ServiceConfig[], roo
   };
 
   const ingest = (p: Proc, rawLine: string): void => {
-    const line = stripAnsi(rawLine);
+    let line = stripAnsi(rawLine);
+    for (const secret of p.secrets) line = line.split(secret).join(SECRET_MASK);
+    if (p.term) {
+      const progress = parseProgress(line);
+      if (progress && progressMoved(store.getState().services[p.config.id]?.progress, progress)) store.getState().setProcess(p.config.id, { progress });
+    }
     p.raw.push(truncate(line, RAW_LINE_MAX));
     if (p.raw.length > RAW_LINES + RAW_SLACK) p.raw.splice(0, p.raw.length - RAW_LINES);
     p.rawView = undefined;
@@ -150,8 +185,76 @@ export function createSupervisor(store: DeckStore, configs: ServiceConfig[], roo
     flushQuiet(p);
   };
 
+  /** Read the quiet output for a prompt, and publish it when it changed. */
+  const checkPrompt = (p: Proc, splitter: LineSplitter): void => {
+    let partial = stripAnsi(splitter.peek());
+    for (const secret of p.secrets) partial = partial.split(secret).join(SECRET_MASK);
+    const prompt = detectPrompt(p.raw.slice(-20), partial);
+    if (!samePrompt(store.getState().services[p.config.id]?.prompt, prompt)) store.getState().setProcess(p.config.id, { prompt });
+  };
+
+  /** Same lifecycle as spawnProc, in a pseudo-terminal: one output stream, and input. */
+  const spawnTerm = (p: Proc, pty: NonNullable<ReturnType<typeof loadPty>>): void => {
+    const id = p.config.id;
+    const [cmd, ...args] = devCommand(p.config, pm);
+    p.parser = parserFor(p.config.kind);
+    p.stopping = false;
+    p.child = undefined;
+    let term: IPty;
+    try {
+      term = pty.spawn(cmd!, args, {
+        name: 'xterm-256color',
+        cols: options.ptySize?.cols ?? 120,
+        rows: options.ptySize?.rows ?? 30,
+        cwd: join(root, p.config.dir),
+        env: childEnv(options.env) as Record<string, string>,
+      });
+    } catch (err) {
+      store.getState().setProcess(id, { status: 'crashed', pid: undefined });
+      store.getState().addEvent(id, { kind: 'exit', text: `failed to start: ${err instanceof Error ? err.message : String(err)}` });
+      options.onExit?.(id, 127, null);
+      return;
+    }
+    const splitter = createLineSplitter();
+    p.splitters = [splitter];
+    p.term = term;
+    p.termAlive = true;
+    // The terminal's child leads its own session, so its pid is its group id.
+    p.pgid = term.pid;
+    p.startedAt = Date.now();
+    record();
+    store.getState().setProcess(id, { pid: term.pid, status: 'starting', startedAt: Date.now(), exitCode: undefined, detail: undefined, prompt: undefined, progress: undefined });
+
+    term.onData((chunk) => {
+      if (p.term !== term) return;
+      for (const line of splitter.push(chunk)) ingest(p, line);
+      clearTimeout(p.quietTimer);
+      p.quietTimer = setTimeout(() => flushQuiet(p), QUIET_MS);
+      // New output answers any open question; read again once it settles.
+      if (store.getState().services[id]?.prompt) store.getState().setProcess(id, { prompt: undefined });
+      clearTimeout(p.promptTimer);
+      p.promptTimer = setTimeout(() => checkPrompt(p, splitter), PROMPT_QUIET_MS);
+    });
+
+    term.onExit(({ exitCode, signal }) => {
+      if (p.term !== term) return;
+      p.termAlive = false;
+      clearTimeout(p.promptTimer);
+      drainAll(p);
+      const requested = p.stopping;
+      const signalName = signal ? (Object.entries(constants.signals).find(([, n]) => n === signal)?.[0] as NodeJS.Signals | undefined) : undefined;
+      const code = signalName ? null : exitCode;
+      store.getState().setProcess(id, { status: !requested && code !== 0 ? 'crashed' : 'stopped', exitCode: code, pid: undefined, prompt: undefined });
+      store.getState().addEvent(id, { kind: 'exit', text: code === null ? `exited on ${signalName ?? 'signal'}` : `exited with code ${code}`, status: code ?? undefined });
+      if (!requested) void reap(p, term.pid, restartGraceMs);
+      if (!requested) options.onExit?.(id, code, signalName ?? null);
+    });
+  };
+
   const spawnProc = (p: Proc): void => {
     const id = p.config.id;
+    const pty = p.config.pty ? loadPty() : null;
+    if (pty) return spawnTerm(p, pty);
     const [cmd, ...args] = devCommand(p.config, pm);
     // argv form, no shell: nothing in the config is ever parsed as shell syntax.
     const child = spawn(cmd!, args, {
@@ -192,6 +295,8 @@ export function createSupervisor(store: DeckStore, configs: ServiceConfig[], roo
       if (p.child !== child) return;
       store.getState().setProcess(id, { status: p.stopping ? 'stopped' : 'crashed', pid: undefined });
       store.getState().addEvent(id, { kind: 'exit', text: `failed to start: ${err.message}` });
+      // No 'exit' follows a spawn that never started: 127 is the shell's "command not found".
+      if (!p.stopping && child.pid === undefined) options.onExit?.(id, 127, null);
     });
 
     child.on('exit', (code, signal) => {
@@ -202,6 +307,7 @@ export function createSupervisor(store: DeckStore, configs: ServiceConfig[], roo
       store.getState().addEvent(id, { kind: 'exit', text: code === null ? `exited on ${signal ?? 'signal'}` : `exited with code ${code}`, status: code ?? undefined });
       // The leader died on its own: reap whatever it left in its group so no port stays held.
       if (!requested && child.pid) void reap(p, child.pid, restartGraceMs);
+      if (!requested) options.onExit?.(id, code, signal);
     });
   };
 
@@ -234,12 +340,13 @@ export function createSupervisor(store: DeckStore, configs: ServiceConfig[], roo
         p.stopping = true;
         clearTimeout(p.quietTimer);
         clearTimeout(p.rawTimer);
+        clearTimeout(p.promptTimer);
         if (p.pgid) pgids.push(p.pgid);
       }
       shutdown = terminate(pgids, graceMs).then((gone) => {
         if (!gone) return; // Keep pids.json so the next run can finish the job.
         for (const p of procs.values()) p.pgid = undefined;
-        removePids(root);
+        if (pidFile) removePids(root);
       });
       return shutdown;
     },
@@ -266,9 +373,30 @@ export function createSupervisor(store: DeckStore, configs: ServiceConfig[], roo
       return () => void p.listeners.delete(cb);
     },
 
+    write(id, data, secret) {
+      const p = procs.get(id);
+      if (!p?.term || !p.termAlive) return false;
+      if (secret) {
+        const typed = data.replace(/[\r\n]+$/, '');
+        if (typed !== '') p.secrets.add(typed);
+      }
+      p.term.write(data);
+      if (store.getState().services[id]?.prompt) store.getState().setProcess(id, { prompt: undefined });
+      return true;
+    },
+
+    takesInput(id) {
+      const p = procs.get(id);
+      return Boolean(p?.term && p.termAlive);
+    },
+
     pids() {
       const out: Record<string, number> = {};
       for (const [id, p] of procs) {
+        if (p.term) {
+          if (p.termAlive) out[id] = p.term.pid;
+          continue;
+        }
         const c = p.child;
         if (c?.pid && c.exitCode === null && c.signalCode === null) out[id] = c.pid;
       }

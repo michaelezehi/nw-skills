@@ -1,6 +1,6 @@
 ---
 name: terminal-upgrade
-description: Turn `pnpm dev` / `npm run dev` / `yarn dev` / `bun dev` in every repo on this machine into Devdeck, a calm live terminal dashboard. It shows each dev server with port, memory and hot reloads, streams Convex calls, keeps errors to one line until opened, and has a log pane, colour palettes and copy-to-clipboard. One global install plus a shell hook, with nothing written inside any repo. Use when the user runs /terminal-upgrade, or asks to upgrade, prettify or dashboard their dev terminal.
+description: Turn `pnpm dev` / `npm run dev` / `yarn dev` / `bun dev` in every repo on this machine into Devdeck, a calm live terminal dashboard, and every other package script into a run deck with progress, memory and prompts answered by key or click. It shows each dev server with port, memory and hot reloads, streams Convex calls, keeps errors to one line until opened, and has a log pane, colour palettes and copy-to-clipboard. One global install plus a shell hook, with nothing written inside any repo. Use when the user runs /terminal-upgrade, or asks to upgrade, prettify or dashboard their dev terminal.
 argument-hint: "[install | uninstall | plan | update | repo]"
 disable-model-invocation: true
 ---
@@ -24,12 +24,13 @@ Scripts live in `${CLAUDE_SKILL_DIR}/scripts`, and the Devdeck source in `${CLAU
 ## How machine-wide works
 
 - **One copy.** It lives in `~/.devdeck/app`, run by `~/.devdeck/bin/devdeck`. The installer bundles it into `dist/devdeck.mjs`, which plain Node runs (Node 22.18 or later); if the bundle cannot be built, the command runs the source through tsx instead.
-- **Shell hook.** `~/.devdeck/shell.sh` is sourced from `~/.zshrc` (and `~/.bashrc` if present). It wraps `pnpm`, `npm`, `yarn` and `bun`, and runs Devdeck in place of the raw output only when all of these are true:
-  - The command is exactly `dev` or `run dev`.
+- **Shell hook.** `~/.devdeck/shell.sh` is sourced from `~/.zshrc` (and `~/.bashrc` if present). It wraps `pnpm`, `npm`, `yarn` and `bun`. `dev` opens the dashboard; any other package script (`pnpm build`, `npm run ship`, `yarn test:ci`) opens a run deck. It acts only when all of these are true:
+  - The command names a script in the root `package.json`: `<pm> <name>`, `<pm> run <name>`, `npm test` or `npm start`, `bun run <name>`. Package-manager commands (`install`, `add`, `exec`, `dlx`), flags first (`pnpm -F web build`) and lifecycle scripts (`postinstall`) run as usual.
   - stdin and stdout are a terminal. CI, pipes and agent shells such as Claude's Bash tool get the normal output.
   - The current package is the repo root. `pnpm dev` inside `apps/web` still starts just that app.
-  - The repo has a `dev` script that does not already start its own Devdeck.
-- **Escape hatches.** `DEVDECK=0 pnpm dev` skips it once, and `command pnpm dev` skips the hook.
+  - The script does not already start its own Devdeck, and is not a test runner in watch mode (`vitest` without `run`, `jest --watch`), which reads single keys itself.
+- **Run decks.** `devdeck run <command>` runs one command in a pseudo-terminal: a progress bar with time and memory over its log, and a card for each prompt (yes/no, password, text, an arrow-key list) answered by key or click. A typed password is scrubbed from everything it keeps; `i` types straight into the command until Ctrl+]. The deck closes with the command, leaves its output, and exits with its status.
+- **Escape hatches.** `DEVDECK=0 pnpm build` skips it once, and `command pnpm build` skips the hook. `bash scripts/shell/test-hook.sh` tests the hook in bash and zsh.
 - **Safe fallback.** When Devdeck cannot run in a repo (no dev processes, a bad config, Devdeck already open there) it exits 78 and the hook runs the original command as usual. The `devdeck` command runs on the Node that installed it (22 or later), so a repo pinned to an old Node through nvm or volta still works.
 - **Root script respected.** A root `dev` that is a workspace runner (`turbo dev`, `pnpm -r`, `nx run-many`, a turbo filter that only excludes) gets one card per package. Any other root `dev` (a positive `--filter`, `dotenv -- next dev`) runs as one service, so its env and filters are kept.
 - **Detection.** Devdeck finds the dev servers itself on every start: workspaces, package manager, each package's `dev` script, kind and port.

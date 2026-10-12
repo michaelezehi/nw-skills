@@ -195,7 +195,14 @@ export function planHogStrip(hogs: readonly Hog[], width: number): { lead: boole
 export const STRIP_SEP = SEP;
 
 /** What a click on a cell does. */
-export type HogHit = { kind: 'stop'; pid: number } | { kind: 'restart'; pid: number } | { kind: 'select'; pid: number } | { kind: 'orphans' } | { kind: 'open' };
+export type HogHit =
+  | { kind: 'stop'; pid: number }
+  | { kind: 'restart'; pid: number }
+  | { kind: 'select'; pid: number }
+  | { kind: 'orphans' }
+  | { kind: 'open' }
+  /** A prompt card's button or list option: see promptCard.ts. */
+  | { kind: 'prompt'; index: number };
 
 export interface HitRegion {
   y: number;

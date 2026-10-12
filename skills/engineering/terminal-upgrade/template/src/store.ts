@@ -30,7 +30,7 @@ export interface DeckState {
   hogs: Hog[];
 
   apply(serviceId: string, signals: Signal[]): void;
-  setProcess(serviceId: string, patch: Partial<Pick<ServiceState, 'pid' | 'status' | 'exitCode' | 'startedAt' | 'restarts' | 'detail'>>): void;
+  setProcess(serviceId: string, patch: Partial<Pick<ServiceState, 'pid' | 'status' | 'exitCode' | 'startedAt' | 'restarts' | 'detail' | 'prompt' | 'progress'>>): void;
   addEvent(serviceId: string, event: Omit<DevEvent, 'id' | 'at' | 'service'>): void;
   addCall(call: Omit<ConvexCall, 'id'>): void;
   /** Several calls in one store update, as a feed chunk brings them. */

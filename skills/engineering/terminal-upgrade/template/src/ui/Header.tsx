@@ -43,10 +43,14 @@ export function cpuPercentOf(totalCpu: number): number {
   return Math.min(100, totalCpu / CORES);
 }
 
-/** `<TITLE> · DEV` from the config title in the meta, or `DEV` alone when there is none. */
-export function deckTitle(meta: Pick<DeckMeta, 'title'>): string {
+/** The mode word, `DEV` unless `devdeck run` named another. */
+export const deckMode = (meta: Pick<DeckMeta, 'mode'>): string => (meta.mode ?? '').trim().toUpperCase() || 'DEV';
+
+/** `<TITLE> · <MODE>` from the meta, or the mode alone when there is no title. */
+export function deckTitle(meta: Pick<DeckMeta, 'title' | 'mode'>): string {
   const title = (meta.title ?? '').trim().toUpperCase();
-  return title ? `${title} · DEV` : 'DEV';
+  const mode = deckMode(meta);
+  return title ? `${title} · ${mode}` : mode;
 }
 
 export function nodeLabel(node: string): string {

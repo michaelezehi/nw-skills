@@ -5,6 +5,8 @@ export interface LineSplitter {
   push(chunk: string): string[];
   /** Hand back a pending partial line, if any. */
   drain(): string[];
+  /** The pending partial line, left in place: where a prompt leaves the cursor. */
+  peek(): string;
 }
 
 /**
@@ -37,6 +39,9 @@ export function createLineSplitter(maxPartial = MAX_PARTIAL): LineSplitter {
         buf = '';
       }
       return out;
+    },
+    peek() {
+      return buf.replace(/\r$/, '');
     },
     drain() {
       const rest = buf.replace(/\r$/, '');

@@ -34,12 +34,16 @@ import { VerboseView } from './VerboseView.tsx';
 import { usePalette } from './usePalette.ts';
 import { linkRefs } from './links.ts';
 import { allErrorsPayload, copiedNotice, errorPayload, logPayload, COPY_FAILED, type CopyPayload } from './copyText.ts';
-import { actionForKey, indexOfId, initialUi, reduceUi, selectHog, type Focus, type UiAction, type UiContext } from './deckState.ts';
+import { actionForKey, indexOfId, initialUi, reduceUi, selectHog, type Focus, type UiAction, type UiContext, type UiState } from './deckState.ts';
 import { HogPanel, HogStrip } from './HogPanel.tsx';
 import { HogView } from './HogView.tsx';
 import { panelRegions, planHogPanel, stripRegions, type HitRegion, type HogHit } from './hogPlan.ts';
 import { enableMouse, hitTest, isClick, parseMouse } from './mouse.ts';
 import { useHogs } from './useHogs.ts';
+import { usePrompt } from './usePrompt.ts';
+import { planPrompt, promptRegions } from './promptCard.ts';
+import { PromptCard } from './PromptCard.tsx';
+import { ProgressLine } from './ProgressLine.tsx';
 
 export interface DeckHandle {
   waitUntilExit(): Promise<void>;
@@ -53,12 +57,14 @@ export interface DeckOptions extends Partial<RenderOptions> {
   serviceDirs?: Record<string, string>;
   /** Ask the terminal for mouse clicks. Defaults to on for a TTY. */
   mouse?: boolean;
+  /** Where the UI starts; `devdeck run` opens on the command's log. */
+  initialUi?: Partial<UiState>;
 }
 
 /** Mount the deck on the alternate screen. Extra render options exist for tests. */
 export function renderDeck(store: DeckStore, controls: DeckControls, options: DeckOptions = {}): DeckHandle {
-  const { theme, serviceDirs = {}, mouse, ...renderOptions } = options;
-  const instance = render(<Deck store={store} controls={controls} theme={theme ?? readTheme()} serviceDirs={serviceDirs} />, {
+  const { theme, serviceDirs = {}, mouse, initialUi: startUi, ...renderOptions } = options;
+  const instance = render(<Deck store={store} controls={controls} theme={theme ?? readTheme()} serviceDirs={serviceDirs} startUi={startUi} />, {
     exitOnCtrlC: false,
     alternateScreen: true,
     patchConsole: true,
@@ -91,7 +97,7 @@ function* hotAts(apps: readonly ServiceState[], events: readonly { kind: string;
 
 type DeckInput = { action: UiAction; ctx: UiContext } | { hog: number };
 
-function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; controls: DeckControls; theme: Theme; serviceDirs: Record<string, string> }) {
+function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckStore; controls: DeckControls; theme: Theme; serviceDirs: Record<string, string>; startUi?: Partial<UiState> }) {
   // Data slices only, compared shallowly; the per-second uptime ticks inside the title.
   const state = useStore(
     store,
@@ -117,6 +123,7 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
   const [ui, dispatch] = useReducer(
     (current: typeof initialUi, input: DeckInput) => ('hog' in input ? selectHog(current, input.hog) : reduceUi(current, input.action, input.ctx)),
     initialUi,
+    (base) => ({ ...base, ...startUi }),
   );
   const palette = usePalette(theme);
   const paletteOpen = ui.view === 'palette';
@@ -189,6 +196,7 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
   const [localNotice, showNotice] = useLocalNotice();
   const notice = localNotice ?? eventNotice;
   const hogActions = useHogs(hogs, controls, showNotice, now);
+  const prompter = usePrompt(apps, selectedService, controls, (text) => showNotice({ kind: 'failed', service: '', text }));
 
   // The only motion is the spinner of a starting or compiling service; the clock runs for it alone.
   const spinning = useSpinning(apps, now);
@@ -227,6 +235,7 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
     showNotice({ kind: 'failed', service: '', text: `${hog.name} is not a devdeck service` });
   };
   const onHit = (hit: HogHit | undefined) => {
+    if (hit?.kind === 'prompt') return prompter.click(hit.index);
     if (hit?.kind !== 'stop' && hit?.kind !== 'orphans') hogActions.disarm();
     if (!hit) return;
     const hog = 'pid' in hit ? hogs.find((h) => h.pid === hit.pid) : undefined;
@@ -238,6 +247,11 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
   };
 
   useInput((input, key) => {
+    // Attached, every key belongs to the command, Ctrl-C included.
+    if (prompter.attached && !parseMouse(input)) {
+      prompter.handleKey(input, key);
+      return;
+    }
     if (key.ctrl && input === 'c') {
       controls.quit(EXIT_SIGINT);
       return;
@@ -254,6 +268,7 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
       if (typeof taken === 'string') return showNotice({ kind: 'saved', service: '', text: `Palette saved · ${taken}` });
       if (taken) return;
     }
+    if (!paletteOpen && ui.view !== 'keys' && prompter.handleKey(input, key)) return;
     const action = actionForKey(input, key);
     if (action !== 'stop' && action !== 'stopOrphans') hogActions.disarm();
     if (!action) return;
@@ -275,22 +290,37 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
 
   scrollMax.current = 0;
   logScrollMax.current = 0;
-  const view = (() => {
-    if (viewRows < 2) return null;
-    if (ui.view === 'palette') return <Palette state={palette.state} width={columns} rows={viewRows} />;
+  // A command's progress takes one row over the region, and a waiting prompt its bottom.
+  const progressOf = apps.find((s) => s.progress && s.pid !== undefined);
+  const progressRows = progressOf && viewRows >= 4 ? 1 : 0;
+  const promptPlan = prompter.prompt ? planPrompt(prompter.prompt, prompter.input, columns, viewRows - progressRows) : undefined;
+  const innerRows = viewRows - progressRows - (promptPlan?.rows ?? 0);
+  const inner = (() => {
+    if (innerRows < 2) return null;
+    if (ui.view === 'palette') return <Palette state={palette.state} width={columns} rows={innerRows} />;
     if (ui.view === 'hogs') {
       const armed = hogActions.armed;
-      return <HogView hogs={hogs} width={columns} rows={viewRows} selectedPid={selectedHog?.pid} armedPid={armed && armed.target !== 'orphans' ? armed.target : undefined} armedOrphans={armed?.target === 'orphans'} />;
+      return <HogView hogs={hogs} width={columns} rows={innerRows} selectedPid={selectedHog?.pid} armedPid={armed && armed.target !== 'orphans' ? armed.target : undefined} armedOrphans={armed?.target === 'orphans'} />;
     }
     if (ui.view === 'error' && selectedError) {
-      return <ErrorCard error={selectedError} width={columns} rows={viewRows} offset={ui.scroll} scrollMax={scrollMax} link={(text) => linkFor(selectedError.service, text)} />;
+      return <ErrorCard error={selectedError} width={columns} rows={innerRows} offset={ui.scroll} scrollMax={scrollMax} link={(text) => linkFor(selectedError.service, text)} />;
     }
     // The logs take the feed's rows; the feed is back one `l` or an escape later.
     if (ui.activity === 'logs' && selectedService) {
-      return <LogPane services={apps} selectedIndex={serviceIndex} controls={controls} columns={columns} rows={viewRows} scroll={ui.logScroll} paused={ui.paused} scrollMax={logScrollMax} window={logWindow} link={linkFor} />;
+      return <LogPane services={apps} selectedIndex={serviceIndex} controls={controls} columns={columns} rows={innerRows} scroll={ui.logScroll} paused={ui.paused} scrollMax={logScrollMax} window={logWindow} link={linkFor} />;
     }
     return null;
   })();
+  const view: ReactNode | null =
+    progressRows > 0 || promptPlan ? (
+      <Box flexDirection="column" width={columns} height={viewRows} overflow="hidden">
+        {progressRows > 0 && progressOf ? <ProgressLine service={progressOf} columns={columns} now={now} /> : null}
+        {inner ?? <Box height={Math.max(0, innerRows)} />}
+        {promptPlan && prompter.service ? <PromptCard plan={promptPlan} width={columns} label={prompter.service.label} /> : null}
+      </Box>
+    ) : (
+      inner
+    );
 
   // The hogs block above the tray, and the cells a click can land on.
   const hogRows = plain ? plainLayout.hogRows : layout.hogRows;
@@ -309,6 +339,10 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
     regions.current = stripRegions(hogTop, columns);
     hogBlock = <HogStrip hogs={hogs} width={columns} />;
   }
+  if (promptPlan) {
+    const regionTop = plain ? plainLayout.header + plainLayout.services : layout.header + layout.services;
+    regions.current = [...promptRegions(promptPlan, regionTop + viewRows - promptPlan.rows, columns), ...regions.current];
+  }
 
   const shared = { meta: state.meta, hogBlock, apps, watchers, events, calls, errors, callCount: state.callCount, callErrorCount: state.callErrorCount, totalMemMb, totalCpu, errorIndex, frame, spinning, now, hotNow, spanNow, view };
 
@@ -323,7 +357,7 @@ function Deck({ store, controls, theme, serviceDirs }: { store: DeckStore; contr
         ) : (
           <VerboseView {...shared} layout={layout} focus={focus} serviceIndex={serviceIndex} callIndex={callIndex} eventIndex={eventIndex} filter={ui.filter} paused={ui.paused} collapsed={ui.collapsed} />
         )}
-        <Footer errors={errors} columns={columns} mode={ui.mode} activity={ui.activity} view={ui.view} hogs={hogs.length} hogsHidden={ui.hogsHidden} />
+        <Footer errors={errors} columns={columns} mode={ui.mode} activity={ui.activity} view={ui.view} hogs={hogs.length} hogsHidden={ui.hogsHidden} inputHints={prompter.hints} typeHint={state.meta.mode !== undefined} />
         {notice ? <Notice notice={notice} columns={columns} /> : null}
       </Box>
     </ThemeProvider>

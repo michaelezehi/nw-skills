@@ -16,6 +16,8 @@ export interface CliArgs {
   config?: string;
   root?: string;
   plan: boolean;
+  /** `devdeck run <command…>` (or `devdeck -- <command…>`): one command in the deck. */
+  run?: string[];
 }
 
 export type DeckSource = 'file' | 'package' | 'repo' | 'global';
@@ -38,13 +40,19 @@ export class StartError extends Error {
   }
 }
 
-export const USAGE = 'usage: devdeck [--plan] [--root <dir>] [--config <file>]';
+export const USAGE = 'usage: devdeck [--plan] [--root <dir>] [--config <file>] | devdeck [--root <dir>] run <command…>';
 
 /** Parse argv (without node and the script). Throws StartError on anything it does not know. */
 export function parseArgs(argv: readonly string[]): CliArgs {
   const args: CliArgs = { plan: false };
   for (let i = 0; i < argv.length; i++) {
     const arg = argv[i] ?? '';
+    // Everything after `run` belongs to the command, flags included.
+    if (arg === 'run' || arg === '--') {
+      args.run = argv.slice(i + 1);
+      if (args.run.length === 0) throw new StartError(`devdeck: run needs a command. ${USAGE}`);
+      return args;
+    }
     if (arg === '--plan') {
       args.plan = true;
       continue;

@@ -11,7 +11,7 @@ import { Panel } from './Panel.tsx';
 import { useTone, statHue, type Tone } from './theme.ts';
 import { blockDigitsWidth, ring, CLOCK_ROWS } from './glyphs.ts';
 import { cellWidth, formatCount, formatMb, formatUptime } from './format.ts';
-import { CLOCK_GAP, TOTAL_MB, UptimeClock, cpuPercentOf, deckTitle, nodeLabel, watcherSummary } from './Header.tsx';
+import { CLOCK_GAP, TOTAL_MB, UptimeClock, cpuPercentOf, deckMode, deckTitle, nodeLabel, watcherSummary } from './Header.tsx';
 import { MACHINE_ALARM_PERCENT } from './memAlarm.ts';
 import { TileRow, type TileSpec } from './StatTiles.tsx';
 import { useSecond } from './useFrame.ts';
@@ -36,12 +36,13 @@ interface Segment {
 
 const width = (segments: Segment[]): number => segments.reduce((sum, s) => sum + cellWidth(s.text), 0);
 
-/** The deck title whole, or without ` · DEV`, or `DEV`: whichever fits `room`. */
-export function fitTitle(meta: Pick<DeckMeta, 'title'>, room: number): string {
+/** The deck title whole, or without ` · <MODE>`, or the mode alone: whichever fits `room`. */
+export function fitTitle(meta: Pick<DeckMeta, 'title' | 'mode'>, room: number): string {
   const full = deckTitle(meta);
   if (cellWidth(full) <= room) return full;
-  const bare = full.replace(/ · DEV$/, '');
-  return cellWidth(bare) <= room ? bare : 'DEV';
+  const mode = deckMode(meta);
+  const bare = full.slice(0, -` · ${mode}`.length);
+  return cellWidth(bare) <= room && bare !== '' ? bare : mode;
 }
 
 function tileSpecs(props: PlainHeaderProps, tone: Tone): TileSpec[] {

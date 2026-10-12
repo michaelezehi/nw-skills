@@ -16,9 +16,13 @@ export interface FooterProps {
   hogs?: number;
   /** The hogs block is hidden; the hint offers to show it. */
   hogsHidden?: boolean;
+  /** A prompt card or an attached keyboard has the keys: its hints replace the deck's. */
+  inputHints?: Hint[];
+  /** A run deck: `i` types into the command. */
+  typeHint?: boolean;
 }
 
-interface Hint {
+export interface Hint {
   key: string;
   word: string;
   /** Drawn in the accent: the thing this key controls is on. */
@@ -31,7 +35,7 @@ export function activityHint(activity: Activity): string {
   return next === 'logs' ? 'logs' : next === 'quiet' ? 'hide' : 'feed';
 }
 
-export function footerHints(mode: Mode, activity: Activity, columns: number, view: View = 'deck', hogs = 0, hogsHidden = false): Hint[] {
+export function footerHints(mode: Mode, activity: Activity, columns: number, view: View = 'deck', hogs = 0, hogsHidden = false, typeHint = false): Hint[] {
   if (view === 'hogs') {
     const hints: Hint[] = [{ key: '↑↓', word: 'row' }, { key: 's', word: 'stop' }, { key: 'r', word: 'restart' }];
     if (columns >= 90) hints.push({ key: 'S', word: 'orphans' });
@@ -52,15 +56,16 @@ export function footerHints(mode: Mode, activity: Activity, columns: number, vie
     if (columns >= 120 && !hogsHidden) hints.push({ key: 'm', word: 'hogs' });
     hints.push({ key: 'M', word: hogsHidden ? 'show hogs' : 'hide hogs', active: hogsHidden });
   }
+  if (typeHint && view === 'deck') hints.push({ key: 'i', word: 'type' });
   hints.push({ key: 'h', word: 'help' });
   if (columns >= 120) hints.push({ key: 'C', word: 'palette' }, { key: 'b', word: 'back' }, { key: 'esc', word: 'close' });
   hints.push({ key: 'q', word: 'quit' });
   return hints;
 }
 
-export function Footer({ errors, columns, mode, activity, view, hogs = 0, hogsHidden = false }: FooterProps) {
+export function Footer({ errors, columns, mode, activity, view, hogs = 0, hogsHidden = false, inputHints, typeHint = false }: FooterProps) {
   const tone = useTone();
-  const hints = footerHints(mode, activity, columns, view, hogs, hogsHidden);
+  const hints = inputHints ?? footerHints(mode, activity, columns, view, hogs, hogsHidden, typeHint);
   const hintWidth = hints.reduce((sum, h) => sum + h.key.length + 1 + h.word.length + 2, 0);
   const left = Math.max(10, columns - hintWidth - 2);
   return (

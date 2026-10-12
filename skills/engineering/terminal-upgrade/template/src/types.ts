@@ -14,6 +14,25 @@ export interface ServiceConfig {
   url?: string;
   /** argv run in `dir`, no shell. Default: [packageManager, 'run', 'dev']. */
   command?: string[];
+  /**
+   * Run inside a pseudo-terminal, so the command sees a real terminal: it can ask for a
+   * password or a yes/no, and the deck can answer. `devdeck run` sets it.
+   */
+  pty?: boolean;
+}
+
+/** What a command waiting for input asks for. `yes`/`no` are the words it expects typed. */
+export type Prompt =
+  | { kind: 'secret'; question: string }
+  | { kind: 'confirm'; question: string; yes: string; no: string; default?: 'yes' | 'no' }
+  | { kind: 'choice'; question: string; options: string[]; current: number }
+  | { kind: 'text'; question: string }
+  | { kind: 'continue'; question: string };
+
+/** How far along a command is. `fraction` 0 to 1 when the output gave a number. */
+export interface Progress {
+  fraction?: number;
+  label: string;
 }
 
 /** The default export of devdeck.config.ts, which sits in the devdeck package dir. */
@@ -59,6 +78,10 @@ export interface ServiceState {
   memHistory: number[];
   restarts: number;
   exitCode?: number | null;
+  /** Set while the command waits for an answer. */
+  prompt?: Prompt;
+  /** The latest progress the output showed. */
+  progress?: Progress;
 }
 
 export type DevEventKind =
@@ -130,6 +153,8 @@ export interface LineParser {
 export interface DeckMeta {
   /** Header text from the config; the UI shows it uppercased as `<title> · DEV`. */
   title?: string;
+  /** The word after the title, `DEV` when unset; `devdeck run` sets the script name. */
+  mode?: string;
   startedAt: number;
   branch?: string;
   node: string;
@@ -198,4 +223,9 @@ export interface DeckControls {
    * and a service root (those restart instead) with 'denied', as it does on EPERM.
    */
   killPid(pid: number): Promise<KillResult>;
+  /**
+   * Type into a service running in a pseudo-terminal. `secret` marks a password: the deck
+   * scrubs it from every line it keeps. False when the service takes no input.
+   */
+  write(id: string, data: string, secret?: boolean): boolean;
 }

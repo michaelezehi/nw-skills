@@ -52,7 +52,7 @@
     {
       "name": "devdeck",
       "source": "./mods/devdeck",
-      "description": "Live mirror of a Devdeck dev dashboard: service dots, the latest hot reload or Convex call above the prompt, /devdeck for the full pane, and a devdeck_status tool",
+      "description": "Live mirror of a Devdeck dev dashboard: service dots, the latest hot reload or Convex call above the prompt, /devdeck for the full pane, and tools to read it, run package scripts in it and restart services",
       "category": "productivity"
     }
   ]

@@ -321,3 +321,78 @@ describe('palette', () => {
     expect((await bandColors(await mount($))).dev).toBe(EMBER.accent)
   })
 })
+
+describe('run, restart and wait tools', () => {
+  const RESULT = (extra: Record<string, unknown> = {}) => ({
+    id: 'run-build', label: 'build', status: 'stopped', running: false, exitCode: 0, ranMs: 42_000,
+    progress: { fraction: 1, label: 'step 9/9' }, errors: [], tail: ['compiled', 'done'], ...extra,
+  })
+
+  /** A socket that answers each route; `sent` records method, url and body. */
+  function sockets(on: On, answer: (method: string, url: string, body: string) => { status: number; body: unknown }) {
+    const clock = mock.clock(on, { now: 1000 })
+    const sent: string[] = []
+    on('session.cwd', () => ({ value: `${ROOT}/apps/web` }))
+    on('fs.exists', ($, e) => ({ value: e.path === SOCK }))
+    on('http.fetch', async ($, e) => {
+      const method = e.init?.method ?? 'GET'
+      const body = typeof e.init?.body === 'string' ? e.init.body : ''
+      sent.push(`${method} ${e.url}${body ? ` ${body}` : ''}`)
+      const out = answer(method, e.url, body)
+      return { value: { status: out.status, ok: out.status < 300, headers: {}, text: JSON.stringify(out.body) } }
+    })
+    return { clock, sent }
+  }
+
+  test('devdeck_run posts the script, waits for the exit, and reports code, progress and output', async ($, on) => {
+    const { sent } = sockets(on, (method, url) =>
+      method === 'POST' ? { status: 200, body: RESULT({ status: 'starting', running: true }) } : { status: 200, body: { reason: 'exit', result: RESULT() } },
+    )
+    const out = await $.tool.call({ tool: 'mcp__devdeck__devdeck_run', script: 'build', timeoutSec: 30 } as never)
+    expect(sent).toEqual(['POST http://devdeck/run {"script":"build"}', 'GET http://devdeck/wait?id=run-build&until=exit&timeoutMs=30000'])
+    const text = String(out.result)
+    expect(text).toMatch(/^build finished in 42\.0s\./)
+    expect(text).toMatch(/Progress: 100% step 9\/9/)
+    expect(text).toMatch(/Last 2 lines:\ncompiled\ndone/)
+  })
+
+  test('devdeck_run names the real scripts when the name is not one', async ($, on) => {
+    sockets(on, () => ({ status: 404, body: { error: 'no script named "rm -rf /" in package.json', scripts: ['build', 'lint'] } }))
+    const out = await $.tool.call({ tool: 'mcp__devdeck__devdeck_run', script: 'rm -rf /' } as never)
+    expect(out.result).toBe('no script named "rm -rf /" in package.json. Scripts: build, lint.')
+  })
+
+  test('a prompt hands the question back for the user to answer in the deck', async ($, on) => {
+    sockets(on, (method) =>
+      method === 'POST'
+        ? { status: 200, body: RESULT({ running: true }) }
+        : { status: 200, body: { reason: 'prompt', result: RESULT({ running: true, prompt: { kind: 'confirm', question: 'Deploy to production?' } }) } },
+    )
+    const out = await $.tool.call({ tool: 'mcp__devdeck__devdeck_run', script: 'ship' } as never)
+    expect(String(out.result)).toMatch(/^build is waiting for input: "Deploy to production\?" \(yes\/no\)\. Only a person can answer it/)
+  })
+
+  test('devdeck_restart waits for ready, and devdeck_wait reports a timeout', async ($, on) => {
+    const { sent } = sockets(on, (method, url) =>
+      method === 'POST'
+        ? { status: 200, body: { id: 'web' } }
+        : url.includes('until=ready')
+          ? { status: 200, body: { reason: 'ready', result: RESULT({ id: 'web', label: 'Web', status: 'ready', running: true }) } }
+          : { status: 200, body: { reason: 'timeout', result: RESULT({ running: true, status: 'starting', ranMs: 130_000 }) } },
+    )
+    const restarted = await $.tool.call({ tool: 'mcp__devdeck__devdeck_restart', id: 'web' } as never)
+    expect(String(restarted.result)).toMatch(/^Web is ready\./)
+    expect(sent[1]).toBe('GET http://devdeck/wait?id=web&until=ready&timeoutMs=120000')
+    const waited = await $.tool.call({ tool: 'mcp__devdeck__devdeck_wait', id: 'run-build', timeoutSec: 9999 } as never)
+    expect(String(waited.result)).toMatch(/^build is still running after the wait \(2m 10s so far\)\. Call devdeck_wait again/)
+    expect(sent.at(-1)).toBe('GET http://devdeck/wait?id=run-build&until=exit&timeoutMs=600000')
+  })
+
+  test('says how to start Devdeck when no socket is found', async ($, on) => {
+    mock.clock(on, { now: 1000 })
+    on('session.cwd', () => ({ value: `${ROOT}/apps/web` }))
+    on('fs.exists', () => ({ value: false }))
+    const out = await $.tool.call({ tool: 'mcp__devdeck__devdeck_run', script: 'build' } as never)
+    expect(out.result).toBe('Devdeck is not running in this project. Start it with pnpm dev in a terminal first.')
+  })
+})

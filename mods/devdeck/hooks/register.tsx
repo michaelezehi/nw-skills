@@ -7,6 +7,7 @@ import type { EngineInterface, Register, Timer } from 'claude-code'
 
 import type { Snap } from '../types'
 
+import { RESTART_URL, RUN_URL, refusedText, resultText, waitSeconds, waitText, waitUrl } from './actions'
 import { band } from './band'
 import { ANIMATE_MS, activityBetween, isFresh, parseErrors, seenOf, trimSnapshot } from './model'
 import type { Seen } from './model'
@@ -17,6 +18,9 @@ import { NOT_RUNNING, summaryText } from './summary'
 
 const PANE = 'devdeck'
 const TOOL = 'mcp__devdeck__devdeck_status'
+const RUN_TOOL = 'mcp__devdeck__devdeck_run'
+const RESTART_TOOL = 'mcp__devdeck__devdeck_restart'
+const WAIT_TOOL = 'mcp__devdeck__devdeck_wait'
 
 const snapAtom = atom({ plugin: 'devdeck', key: 'snap' } as const, null)
 const expandedAtom = atom({ plugin: 'devdeck', key: 'expanded' } as const, [])
@@ -54,13 +58,26 @@ async function findSocket($: EngineInterface, cwd: string): Promise<string | nul
  * hold the poller busy, or the tool call, for good.
  */
 async function getText($: EngineInterface, url: string, socketPath: string): Promise<string | null> {
+  const res = await ask($, url, socketPath)
+  return res !== null && res.status >= 200 && res.status < 300 ? res.text : null
+}
+
+/** Any request over the socket, with its status; null when it failed or ran past `timeoutMs`. */
+async function ask(
+  $: EngineInterface,
+  url: string,
+  socketPath: string,
+  init: { method?: string; body?: string } = {},
+  timeoutMs = FETCH_TIMEOUT_MS,
+): Promise<{ status: number; text: string } | null> {
   let giveUp: (value: null) => void = () => undefined
   const timedOut = new Promise<null>(resolve => {
     giveUp = resolve
   })
-  const timer = $.clock.after(FETCH_TIMEOUT_MS, () => giveUp(null))
-  const fetched = $.http.fetch(url, { socketPath }).then(
-    res => (res.ok ? res.text : null),
+  const timer = $.clock.after(timeoutMs, () => giveUp(null))
+  const headers = init.body === undefined ? undefined : { 'content-type': 'application/json' }
+  const fetched = $.http.fetch(url, { ...init, ...(headers ? { headers } : {}), socketPath }).then(
+    res => ({ status: res.status, text: res.text }),
     () => null,
   )
   try {
@@ -68,6 +85,42 @@ async function getText($: EngineInterface, url: string, socketPath: string): Pro
   } finally {
     timer.cancel()
   }
+}
+
+/** Wait on a card over the socket: the tool's answer text. */
+async function waitOn($: EngineInterface, socket: string, id: string, until: 'exit' | 'ready', seconds: number): Promise<string> {
+  // A little past the socket's own deadline, so the socket answers "timeout" itself.
+  const res = await ask($, waitUrl(id, until, seconds * 1000), socket, {}, seconds * 1000 + 5000)
+  if (res === null) return `Devdeck did not answer while waiting on ${id}.`
+  return res.status === 404 ? `Devdeck has no card "${id}".` : waitText(res.text)
+}
+
+/** The answer for devdeck_run, devdeck_restart and devdeck_wait. */
+async function actionText($: EngineInterface, tool: string, args: Record<string, unknown>): Promise<string> {
+  const cwd = await $.session.cwd().catch(() => '')
+  const socket = await findSocket($, cwd)
+  if (socket === null) return `${NOT_RUNNING} Start it with pnpm dev in a terminal first.`
+  const seconds = waitSeconds(args.timeoutSec)
+  const wait = args.wait !== false
+
+  if (tool === RUN_TOOL) {
+    const script = typeof args.script === 'string' ? args.script : ''
+    const res = await ask($, RUN_URL, socket, { method: 'POST', body: JSON.stringify({ script }) })
+    if (res === null) return 'Devdeck did not answer POST /run.'
+    if (res.status !== 200) return refusedText(res.text)
+    if (!wait) return resultText(res.text)
+    const id = (JSON.parse(res.text) as { id: string }).id
+    return waitOn($, socket, id, 'exit', seconds)
+  }
+  if (tool === RESTART_TOOL) {
+    const id = typeof args.id === 'string' ? args.id : ''
+    const res = await ask($, RESTART_URL, socket, { method: 'POST', body: JSON.stringify({ id }) })
+    if (res === null) return 'Devdeck did not answer POST /restart.'
+    if (res.status !== 200) return refusedText(res.text)
+    return wait ? waitOn($, socket, id, 'ready', seconds) : `Restarted ${id}.`
+  }
+  const id = typeof args.id === 'string' ? args.id : ''
+  return waitOn($, socket, id, args.until === 'ready' ? 'ready' : 'exit', seconds)
 }
 
 /** The tool's answer, read fresh so it works whether or not the poller has run. */
@@ -208,6 +261,41 @@ export const register: Register = on => {
           'Use it to answer what is failing or erroring in local dev instead of reading logs. Takes no input.',
         inputSchema: { type: 'object', properties: {} },
       })
+      const timeoutSec = { type: 'number', description: 'Most seconds to wait. Default 120, at most 600.' }
+      await $.tool.register({
+        name: 'devdeck_run',
+        description:
+          'Runs a package.json script (build, test:ci, lint, ship) as a card in the running Devdeck, where the user sees its ' +
+          'progress and answers its prompts, then waits for it to end and returns the exit code, its errors and last 40 lines. ' +
+          'Prefer it to Bash for package scripts while Devdeck runs. Only script names from package.json are accepted.',
+        inputSchema: {
+          type: 'object',
+          properties: {
+            script: { type: 'string', description: 'The script name, as in package.json.' },
+            wait: { type: 'boolean', description: 'Wait for it to end. Default true.' },
+            timeoutSec,
+          },
+          required: ['script'],
+        },
+      })
+      await $.tool.register({
+        name: 'devdeck_restart',
+        description: 'Restarts a Devdeck service by id (see devdeck_status) and waits until it is ready or fails.',
+        inputSchema: {
+          type: 'object',
+          properties: { id: { type: 'string' }, wait: { type: 'boolean', description: 'Default true.' }, timeoutSec },
+          required: ['id'],
+        },
+      })
+      await $.tool.register({
+        name: 'devdeck_wait',
+        description: 'Waits on a Devdeck card (a script run or a service) until it exits, or is ready, or stops at a prompt.',
+        inputSchema: {
+          type: 'object',
+          properties: { id: { type: 'string' }, until: { type: 'string', enum: ['exit', 'ready'] }, timeoutSec },
+          required: ['id'],
+        },
+      })
     } catch {
       // A refused registration leaves the band working.
     }
@@ -224,6 +312,12 @@ export const register: Register = on => {
   on('tool.call', { tool: TOOL }, async $ => ({ result: await statusText($) })).catch(() => ({
     result: 'Devdeck status could not be read.',
   }))
+
+  for (const tool of [RUN_TOOL, RESTART_TOOL, WAIT_TOOL]) {
+    on('tool.call', { tool }, async ($, e) => ({ result: await actionText($, tool, e as unknown as Record<string, unknown>) })).catch(() => ({
+      result: 'Devdeck could not be reached.',
+    }))
+  }
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     if (e.props.hasSurvey) return next(e)

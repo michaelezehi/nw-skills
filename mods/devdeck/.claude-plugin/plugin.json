@@ -1,7 +1,7 @@
 {
   "name": "devdeck",
-  "version": "0.2.0",
-  "description": "Mirrors a running Devdeck dev dashboard: service dots and the latest reload or Convex call above the prompt, /devdeck for the full pane, and a devdeck_status tool",
+  "version": "0.3.0",
+  "description": "Mirrors a running Devdeck dev dashboard: service dots and the latest reload or Convex call above the prompt, /devdeck for the full pane, devdeck_status to read it, and devdeck_run, devdeck_restart and devdeck_wait to run package scripts and restart services inside it",
   "types": "./types/index.d.ts",
   "author": {
     "name": "Michael Ezehi"

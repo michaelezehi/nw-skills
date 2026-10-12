@@ -138,6 +138,11 @@ Check, per change:
 - The Dockerfiles build workspace packages in order (design system, then the
   packages that import it, then the app). A new build config must work from
   a clean clone with `pnpm build` in that package.
+- A workspace package newly imported by another package (often a source-only
+  one with `exports: ./src/index.ts`) must be copied into every image before
+  the importer builds, and its `package.json` registered in the deps stage.
+  Grep each Dockerfile for the new name; the deploy fails with
+  `Could not resolve` otherwise.
 - Generated files the build reads (loader maps, namespace lists) are
   committed, because Docker builds often skip `prebuild`.
 - `.dockerignore` excludes `**/.next`, `**/node_modules`, `**/.convex` and

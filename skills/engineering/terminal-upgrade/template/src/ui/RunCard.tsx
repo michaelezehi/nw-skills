@@ -19,10 +19,16 @@ export function isRunDeck(meta: Pick<DeckMeta, 'mode'>, apps: readonly ServiceSt
   return meta.mode !== undefined && apps.length === 1;
 }
 
-/** The run card takes a strip of cards at least two rows inside; pills keep the old look. */
+/**
+ * The run card takes a strip of cards, or the quiet state's grid, with at least two rows
+ * inside; pills keep the old look.
+ */
 export function showsRunCard(meta: Pick<DeckMeta, 'mode'>, apps: readonly ServiceState[], strip: { cardWidth: number; services: number; grid?: unknown }): boolean {
-  return isRunDeck(meta, apps) && strip.cardWidth > 0 && !strip.grid && strip.services >= 4;
+  return isRunDeck(meta, apps) && (strip.cardWidth > 0 || Boolean(strip.grid)) && strip.services >= 4;
 }
+
+/** Rows the card takes: four inside when the region has them, the rest stays blank. */
+export const runCardRows = (region: number): number => Math.min(region, 6);
 
 /** 1m 13s, 40s, 2h 05m: elapsed time that moves each second. */
 export function formatElapsed(ms: number): string {

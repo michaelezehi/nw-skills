@@ -13,7 +13,7 @@ import { Header } from './Header.tsx';
 import { ServiceCard, PillStrip } from './ServiceCard.tsx';
 import { CardRows } from './CardRows.tsx';
 import { QuietGrid } from './QuietCards.tsx';
-import { RunCard } from './RunCard.tsx';
+import { RunCard, runCardRows } from './RunCard.tsx';
 import { ConvexCalls, filterCalls, type CallFilter } from './ConvexCalls.tsx';
 import { Timeline } from './Timeline.tsx';
 import { ErrorTray } from './ErrorTray.tsx';
@@ -80,10 +80,12 @@ export function VerboseView(props: VerboseViewProps) {
         columns={layout.columns}
         rows={layout.header}
       />
-      {layout.grid ? (
+      {props.runCard && apps[0] ? (
+        <Box height={layout.services} flexDirection="column" overflow="hidden">
+          <RunCard service={apps[0]} width={layout.columns} rows={runCardRows(layout.services)} frame={props.spinning.has(apps[0].id) ? props.frame : 0} spinning={props.spinning.has(apps[0].id)} />
+        </Box>
+      ) : layout.grid ? (
         <QuietGrid apps={apps} grid={layout.grid} errors={errors} columns={layout.columns} selectedIndex={props.serviceIndex} focused={focus === 'services'} frame={frame} spinning={spinning} now={props.spanNow} detail />
-      ) : props.runCard && apps[0] ? (
-        <RunCard service={apps[0]} width={layout.columns} rows={layout.services} frame={props.spinning.has(apps[0].id) ? props.frame : 0} spinning={props.spinning.has(apps[0].id)} />
       ) : (
         <ServiceStrip apps={apps} layout={layout} maxMemMb={maxMemMb} selectedIndex={props.serviceIndex} focused={focus === 'services'} frame={frame} spinning={spinning} now={props.hotNow} />
       )}

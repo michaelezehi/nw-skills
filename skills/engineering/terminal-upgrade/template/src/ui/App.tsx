@@ -45,7 +45,7 @@ import { usePrompt } from './usePrompt.ts';
 import { planPrompt, promptRegions } from './promptCard.ts';
 import { PromptCard } from './PromptCard.tsx';
 import { ProgressLine } from './ProgressLine.tsx';
-import { showsRunCard } from './RunCard.tsx';
+import { isRunDeck, showsRunCard } from './RunCard.tsx';
 import { ScriptList } from './ScriptList.tsx';
 import { useScripts } from './useScripts.ts';
 
@@ -145,7 +145,9 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
   const plain = ui.mode === 'plain';
   const hogs = state.hogs;
   // Layouts from primitives, kept while those hold, so the grids and strips that take them stay memoised.
-  const shownHogs = ui.hogsHidden ? 0 : hogs.length;
+  // A run deck is about its one command: the machine's other hogs stay out of it.
+  const runDeck = isRunDeck(state.meta, apps);
+  const shownHogs = ui.hogsHidden || runDeck ? 0 : hogs.length;
   const layout = useMemo(
     () => computeLayout({ columns, rows, services: apps.length, errors: errors.length, view: ui.view, activity: ui.activity, hogs: shownHogs }),
     [columns, rows, apps.length, errors.length, ui.view, ui.activity, shownHogs],
@@ -378,7 +380,7 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
         ) : (
           <VerboseView {...shared} layout={layout} focus={focus} serviceIndex={serviceIndex} callIndex={callIndex} eventIndex={eventIndex} filter={ui.filter} paused={ui.paused} collapsed={ui.collapsed} />
         )}
-        <Footer errors={errors} columns={columns} mode={ui.mode} activity={ui.activity} view={ui.view} hogs={hogs.length} hogsHidden={ui.hogsHidden} inputHints={prompter.hints} typeHint={state.meta.mode !== undefined} />
+        <Footer errors={errors} columns={columns} mode={ui.mode} activity={ui.activity} view={ui.view} hogs={runDeck ? 0 : hogs.length} hogsHidden={ui.hogsHidden} inputHints={prompter.hints} typeHint={state.meta.mode !== undefined} />
         {notice ? <Notice notice={notice} columns={columns} /> : null}
       </Box>
     </ThemeProvider>

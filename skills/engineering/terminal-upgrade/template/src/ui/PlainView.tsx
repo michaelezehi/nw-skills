@@ -12,7 +12,7 @@ import { ErrorTray } from './ErrorTray.tsx';
 import { PlainHeader } from './PlainHeader.tsx';
 import { PlainStrip } from './PlainCards.tsx';
 import { QuietGrid } from './QuietCards.tsx';
-import { RunCard } from './RunCard.tsx';
+import { RunCard, runCardRows } from './RunCard.tsx';
 import { Latest } from './Latest.tsx';
 import type { PlainLayout } from './plainLayout.ts';
 
@@ -66,10 +66,12 @@ export function PlainView(props: PlainViewProps) {
           rows={layout.header}
         />
       ) : null}
-      {layout.grid ? (
+      {props.runCard && apps[0] ? (
+        <Box height={layout.services} flexDirection="column" overflow="hidden">
+          <RunCard service={apps[0]} width={layout.columns} rows={runCardRows(layout.services)} frame={props.spinning.has(apps[0].id) ? props.frame : 0} spinning={props.spinning.has(apps[0].id)} />
+        </Box>
+      ) : layout.grid ? (
         <QuietGrid apps={apps} grid={layout.grid} errors={props.errors} columns={layout.columns} selectedIndex={props.selectedIndex} focused={props.focused} frame={props.frame} spinning={props.spinning} now={props.spanNow} detail={false} />
-      ) : props.runCard && apps[0] ? (
-        <RunCard service={apps[0]} width={layout.columns} rows={layout.services} frame={props.spinning.has(apps[0].id) ? props.frame : 0} spinning={props.spinning.has(apps[0].id)} />
       ) : (
         <PlainStrip apps={apps} layout={layout} selectedIndex={props.selectedIndex} focused={props.focused} frame={props.frame} spinning={props.spinning} now={hotNow} />
       )}

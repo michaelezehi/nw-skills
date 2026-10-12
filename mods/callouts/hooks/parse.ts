@@ -4,7 +4,7 @@ import type { Callout, CalloutKind } from '../types'
 
 export type Segment = { kind: 'markdown'; text: string } | { kind: 'callout'; callout: Callout }
 
-const MARKER = /^\s*>\s*\[!(ACTION|ASK|INPUT|DONE)\][ \t]*(.*)$/i
+const MARKER = /^\s*>\s*\[!(ACTION|ASK|INPUT|SECRET|DONE)\][ \t]*(.*)$/i
 const QUOTED = /^\s*>/
 const ITEM = /^[-*]\s+(.+)$/
 
@@ -35,13 +35,46 @@ export function parseCallouts(text: string): Segment[] {
     }
     while (callout.body.length && !callout.body[callout.body.length - 1]?.trim()) callout.body.pop()
     if (!callout.title && callout.body.length) callout.title = (callout.body.shift() ?? '').trim()
+    if (callout.kind === 'secret') {
+      const target = secretTarget(callout.title)
+      if (target) callout.secret = target
+    }
     out.push({ kind: 'callout', callout })
   }
   flush()
   return out
 }
 
-/** The blocks that wait on the person: every ACTION, ASK and INPUT. */
+const SECRET_TITLE = /^`?([A-Z][A-Z0-9_]{1,63})`?\s+(?:in|to|into)\s+`?([^\s`]+)`?/
+
+/**
+ * The variable and file a SECRET names: `OPENROUTER_API_KEY in apps/web/.env.local`. Only a
+ * `.env` file inside the working directory: no absolute path, no `..`, so a reply can never
+ * point a key at another file.
+ */
+export function secretTarget(title: string): { name: string; path: string } | undefined {
+  const m = SECRET_TITLE.exec(title.trim())
+  if (!m) return undefined
+  const path = m[2] ?? ''
+  const base = path.split('/').pop() ?? ''
+  if (path.startsWith('/') || path.startsWith('~') || path.split('/').includes('..') || !/^\.env(\.[\w.-]+)?$/.test(base)) return undefined
+  return { name: m[1] ?? '', path }
+}
+
+/** `text` with the line for `name` set to `value`, added at the end when there is none. */
+export function upsertEnv(text: string, name: string, value: string): string {
+  const line = `${name}=${/[\s#"'\\$`]/.test(value) ? JSON.stringify(value) : value}`
+  const lines = text.split('\n')
+  const at = lines.findIndex(l => new RegExp(`^\\s*(?:export\\s+)?${name}\\s*=`).test(l))
+  if (at >= 0) lines[at] = line
+  else {
+    if (lines.length && lines[lines.length - 1] === '') lines.pop()
+    lines.push(line, '')
+  }
+  return lines.join('\n')
+}
+
+/** The blocks that wait on the person: every ACTION, ASK, INPUT and SECRET. */
 export const openOf = (segments: readonly Segment[]): Callout[] =>
   segments.flatMap(s => (s.kind === 'callout' && s.callout.kind !== 'done' ? [s.callout] : []))
 

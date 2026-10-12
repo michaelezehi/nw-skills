@@ -3,6 +3,7 @@ import type { On, RenderPropsOf } from 'claude-code'
 
 import { answerText, openOf, parseCallouts, secretTarget, upsertEnv } from '../hooks/parse'
 import { nextSecret } from '../hooks/register'
+import { wrapText } from '../hooks/draw'
 
 const HOME = '/home/me'
 const THEME = `${HOME}/.config/devdeck/theme.json`
@@ -131,6 +132,30 @@ describe('band', () => {
     expect(sent).toEqual([])
     const after = await $.ui.mount({ plugin: 'callouts', surface: 'terminal', component: 'AbovePrompt', props: BAND })
     expect(await after.find({ key: 'callouts-band' })).toBeUndefined()
+  })
+
+  test('a long question and long options wrap onto stacked rows, never cut', async ($, on) => {
+    const { sent } = world(on)
+    await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
+    const question = 'Should the Time and pay tab replace the Attendance tab on the profile, or sit beside it?'
+    const option = 'Replace it, old ?tab=attendance links open the new tab (recommended)'
+    await $.turn.complete(turn(`> [!ASK] ${question}\n> - ${option}\n> - Keep both tabs`))
+    const narrow = { ...BAND, bodyColumns: 40 }
+    const row = await $.ui.mount({ plugin: 'callouts', surface: 'terminal', component: 'AbovePrompt', props: narrow })
+    const lines = wrapText(question, 36)
+    expect(lines.length).toBeGreaterThan(1)
+    expect(lines.join(' ')).toBe(question)
+    for (const line of lines) expect(await row.find({ type: 'Text', text: line })).toBeDefined()
+    const optionLines = wrapText(option, 33)
+    expect(optionLines.join(' ')).toBe(option)
+    for (const line of optionLines) expect(await row.find({ type: 'Text', text: line })).toBeDefined()
+    await row.press({ key: 'opt-btn-0-0' })
+    expect(sent).toEqual([option])
+  })
+
+  test('wrapText keeps every word and splits one longer than the width', () => {
+    expect(wrapText('one two three', 8)).toEqual(['one two', 'three'])
+    expect(wrapText('abcdefghijkl', 8)).toEqual(['abcdefgh', 'ijkl'])
   })
 
   test('an unrelated prompt keeps the band; the next reply with callouts replaces it', async ($, on) => {

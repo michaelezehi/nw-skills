@@ -16,8 +16,6 @@ export const LABELS: Record<CalloutKind, string> = {
   done: '✓  D O N E',
 }
 
-const clip = (text: string, width: number): string => (text.length <= width ? text : `${text.slice(0, Math.max(0, width - 1))}…`)
-
 /** One callout as it sits in the reply. */
 export function calloutBlock(ui: Table, c: Callout, palette: Palette, key: string): JSX.Element {
   const { Box, Text } = ui
@@ -78,7 +76,6 @@ export type BandInput = {
   open: Callout[]
   palette: Palette
   columns: number
-  maxRows: number
   /** Dots to show for each SECRET's field, by its index in `open`. */
   masked: Record<number, number>
   /** Send `text` as the person's message for item `index`. */
@@ -91,30 +88,49 @@ export type BandInput = {
 
 const ICONS: Record<CalloutKind, string> = { action: '⚑', ask: '?', input: '✎', secret: '✱', done: '✓' }
 
-/** Rows one item takes: its line, plus a line for options or a field. */
-const rowsOf = (c: Callout): number => (c.kind === 'action' ? 1 : 2)
+/** `text` broken at spaces into lines of at most `width` cells; a word longer than that is split. */
+export function wrapText(text: string, width: number): string[] {
+  const room = Math.max(8, width)
+  const lines: string[] = []
+  let line = ''
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    let rest = word
+    while (rest.length > room) {
+      if (line) lines.push(line)
+      lines.push(rest.slice(0, room))
+      line = ''
+      rest = rest.slice(room)
+    }
+    if (!line) line = rest
+    else if (line.length + 1 + rest.length <= room) line = `${line} ${rest}`
+    else {
+      lines.push(line)
+      line = rest
+    }
+  }
+  if (line) lines.push(line)
+  return lines.length > 0 ? lines : ['']
+}
 
 /**
- * Everything still open, above the prompt: a yellow header with the count, then one block
- * per item with its own answer. The first item's buttons take the hotkeys (1 to 9, x).
+ * Everything still open, above the prompt: a yellow header with the count, then each item
+ * in full, its question wrapped onto as many rows as it needs and each option on its own
+ * row. Nothing is cut: a band taller than the room scrolls. The first item's buttons take
+ * the hotkeys (1 to 9, x).
  */
 export function band(p: BandInput): JSX.Element | null {
   const { Box, Text, Button, Input } = p.ui
-  if (p.open.length === 0 || p.maxRows < 2) return null
+  if (p.open.length === 0) return null
   const count = p.open.length
   const head = `⚑  ${count === 1 ? '1 THING NEEDS YOU' : `${count} THINGS NEED YOU`}`
+  const width = Math.max(20, p.columns - 2)
   const chip = (text: string, strong = true): JSX.Element => (
     <Text color={strong ? INK : p.palette.muted} backgroundColor={strong ? p.palette.accent : undefined} bold={strong}>
       {` ${text} `}
     </Text>
   )
   const rows: JSX.Element[] = []
-  let used = 1
-  let shown = 0
   for (const [i, c] of p.open.entries()) {
-    if (used + rowsOf(c) > p.maxRows - (i < count - 1 ? 1 : 0)) break
-    used += rowsOf(c)
-    shown += 1
     const first = i === 0
     const hot = (key: string): { hotkey?: string } => (first ? { hotkey: key } : {})
     const later = (
@@ -122,32 +138,49 @@ export function band(p: BandInput): JSX.Element | null {
         {chip(first ? 'x  Not now' : 'Not now', false)}
       </Button>
     )
-    const titleRoom = Math.max(10, p.columns - (c.kind === 'action' ? 30 : 4))
-    const line = (
-      <Box key={`line-${i}`} flexDirection="row" gap={1}>
-        <Text color={p.palette.accent} bold>
-          {ICONS[c.kind]}
-        </Text>
-        <Text color={p.palette.text} bold={first}>
-          {clip(c.title, titleRoom)}
-        </Text>
-        {c.kind === 'action' && (
+    for (const [n, text] of wrapText(c.title, width - 2).entries()) {
+      rows.push(
+        <Box key={`title-${i}-${n}`} flexDirection="row" gap={1}>
+          <Text color={p.palette.accent} bold>
+            {n === 0 ? ICONS[c.kind] : ' '}
+          </Text>
+          <Text color={p.palette.text} bold={first}>
+            {text}
+          </Text>
+        </Box>,
+      )
+    }
+    if (c.kind === 'action') {
+      rows.push(
+        <Box key={`answers-${i}`} flexDirection="row" gap={2} paddingLeft={2}>
           <Button key={`done-${i}`} {...hot('1')} onPress={() => p.answer(i, `Done: ${c.title}`)}>
             {chip(first ? '1  Done' : 'Done')}
           </Button>
-        )}
-        {c.kind === 'action' && later}
-      </Box>
-    )
-    rows.push(line)
-    if (c.kind === 'ask') {
-      rows.push(
-        <Box key={`answers-${i}`} flexDirection="row" gap={2} paddingLeft={2}>
-          {c.options.slice(0, 9).map((option, n) => (
-            <Button key={`opt-${i}-${n}`} {...hot(String(n + 1))} onPress={() => p.answer(i, option)}>
-              {chip(`${n + 1}  ${clip(option, 28)}`)}
+          {later}
+        </Box>,
+      )
+    } else if (c.kind === 'ask') {
+      for (const [n, option] of c.options.slice(0, 9).entries()) {
+        const label = `${n + 1}`
+        const lines = wrapText(option, width - 2 - (label.length + 2) - 1)
+        rows.push(
+          <Box key={`opt-${i}-${n}`} flexDirection="row" gap={1} paddingLeft={2}>
+            <Button key={`opt-btn-${i}-${n}`} label={option} {...hot(label)} onPress={() => p.answer(i, option)}>
+              {chip(label)}
             </Button>
-          ))}
+            <Text color={p.palette.text}>{lines[0]}</Text>
+          </Box>,
+        )
+        for (const [k, more] of lines.slice(1).entries()) {
+          rows.push(
+            <Box key={`opt-${i}-${n}-${k}`} flexDirection="row" paddingLeft={2 + label.length + 3}>
+              <Text color={p.palette.text}>{more}</Text>
+            </Box>,
+          )
+        }
+      }
+      rows.push(
+        <Box key={`answers-${i}`} flexDirection="row" paddingLeft={2}>
           {later}
         </Box>,
       )
@@ -172,18 +205,17 @@ export function band(p: BandInput): JSX.Element | null {
               onSubmit={() => p.secretSubmit(i)}
             />
           ) : null}
-          <Text color={p.palette.muted}>{where}</Text>
           {later}
         </Box>,
       )
+      for (const [k, text] of wrapText(where, width - 2).entries()) {
+        rows.push(
+          <Box key={`where-${i}-${k}`} flexDirection="row" paddingLeft={2}>
+            <Text color={p.palette.muted}>{text}</Text>
+          </Box>,
+        )
+      }
     }
-  }
-  if (shown < count) {
-    rows.push(
-      <Text key="more" color={p.palette.muted}>
-        {`  +${count - shown} more; answer these first`}
-      </Text>,
-    )
   }
   return (
     <Box key="callouts-band" flexDirection="column">

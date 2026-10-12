@@ -120,7 +120,6 @@ export const register: Register = on => {
       open,
       palette,
       columns: e.props.bodyColumns,
-      maxRows: e.props.maxRows,
       masked: Object.fromEntries(open.map((c, i) => [i, typed[keyOf(c)] ?? 0])),
       answer: (index, text) => {
         const c = at(index)

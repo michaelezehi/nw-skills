@@ -96,8 +96,13 @@ export function useWalkthroughLoop({ run, driver, show }: Options) {
       await show(step);
       return;
     }
-    const path = step.route.split('?')[0]!;
-    if (pathRef.current === path) return;
+    const [path, query] = step.route.split('?') as [string, string | undefined];
+    if (pathRef.current === path) {
+      // Same page, another tab of it (`/settings?tab=...`): move the query in
+      // place. The page stays mounted, so no loader is needed.
+      if (query !== undefined && window.location.search !== `?${query}`) router.push(step.route);
+      return;
+    }
     await withSwitch(async () => {
       router.push(step.route);
       await landOn(path);
@@ -158,7 +163,13 @@ export function useWalkthroughLoop({ run, driver, show }: Options) {
             if (aliveRef.current) setBusy((b) => (b === 'following' ? null : b));
           }
         }
-        if (!stillDriving() || next.status !== 'playing' || !next.lastStep) break;
+        if (!stillDriving() || !next.lastStep) break;
+        // The last step still opens its reader; the story ends there.
+        if (next.status === 'done') {
+          openExplanation(next, next.lastStep);
+          break;
+        }
+        if (next.status !== 'playing') break;
         if (!(await holdAfter(next, next.lastStep))) break;
       }
     } catch {

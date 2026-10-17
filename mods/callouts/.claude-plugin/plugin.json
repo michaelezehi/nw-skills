@@ -1,7 +1,7 @@
 {
   "name": "callouts",
-  "version": "0.2.2",
-  "description": "Makes what needs you impossible to miss: `> [!ACTION]`, `> [!ASK]`, `> [!INPUT]` and `> [!SECRET]` blocks in a reply draw as bright yellow cards with a flag and stay listed above the prompt, each with its answer, until answered or dismissed. A key typed into a SECRET shows as dots and goes straight into its .env file, never the chat. `> [!DONE]` draws as a finished banner. Colours follow the Devdeck theme",
+  "version": "0.3.0",
+  "description": "Makes what needs you impossible to miss, in three tiers. Blockers, `> [!ACTION]` and `> [!SECRET]`, draw as bright yellow cards; questions, `> [!ASK]` and `> [!INPUT]`, as violet cards; `> [!REVIEW]` draws as a violet outline for things worth a look. All stay listed above the prompt, blockers first, each with its answer, until answered, dismissed or marked seen. A key typed into a SECRET shows as dots and goes straight into its .env file, never the chat. `> [!DONE]` draws as a finished banner. Colours follow the Devdeck theme",
   "types": "./types/index.d.ts",
   "author": {
     "name": "Michael Ezehi"

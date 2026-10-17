@@ -1,7 +1,8 @@
-// callouts: what a reply marks for the person stands out. `> [!ACTION]`, `> [!ASK]`,
-// `> [!INPUT]` and `> [!SECRET]` blocks draw as yellow cards in the transcript and stay
-// listed above the prompt, each with its answer, until answered or dismissed; a key typed
-// into a SECRET goes straight into its .env file. `> [!DONE]` draws as a finished banner.
+// callouts: what a reply marks for the person stands out. `> [!ACTION]` and `> [!SECRET]`
+// draw as yellow cards, `> [!ASK]` and `> [!INPUT]` as violet ones, `> [!REVIEW]` as a violet
+// outline, and all stay listed above the prompt, each with its answer, until answered or
+// dismissed; a key typed into a SECRET goes straight into its .env file. `> [!DONE]` draws
+// as a finished banner.
 // Every function that takes `$` lives in this file: the engine follows `$` across no import.
 import { atom, read, update } from 'claude-code'
 import type { EngineInterface, Register } from 'claude-code'

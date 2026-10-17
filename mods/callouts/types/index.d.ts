@@ -1,6 +1,6 @@
 // Callouts: the blocks a reply marks for the person, and the colours they draw in.
 
-export type CalloutKind = 'action' | 'ask' | 'input' | 'secret' | 'done'
+export type CalloutKind = 'action' | 'ask' | 'input' | 'secret' | 'review' | 'done'
 
 export type Callout = {
   kind: CalloutKind
@@ -27,7 +27,7 @@ export type Palette = {
 declare module 'claude-code' {
   interface PluginState {
     callouts: {
-      /** ACTION, ASK and INPUT blocks of the last reply, until answered or dismissed. */
+      /** ACTION, ASK, INPUT, SECRET and REVIEW blocks of the last reply, until answered or dismissed. */
       open: Callout[]
       palette: Palette
       /** How many characters each SECRET's field holds, by item key; never the characters. */

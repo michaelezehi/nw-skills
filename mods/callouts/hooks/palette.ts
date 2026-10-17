@@ -1,6 +1,6 @@
 // The colours callouts draw with: the palette picked in Devdeck, read from its theme.json,
 // each token checked on its own. A copy of the devdeck mod's reader, so neither needs the other.
-import type { Palette } from '../types'
+import type { CalloutKind, Palette } from '../types'
 
 export const DEFAULT_PALETTE: Palette = {
   accent: '#fde047',
@@ -13,6 +13,14 @@ export const DEFAULT_PALETTE: Palette = {
 
 /** Text on the accent fill: near black, so yellow cards read at a glance. */
 export const INK = '#1c1b19'
+
+/** The question tier's fill: ASK, INPUT and the REVIEW outline. */
+export const VIOLET = '#a78bfa'
+
+/** The colour a callout draws in: yellow for what blocks, violet for questions and reviews. */
+export function fillOf(kind: CalloutKind, palette: Palette): string {
+  return kind === 'ask' || kind === 'input' || kind === 'review' ? VIOLET : palette.accent
+}
 
 const TOKENS = Object.keys(DEFAULT_PALETTE) as (keyof Palette)[]
 const HEX = /^#[0-9a-fA-F]{6}$/

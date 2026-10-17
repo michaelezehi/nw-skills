@@ -1,10 +1,11 @@
 // Finds callout blocks in a reply's markdown. A block is a run of quoted lines whose first
-// reads `> [!ACTION] title` (or ASK, INPUT, DONE). Everything else stays markdown, in order.
+// reads `> [!ACTION] title` (or ASK, INPUT, SECRET, REVIEW, DONE). Everything else stays
+// markdown, in order.
 import type { Callout, CalloutKind } from '../types'
 
 export type Segment = { kind: 'markdown'; text: string } | { kind: 'callout'; callout: Callout }
 
-const MARKER = /^\s*>\s*\[!(ACTION|ASK|INPUT|SECRET|DONE)\][ \t]*(.*)$/i
+const MARKER = /^\s*>\s*\[!(ACTION|ASK|INPUT|SECRET|REVIEW|DONE)\][ \t]*(.*)$/i
 const QUOTED = /^\s*>/
 const ITEM = /^[-*]\s+(.+)$/
 
@@ -74,7 +75,7 @@ export function upsertEnv(text: string, name: string, value: string): string {
   return lines.join('\n')
 }
 
-/** The blocks that wait on the person: every ACTION, ASK, INPUT and SECRET. */
+/** The blocks that wait on the person: every ACTION, ASK, INPUT, SECRET and REVIEW. */
 export const openOf = (segments: readonly Segment[]): Callout[] =>
   segments.flatMap(s => (s.kind === 'callout' && s.callout.kind !== 'done' ? [s.callout] : []))
 

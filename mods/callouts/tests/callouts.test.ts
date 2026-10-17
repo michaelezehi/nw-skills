@@ -4,6 +4,7 @@ import type { On, RenderPropsOf } from 'claude-code'
 import { answerText, openOf, parseCallouts, secretTarget, upsertEnv } from '../hooks/parse'
 import { nextSecret } from '../hooks/register'
 import { wrapText } from '../hooks/draw'
+import { DEFAULT_PALETTE, VIOLET, fillOf } from '../hooks/palette'
 
 const HOME = '/home/me'
 const THEME = `${HOME}/.config/devdeck/theme.json`
@@ -77,6 +78,19 @@ describe('parse', () => {
     expect(answerText(openOf(segs)[0]!, 'staging')).toBe('staging')
   })
 
+  test('reads a REVIEW with its title and body, and keeps it open', () => {
+    const segs = parseCallouts('> [!review] The new header copy\n> Reads well on mobile, check desktop.')
+    expect(openOf(segs)).toEqual([{ kind: 'review', title: 'The new header copy', body: ['Reads well on mobile, check desktop.'], options: [] }])
+  })
+
+  test('fillOf: yellow for blockers, violet for questions and reviews', () => {
+    expect(fillOf('action', DEFAULT_PALETTE)).toBe(DEFAULT_PALETTE.accent)
+    expect(fillOf('secret', DEFAULT_PALETTE)).toBe(DEFAULT_PALETTE.accent)
+    expect(fillOf('ask', DEFAULT_PALETTE)).toBe(VIOLET)
+    expect(fillOf('input', DEFAULT_PALETTE)).toBe(VIOLET)
+    expect(fillOf('review', DEFAULT_PALETTE)).toBe(VIOLET)
+  })
+
   test('leaves a plain quote and a reply without callouts alone', () => {
     expect(parseCallouts('> just a quote\n\ntext')).toEqual([{ kind: 'markdown', text: '> just a quote\n\ntext' }])
   })
@@ -97,6 +111,20 @@ describe('transcript', () => {
     expect(await msg.find({ type: 'Text', text: 'The work is done.' })).toBeDefined()
   })
 
+  test('an ASK card fills violet and a REVIEW draws as a violet outline with no fill', async ($, on) => {
+    world(on)
+    await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
+    const text = '> [!ASK] Ship to?\n> - staging\n\n> [!REVIEW] The new header copy\n> Check desktop.'
+    const msg = await $.ui.mount({ plugin: 'callouts', surface: 'terminal', component: 'AssistantMessage', props: { text, isFirstOfReply: true } })
+    expect((await msg.find({ key: 'callout-0' }))?.props.backgroundColor).toBe(VIOLET)
+    const review = await msg.find({ key: 'callout-1' })
+    expect(review?.props.borderStyle).toBe('round')
+    expect(review?.props.borderColor).toBe(VIOLET)
+    expect(review?.props.backgroundColor).toBeUndefined()
+    expect(await msg.find({ type: 'Text', text: '◇  W O R T H   A   L O O K' })).toBeDefined()
+    expect(await msg.find({ type: 'Text', text: 'Mark it seen above the prompt' })).toBeDefined()
+  })
+
   test('a reply with no callouts is the engine drawing alone', async ($, on) => {
     world(on)
     const msg = await $.ui.mount({ plugin: 'callouts', surface: 'terminal', component: 'AssistantMessage', props: { text: 'hello', isFirstOfReply: true } })
@@ -111,9 +139,8 @@ describe('band', () => {
     await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
     await $.turn.complete(turn(REPLY))
     const row = await $.ui.mount({ plugin: 'callouts', surface: 'terminal', component: 'AbovePrompt', props: BAND })
-    const head = await row.find({ key: 'callout-head' })
+    const head = await row.find({ type: 'Text', text: ' ⚑ 1 NEEDS YOU ' })
     expect(head?.props.backgroundColor).toBe('#fde047')
-    expect(await row.find({ type: 'Text', text: '⚑  1 THING NEEDS YOU' })).toBeDefined()
     expect(await row.find({ type: 'Text', text: 'Start pnpm dev and tell me after about 4 minutes.' })).toBeDefined()
     expect(await row.find({ key: 'engine-own' })).toBeDefined()
     await row.press({ key: 'done-0' })
@@ -176,12 +203,57 @@ describe('band', () => {
     await $.prompt.submit({ text: '/own-goal' } as never)
     await $.turn.complete(turn('Working on it.'))
     const row = await $.ui.mount({ plugin: 'callouts', surface: 'terminal', component: 'AbovePrompt', props: BAND })
-    expect(await row.find({ type: 'Text', text: '⚑  2 THINGS NEED YOU' })).toBeDefined()
+    expect(await row.find({ type: 'Text', text: ' ⚑ 1 NEEDS YOU ' })).toBeDefined()
+    expect(await row.find({ type: 'Text', text: ' ? 1 QUESTION ' })).toBeDefined()
     expect(await row.find({ key: 'input-0' })).toBeDefined()
     await $.turn.complete(turn('> [!ACTION] Restart the app.'))
     const after = await $.ui.mount({ plugin: 'callouts', surface: 'terminal', component: 'AbovePrompt', props: BAND })
-    expect(await after.find({ type: 'Text', text: '⚑  1 THING NEEDS YOU' })).toBeDefined()
+    expect(await after.find({ type: 'Text', text: ' ⚑ 1 NEEDS YOU ' })).toBeDefined()
     expect(await after.find({ key: 'input-0' })).toBeUndefined()
+  })
+
+  test('blockers come first, then questions, then reviews; each press reaches its own item', async ($, on) => {
+    const { sent } = world(on)
+    await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
+    await $.turn.complete(turn('> [!REVIEW] Header copy.\n\n> [!ASK] Ship to?\n> - staging\n> - production\n\n> [!REVIEW] Footer copy.\n\n> [!ACTION] Approve the copy.'))
+    const row = await $.ui.mount({ plugin: 'callouts', surface: 'terminal', component: 'AbovePrompt', props: BAND })
+    const head = await row.find({ key: 'callout-head' })
+    expect(JSON.stringify(head)).toContain(' ⚑ 1 NEEDS YOU ')
+    expect((await row.find({ type: 'Text', text: ' ? 1 QUESTION ' }))?.props.backgroundColor).toBe(VIOLET)
+    expect(await row.find({ type: 'Text', text: ' ◇ 2 TO LOOK AT ' })).toBeDefined()
+    const drawn = JSON.stringify(await row.drawn())
+    const at = (t: string): number => drawn.indexOf(t)
+    expect(at('Approve the copy.')).toBeGreaterThan(-1)
+    expect(at('Approve the copy.')).toBeLessThan(at('Ship to?'))
+    expect(at('Ship to?')).toBeLessThan(at('Header copy.'))
+    expect(at('Header copy.')).toBeLessThan(at('Footer copy.'))
+    // The action is drawn first, so it holds the hotkeys; reviews offer Seen and no Not now.
+    expect(((await row.find({ key: 'done-3' })) as { props?: { hotkey?: string } } | undefined)?.props?.hotkey).toBe('d')
+    expect(((await row.find({ key: 'seen-0' })) as { props?: { hotkey?: string } } | undefined)?.props?.hotkey).toBeUndefined()
+    expect(await row.find({ key: 'later-0' })).toBeUndefined()
+    await row.press({ key: 'seen-2' })
+    const afterSeen = await $.ui.mount({ plugin: 'callouts', surface: 'terminal', component: 'AbovePrompt', props: BAND })
+    const left = JSON.stringify(await afterSeen.drawn())
+    expect(left).not.toContain('Footer copy.')
+    expect(left).toContain('Header copy.')
+    expect(sent).toEqual([])
+    // Indices are into the list as it now stands: action 2, ask 1.
+    await afterSeen.press({ key: 'opt-btn-1-1' })
+    expect(sent).toEqual(['production'])
+    const last = await $.ui.mount({ plugin: 'callouts', surface: 'terminal', component: 'AbovePrompt', props: BAND })
+    await last.press({ key: 'done-1' })
+    expect(sent).toEqual(['production', 'Done: Approve the copy.'])
+  })
+
+  test('a lone REVIEW takes the s hotkey for Seen', async ($, on) => {
+    world(on)
+    await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
+    await $.turn.complete(turn('> [!REVIEW] Header copy.'))
+    const row = await $.ui.mount({ plugin: 'callouts', surface: 'terminal', component: 'AbovePrompt', props: BAND })
+    expect(((await row.find({ key: 'seen-0' })) as { props?: { hotkey?: string } } | undefined)?.props?.hotkey).toBe('s')
+    await row.press({ key: 'seen-0' })
+    const after = await $.ui.mount({ plugin: 'callouts', surface: 'terminal', component: 'AbovePrompt', props: BAND })
+    expect(await after.find({ key: 'callouts-band' })).toBeUndefined()
   })
 })
 

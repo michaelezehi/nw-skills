@@ -9,9 +9,10 @@ export type Digest = { lines: string[]; follow: Follow[] }
 
 const MAX_LINES = 3
 const MAX_FOLLOW = 3
-// The width the pane's height is reckoned at: narrower than most panes, so a
-// summary never needs more rows than were asked for.
-const ROWS_WIDTH = 48
+// The width the pane's height is reckoned at: the narrowest card (a 24 column
+// pane less the crab and gaps), so an open card may get a spare row but never
+// loses one.
+const ROWS_WIDTH = 12
 
 // Callouts that wait on the person (yellow) and those that only ask (violet).
 const BLOCKING = new Set(['ACTION', 'SECRET'])
@@ -30,9 +31,13 @@ type Line = {
   isBody: boolean
 }
 
-// Inline markdown to plain words: links keep their text, markers go.
+// Inline markdown to plain words: links keep their text, markers go. Escape
+// sequences and control bytes go first: a report quoting tool output must not
+// recolour the pane or reach the clipboard.
 export const plain = (s: string): string =>
   s
+    .replace(/\u001b\][^\u0007\u001b]*(?:\u0007|\u001b\\)|\u001b\[[0-?]*[ -/]*[@-~]|\u001b[@-_]/g, '')
+    .replace(/[\u0000-\u001f\u007f-\u009f]/g, ' ')
     .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
     .replace(/\*\*|__|~~|`/g, '')
     .replace(/(^|[\s(])[*_]([^*_\s][^*_]*?)[*_](?=[\s).,;:!?]|$)/g, '$1$2')

@@ -1,7 +1,7 @@
 import { describe, expect, mock, test } from 'claude-code/testing'
 import type { AgentSpawnInput, RenderPropsOf } from 'claude-code'
 
-import { digestOf } from '../hooks/summary'
+import { digestOf, digestRows } from '../hooks/summary'
 import { paneRows } from '../hooks/terminal'
 
 const REPORT = [
@@ -131,5 +131,20 @@ describe('digest', () => {
     expect(await panel.find({ type: 'Text', text: /^Fixed the bar width\.$/ })).toBeDefined()
     expect((await panel.find({ type: 'Text', text: /Restart the session/ }))?.props.color).toBe('#fde047')
     expect(await panel.find({ type: 'Text', text: /Added the digest/ })).toBeUndefined()
+  })
+})
+
+describe('digest safety and height', () => {
+  test('a report quoting escape sequences shows none of them', () => {
+    const report = 'Fixed the build. \u001b[31mred\u001b[0m and \u001b]52;c;aGk=\u0007 gone.\u0007'
+    const d = digestOf({ report }, 60)
+    expect(d.lines).toEqual(['Fixed the build. red and gone.'])
+    expect(d.lines.join('')).not.toMatch(/[\u0000-\u001f\u007f-\u009f]/)
+  })
+
+  test('the pane reckons a wrapping summary at its widest: three rows', () => {
+    const summary = 'Moved the bar to eighth blocks and added a sheen. Tests pass.'
+    expect(digestRows({ summary })).toBe(3)
+    expect(digestOf({ summary }, 70).lines.length).toBe(1)
   })
 })

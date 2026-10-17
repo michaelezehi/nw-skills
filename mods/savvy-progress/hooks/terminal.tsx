@@ -1,11 +1,14 @@
 // Terminal drawing: the desktop's look painted in colored cells. A Raster cell
 // holds a glyph with a 24-bit foreground and background, so half blocks give two
-// square pixels per cell and the crabs, the dithered bar and the pill survive in
-// any truecolor terminal, with no image protocol.
+// square pixels per cell and the crabs, the gradient bar and the pill survive in
+// any truecolor terminal, with no image protocol. Every drawing is a pure
+// function of its inputs and the frame, so a redraw never shimmers.
 import type { Elements } from 'claude-code'
 
 import type { AgentRun, Flow, PlannedTask } from '../types'
 
+import { cardTitle, digestBlock, isFinished } from './digest'
+import { CELEBRATE_MS, FRAME_MS, partyFrame } from './motion'
 import { CLAY, COSTUMES, INK, crabBody } from './sprites'
 import type { Fill } from './sprites'
 
@@ -32,9 +35,10 @@ export type Look = {
 
 const DEFAULT = 0x01000000
 const BG = 0x1e1e22
-const TRACK = 0x2c2c32
-const FAINT = 0x45454c
+const TRACK = 0x313139
+const FAINT = 0x4a4a52
 const WHITE = 0xffffff
+const POLE = 0xc9ccd2
 
 const B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
 
@@ -82,12 +86,6 @@ class Grid {
   cells(): string {
     return base64(new Uint8Array(this.words.buffer))
   }
-}
-
-// Deterministic noise so the dither does not shimmer between redraws.
-const noise = (x: number, y: number): number => {
-  const v = Math.sin(x * 12.9898 + y * 78.233) * 43758.5453
-  return v - Math.floor(v)
 }
 
 // --- crabs: hand-drawn minis colored from the shared 30×28 sprites.
@@ -161,65 +159,139 @@ function halfBlocks(px: Int32Array, w: number, h: number, dim: boolean): Grid {
   return grid
 }
 
-const CRAB_COLS = 6
+// Cards seat the crab in 8 columns: the body in the first 6, a planted flag
+// beside it once the run is done.
+const CRAB_COLS = 8
 const CRAB_ROWS = 2
+// A leg step every half second.
+const WALK_FRAMES = 4
 
 function crabCells(costume: string, tint: string, step: number, dim: boolean): string {
   const px = miniPixels(costume, tint, step)
   return halfBlocks(px, CRAB_COLS, CRAB_ROWS * 2, dim).cells()
 }
 
-// A six-pixel crab for the one-row band; the legs swap each tick while busy.
-function miniCrabCells(step: number, isWalking: boolean): string {
-  const clay = rgbOf(CLAY)
-  const top = [1, 1, 1, 1, 1, 1]
-  const legs = isWalking && step % 2 === 1 ? [0, 1, 0, 0, 1, 0] : [1, 0, 1, 1, 0, 1]
+// The done pose: the body in the done green, the hat swapped for a flag on a
+// pole in the tier's color. While `party` counts frames into the celebration the
+// far claw waves and the pennant cycles three flutter frames; null rests still.
+function doneCells(tint: string, done: number, party: number | null): string {
+  const flag = rgbOf(tint)
+  const fold = mix(flag, WHITE, 0.4)
+  const isUp = party !== null && Math.floor(party / 2) % 2 === 0
+  const flutter: [number, number][] = [[flag, flag], [flag, fold], [fold, flag]]
+  const [top, low] = flutter[party === null ? 0 : party % 3] ?? [flag, flag]
+  const color: Record<string, number> = { C: done, I: INK_RGB, P: POLE, F: top, G: low }
+  const rows = [isUp ? 'C.....PF' : '......PF', isUp ? '.ICCICPG' : 'CICCICPG', '.CCCC.P.', `${LEGS[0]}P.`]
+  const px = new Int32Array(CRAB_COLS * rows.length).fill(-1)
+  rows.forEach((row, y) => [...row].forEach((ch, x) => (px[y * CRAB_COLS + x] = color[ch] ?? -1)))
+  return halfBlocks(px, CRAB_COLS, CRAB_ROWS * 2, false).cells()
+}
+
+// A card's crab: walking while the run runs, the done pose once it is done.
+// `party` is frames into the done celebration (see partyFrame), null after it.
+export function cardCrabCells(costume: string, tint: string, status: string, frame: number, party: number | null, done: string): string {
+  if (status === 'done') return doneCells(tint, rgbOf(done), party)
+  return crabCells(costume, tint, status === 'running' ? Math.floor(frame / WALK_FRAMES) : 0, false)
+}
+
+export type Mood = 'walk' | 'idle' | 'party' | 'rest'
+
+// A six-pixel crab for the one-row band: the legs swap each half second while
+// busy; once the flow closes it turns the done green and waves for a moment.
+export function miniCrabCells(frame: number, mood: Mood, done: number): string {
+  const body = mood === 'party' || mood === 'rest' ? done : rgbOf(CLAY)
+  const legs = mood === 'walk' && Math.floor(frame / WALK_FRAMES) % 2 === 1 ? [0, 1, 0, 0, 1, 0] : [1, 0, 1, 1, 0, 1]
   const grid = new Grid(6, 1)
-  top.forEach((t, x) => {
-    const b = legs[x] === 1
-    if (t && b) grid.set(x, 0, '█', clay, DEFAULT)
-    else if (t) grid.set(x, 0, '▀', clay, DEFAULT)
-  })
-  grid.set(2, 0, '▀', rgbOf(INK), clay)
-  grid.set(3, 0, '▀', rgbOf(INK), clay)
+  legs.forEach((b, x) => grid.set(x, 0, b ? '█' : '▀', body, DEFAULT))
+  grid.set(2, 0, '▀', INK_RGB, body)
+  grid.set(3, 0, '▀', INK_RGB, body)
+  if (mood === 'party') grid.set(5, 0, Math.floor(frame / 2) % 2 === 0 ? '▀' : '▄', body, DEFAULT)
   return grid.cells()
 }
 
-// --- the band's bar: a rounded track, dithered fill, faint running layer, the pill.
+// --- the band's bar: a rounded track, a gradient fill with a sub-cell edge, the
+// running segment breathing ahead of it, the pill.
 
-function barCells(f: Flow, width: number, label: string, ratio: number, accent: number): string {
+const EIGHTHS = ['▏', '▎', '▍', '▌', '▋', '▊', '▉']
+const SHEEN_W = 6
+// Frames per breath of the running segment: two seconds.
+const BREATH = 16
+const PARTY_FRAMES = CELEBRATE_MS / FRAME_MS
+
+export type BarMotion = {
+  frame: number
+  // Work is out: the sheen sweeps the fill and the running segment breathes.
+  isWorking: boolean
+  // Frames into the finish's celebration, null outside it.
+  party: number | null
+}
+
+export function barCells(f: Flow, width: number, label: string, ratio: number, accent: number, m: BarMotion): string {
   const grid = new Grid(width, 1)
   const inner = width - 2
-  const fill = Math.round(inner * ratio)
+  const eighths = Math.round(inner * 8 * Math.min(1, Math.max(0, ratio)))
+  const full = Math.floor(eighths / 8)
+  const part = eighths % 8
+  const edge = full + (part ? 1 : 0)
   const run = f.total ? Math.round((inner * Math.min(f.total, f.done + f.running)) / f.total) : 0
+  const isMoving = m.isWorking && !f.isFinished
+  const party = f.isFinished ? m.party : null
 
-  grid.set(0, 0, '▐', TRACK, DEFAULT)
-  grid.set(width - 1, 0, '▌', TRACK, DEFAULT)
-  const dots = ['▪', '▘', '▝', '▖', '▗', '▚', '▞', '·']
+  const dark = mix(accent, BG, 0.45)
+  const light = mix(accent, WHITE, 0.3)
+  // What lies under cell i past the fill: the track, or the running segment's breath.
+  const under = (i: number): number => {
+    if (i >= run) return TRACK
+    const t = isMoving ? 0.5 - 0.5 * Math.cos((2 * Math.PI * (m.frame - i * 0.5)) / BREATH) : 0.5
+    return mix(TRACK, accent, 0.08 + 0.16 * t)
+  }
+  // White added to fill cell i: the sheen while working, the sparkle while celebrating.
+  const shine = (i: number): number => {
+    if (party !== null) {
+      const d = ((party + 1) / PARTY_FRAMES) * (inner + 6) - 3 - i
+      return d >= 0 && d < 5 ? 0.8 * (1 - d / 5) : 0
+    }
+    if (!isMoving || full === 0) return 0
+    const d = (m.frame % (full + SHEEN_W)) - i
+    return d >= 0 && d < SHEEN_W ? 0.38 * Math.sin((Math.PI * (d + 0.5)) / SHEEN_W) : 0
+  }
+
+  // Each cell's background as painted, so the pill's caps round onto it.
+  const bg: number[] = [DEFAULT]
   for (let i = 0; i < inner; i++) {
     const x = i + 1
-    if (i < fill) {
-      const density = 0.35 + 0.6 * Math.pow(i / Math.max(1, fill), 1.2)
-      const shade = mix(accent, WHITE, noise(i, 3) * 0.35)
-      if (noise(i, 1) < density) grid.set(x, 0, dots[Math.floor(noise(1, i) * dots.length)] ?? '·', shade, TRACK)
-      else grid.set(x, 0, ' ', TRACK, TRACK)
-    } else if (i < run) {
-      grid.set(x, 0, noise(i + 7, 3) < 0.4 ? '·' : ' ', mix(accent, TRACK, 0.55), TRACK)
+    if (i < full) {
+      const c = mix(mix(dark, light, full > 1 ? i / (full - 1) : 1), WHITE, shine(i))
+      grid.set(x, 0, ' ', c, c)
+      bg.push(c)
+    } else if (i === full && part) {
+      // The leading edge: a partial block in the head's color on a soft glow.
+      const glow = mix(under(i), light, 0.16)
+      grid.set(x, 0, EIGHTHS[part - 1] ?? '▌', light, glow)
+      bg.push(glow)
     } else {
-      grid.set(x, 0, ' ', TRACK, TRACK)
+      const c = i === edge && edge > 0 ? mix(under(i), light, 0.08) : under(i)
+      grid.set(x, 0, ' ', c, c)
+      bg.push(c)
     }
   }
+  bg.push(DEFAULT)
+  grid.set(0, 0, '▐', TRACK, DEFAULT)
+  grid.set(width - 1, 0, '▌', TRACK, DEFAULT)
   for (let t = 1; t < f.total; t++) {
     const x = 1 + Math.round((inner * t) / f.total)
-    if (x > fill + 2 && x < width - 1) grid.set(x, 0, '╎', FAINT, TRACK)
+    if (x > edge + 2 && x < width - 1) grid.set(x, 0, '╎', FAINT, bg[x] ?? TRACK)
   }
 
+  // The pill rides just ahead of the edge while it fits there, so the edge
+  // shows; else it sits inside the fill, flush with its end.
   const text = ` ${label} `
   const pillW = Math.min(inner, [...text].length)
-  const pillX = 1 + Math.max(0, Math.min(inner - pillW, fill - pillW))
+  const ahead = edge + 2
+  const pillX = ahead + pillW + 1 <= width - 1 ? ahead : 1 + Math.max(0, Math.min(inner - pillW, edge - pillW))
   ;[...text].slice(0, pillW).forEach((ch, k) => grid.set(pillX + k, 0, ch, WHITE, accent))
-  grid.set(pillX - 1, 0, '▐', accent, pillX - 1 === 0 ? DEFAULT : TRACK)
-  if (pillX + pillW < width) grid.set(pillX + pillW, 0, '▌', accent, pillX + pillW === width - 1 ? DEFAULT : TRACK)
+  grid.set(pillX - 1, 0, '▐', accent, bg[pillX - 1] ?? DEFAULT)
+  if (pillX + pillW < width) grid.set(pillX + pillW, 0, '▌', accent, bg[pillX + pillW] ?? DEFAULT)
   return grid.cells()
 }
 
@@ -245,7 +317,9 @@ export type BandProps = {
   ratio: number
   percent: string
   isWorking: boolean
-  step: number
+  frame: number
+  // Frames into the finish's celebration, null outside it.
+  party: number | null
   columns: number
   crewButton: JSX.Element
   dismiss: JSX.Element
@@ -287,6 +361,8 @@ function bandAgent(ui: Ui, p: BandProps, a: AgentRun): JSX.Element {
 export function terminalBand(ui: Ui, p: BandProps): JSX.Element {
   const { Box, Text, Raster } = ui
   const color = p.f.isFinished ? p.look.done : p.look.accent
+  const motion = { frame: p.frame, isWorking: p.isWorking || p.f.running > 0, party: p.party }
+  const mood: Mood = p.f.isFinished ? (p.party !== null ? 'party' : 'rest') : p.isWorking ? 'walk' : 'idle'
   const titleW = Math.max(8, Math.min(28, p.f.title.length + 1, Math.floor(p.columns / 3)))
   const barW = Math.max(10, p.columns - titleW - 26)
 
@@ -298,9 +374,9 @@ export function terminalBand(ui: Ui, p: BandProps): JSX.Element {
           {p.f.title}
         </Text>
       </Box>
-      <Raster key="savvy-bar" columns={barW} rows={1} cells={barCells(p.f, barW, p.label, p.ratio, rgbOf(color))} />
+      <Raster key="savvy-bar" columns={barW} rows={1} cells={barCells(p.f, barW, p.label, p.ratio, rgbOf(color), motion)} />
       <Text dimColor>{p.percent.padStart(4)}</Text>
-      <Raster key="savvy-mini" columns={6} rows={1} cells={miniCrabCells(p.step, p.isWorking)} />
+      <Raster key="savvy-mini" columns={6} rows={1} cells={miniCrabCells(p.frame, mood, rgbOf(p.look.done))} />
       {p.crewButton}
       {p.dismiss}
     </Box>
@@ -326,13 +402,16 @@ export type PaneProps = {
   planned: Planned[]
   totals: { cost: number; tokens: number; time: number }
   at: number
-  step: number
+  frame: number
   columns: number
   isCompact: boolean
   isDoneCollapsed: boolean
   toggleCompact: JSX.Element
   toggleDone: JSX.Element
   look: Look
+  // Finished runs whose card is open, and what a click on a card's title does.
+  expanded: string[]
+  toggleOpen: (id: string) => void
 }
 
 
@@ -357,16 +436,15 @@ function agentCard(ui: Ui, p: PaneProps, a: AgentRun): JSX.Element {
   const steps = a.stepTotal ? `${a.stepDone ?? 0}/${a.stepTotal}${a.stepNote ? ' · ' + a.stepNote : ''}` : ''
   const stats = `ctx ${look.ctxOf(a)}% · ${look.fmtTokens(a.contextTokens)} ≈${look.fmtCost(a.costUsd)} ${look.fmtTime(look.elapsed(a, p.at))}`
   const lineW = Math.max(10, p.columns - CRAB_COLS - 5)
-  const isWalking = a.status === 'running'
+  const crab = cardCrabCells(costume, tint, a.status, p.frame, partyFrame(a.endedAt, p.at), look.done)
+  const isOpen = isFinished(a) && p.expanded.includes(a.id)
 
   return (
     <Box key={a.id} flexDirection="row" gap={2} marginBottom={1}>
-      <Raster key={`crab-${a.id}`} columns={CRAB_COLS} rows={CRAB_ROWS} cells={crabCells(costume, tint, isWalking ? p.step : 0, false)} />
+      <Raster key={`crab-${a.id}`} columns={CRAB_COLS} rows={CRAB_ROWS} cells={crab} />
       <Box flexDirection="column" flexGrow={1}>
         <Box flexDirection="row" justifyContent="space-between">
-          <Text bold wrap="truncate-end">
-            {a.description || a.type}
-          </Text>
+          {cardTitle(ui, a, isOpen, lineW - 2, () => p.toggleOpen(a.id))}
           <Text color={status.color}>{status.glyph}</Text>
         </Box>
         <Text wrap="truncate-end">
@@ -378,6 +456,7 @@ function agentCard(ui: Ui, p: PaneProps, a: AgentRun): JSX.Element {
           <Text dimColor>{stats}</Text>
         </Box>
         <Raster key={`line-${a.id}`} columns={lineW} rows={1} cells={lineCells(lineW, look.progressOf(a), look.ctxOf(a), rgbOf(tint))} />
+        {isOpen && digestBlock(ui, a, lineW, look.s.noReport ?? 'No report yet')}
       </Box>
     </Box>
   )
@@ -413,12 +492,13 @@ function plannedCard(ui: Ui, p: PaneProps, pl: Planned): JSX.Element {
 }
 
 // The rows the inline pane needs to show every card, so the last agent is not
-// cut off by the default third of the screen.
-export function paneRows(p: { title: string; running: number; finished: number; planned: number; isCompact: boolean; isDoneCollapsed: boolean }): number {
+// cut off by the default third of the screen. `open` is the rows the open
+// finished cards add (digestRows).
+export function paneRows(p: { title: string; running: number; finished: number; planned: number; isCompact: boolean; isDoneCollapsed: boolean; open?: number }): number {
   const header = (p.title !== '' ? 1 : 0) + 3 + 1
   if (p.isCompact) return header + 1
   const cards = (n: number, size: number) => (n > 0 ? 1 + n * size : 0)
-  const finished = p.finished > 0 ? 1 + (p.isDoneCollapsed ? 0 : p.finished * 5) : 0
+  const finished = p.finished > 0 ? 1 + (p.isDoneCollapsed ? 0 : p.finished * 5 + (p.open ?? 0)) : 0
   return header + 1 + Math.max(1, cards(p.running, 5) + finished + cards(p.planned, 3))
 }
 

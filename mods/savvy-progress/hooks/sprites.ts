@@ -12,10 +12,11 @@ export type Fill = (x: number, y: number, w: number, h: number, c: string, cls?:
 export const stamp = (f: Fill, x: number, y: number, rows: string[], map: Record<string, string>, cls?: string): void =>
   rows.forEach((row, dy) => [...row].forEach((ch, dx) => map[ch] && f(x + dx, y + dy, 1, 1, map[ch] ?? '', cls)))
 
-// `armCls` lets a raised claw travel with the prop it holds.
-export const crabBody = (f: Fill, armFront = 0, armCls?: string): void => {
+// `armCls` lets a raised claw travel with the prop it holds; `armBack` and
+// `backCls` do the same for the far claw.
+export const crabBody = (f: Fill, armFront = 0, armCls?: string, armBack = 0, backCls?: string): void => {
   f(7, 10, 16, 12, CLAY)
-  f(3, 14, 4, 4, CLAY)
+  f(3, 14 + armBack, 4, 4, CLAY, backCls)
   f(23, 14 + armFront, 4, 4, CLAY, armCls)
   f(9, 12, 2, 2, INK)
   f(19, 12, 2, 2, INK)
@@ -70,4 +71,13 @@ export const COSTUMES: Record<string, (f: Fill, t: string) => void> = {
     f(27, 6, 1, 9, '#C9CCD2', 'it'); f(26, 15, 3, 1, '#7A4A26', 'it')
   },
   other: f => crabBody(f),
+}
+
+// Done: the work is in. The near claw plants a flag in the tier's color, the far
+// claw is raised to wave (`wv`) and the pennant flutters (`fl`). The drawing
+// swaps the clay for the done green.
+export const doneCrab = (f: Fill, t: string): void => {
+  crabBody(f, 0, undefined, -4, 'wv')
+  f(27, 2, 1, 20, '#C9CCD2')
+  stamp(f, 21, 2, ['....tt', '..tttt', 'tttttt', '..tttt', '....tt'], { t }, 'fl')
 }

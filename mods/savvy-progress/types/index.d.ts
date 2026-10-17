@@ -38,12 +38,19 @@ export type AgentRun = {
   stepDone?: number
   stepTotal?: number
   stepNote?: string
+  /** The run's final answer, capped; what its digest is cut from. */
+  report?: string
+  /** Sent with the worker's last `step`; each wins over the report. */
+  summary?: string
+  followUp?: string
 }
 
 export type Panel = {
   isCompact: boolean
   isDoneCollapsed: boolean
   autoOpenedFor: string
+  /** Finished runs whose card is open to show its digest. */
+  expanded: string[]
 }
 
 declare module 'claude-code' {

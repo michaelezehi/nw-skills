@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { redirect } from "next/navigation";
 import { DemoViewer } from "@/components/rnd/DemoViewer";
 import { RND_THEMES } from "@/lib/rnd";
 
@@ -23,7 +23,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function RndThemeDemoPage({ params }: PageProps): Promise<React.ReactElement> {
   const { theme } = await params;
   const data = RND_THEMES.find((t) => t.slug === theme);
-  if (!data) notFound();
+  // /rnd/<brief>/demo also lands here: the [theme] segment matches any slug.
+  // Never 404 inside /rnd. A brief with its own page (app/rnd/<slug>/page.tsx,
+  // listed with an href on the index) has no demo, so go to the index.
+  if (!data) redirect("/rnd");
   return (
     <DemoViewer
       theme={data}

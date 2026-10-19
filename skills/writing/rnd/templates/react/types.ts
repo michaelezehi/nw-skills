@@ -18,6 +18,10 @@ export interface RndTheme {
   summary: string;
   /** Small inline-SVG icon for the index */
   icon: string;
+  /** ISO day (YYYY-MM-DD) first published; the index shows "19 Oct 2026" */
+  createdAt: string;
+  /** ISO day of the last real change, when later than createdAt */
+  updatedAt?: string;
   scenes: RndScene[];
 }
 

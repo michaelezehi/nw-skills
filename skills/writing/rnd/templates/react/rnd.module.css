@@ -421,6 +421,13 @@
   align-items: center;
   gap: 14px;
 }
+.entryDates {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+  white-space: nowrap;
+}
 .arrow {
   color: var(--line2);
   transition:

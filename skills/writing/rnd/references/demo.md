@@ -42,8 +42,10 @@ routes (`app/rnd/page.tsx` index + `app/rnd/[theme]/demo/page.tsx`), a client
 `DemoViewer`, a CSS module carrying the design tokens, and one generated data
 module per theme under `lib/rnd/themes/`. The URL hash is the single source
 of truth for the visible scene. Allow-list `/rnd` in the host's auth
-middleware and add the `/rnd/:theme → /rnd/:theme/demo` redirect. See
-`templates/react/README.md`.
+middleware. The `/rnd/:theme → /rnd/:theme/demo` shorthand is the
+`app/rnd/[theme]/page.tsx` route, never a `next.config` redirect: a config
+redirect runs before routing and bounces every new brief to a `/demo` that
+404s. See `templates/react/README.md`.
 
 **No-framework host:** one self-contained page per theme from
 `templates/demo.html`. Anatomy (shared by both implementations):

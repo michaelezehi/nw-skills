@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { RND_THEMES } from "@/lib/rnd";
+import { formatRndDate, rndUpdatedLabel } from "@/lib/rnd/dates";
 import styles from "@/components/rnd/rnd.module.css";
 
 export const metadata: Metadata = {
@@ -50,7 +51,12 @@ export default function RndIndexPage(): React.ReactElement {
                   <p>{t.summary}</p>
                 </span>
                 <span className={styles.entryMeta}>
-                  <span>June 2026</span>
+                  <span className={styles.entryDates}>
+                    <time dateTime={t.createdAt}>{formatRndDate(t.createdAt)}</time>
+                    {rndUpdatedLabel(t.createdAt, t.updatedAt) ? (
+                      <time dateTime={t.updatedAt}>{rndUpdatedLabel(t.createdAt, t.updatedAt)}</time>
+                    ) : null}
+                  </span>
                   <span className={styles.arrow}>→</span>
                 </span>
               </Link>

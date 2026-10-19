@@ -14,7 +14,9 @@ lib/rnd/types.ts                  ← types.ts             (all three modes' sha
 lib/rnd/index.ts                  ← generated: RND_THEMES aggregator (index entries)
 
 # demo (default for a PRD)
-app/rnd/[theme]/demo/page.tsx     ← theme-demo-page.tsx  (one route, all themes)
+app/rnd/[theme]/demo/page.tsx     ← theme-demo-page.tsx  (one route, all themes; unknown slug → /rnd)
+app/rnd/[theme]/page.tsx          ← theme-shorthand-page.tsx (/rnd/<theme> → /demo; never next.config)
+lib/rnd/dates.ts                  ← dates.ts             (index shows "19 Oct 2026", plus "Updated …")
 components/rnd/DemoViewer.tsx     ← DemoViewer.tsx       (side menu, keyboard, hash
                                                           deep links, "From the PRD")
 lib/rnd/themes/<slug>.ts          ← generated: one RndTheme data module per theme
@@ -36,7 +38,7 @@ components/rnd/product.module.css ← product.module.css
 lib/rnd/<slug>.ts                 ← flow-data.example.ts (ProductData)
 
 # wiring (once)
-middleware / next.config          ← middleware-snippet.ts (allow-list + theme redirect)
+auth middleware / proxy           ← middleware-snippet.ts (allow-list only; no next.config redirect)
 ```
 
 Consensus uses **live Convex subscriptions** (`convex/react` `useQuery`/
@@ -49,6 +51,9 @@ api (founder-x: `@/lib/convex`).
 unified entry list where each row carries an explicit `href` (`/rnd/<slug>` for
 consensus/product, `/rnd/<slug>/demo` for a demo) and a `status`, and link
 `Link href={entry.href}`. Demo themes still default their href to `/demo`.
+Every entry carries `createdAt` and optional `updatedAt` (ISO days) for the
+index dates. With mixed modes, the demo route redirects a brief's slug to its
+`href` (look it up in the entry list) so `/rnd/<brief>/demo` never 404s.
 
 Rules carried over from the HTML archetype:
 

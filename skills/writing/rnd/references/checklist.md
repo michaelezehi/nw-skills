@@ -4,7 +4,13 @@
 - [ ] Host `typecheck` + `lint` pass for the new `app/rnd/…`, `components/rnd/…`,
       `lib/rnd/…` files; the route builds.
 - [ ] `/rnd` is allow-listed in the host's auth middleware (loads logged-out);
-      the `/rnd/:theme → /rnd/:theme/demo` redirect is wired (demo).
+      `/rnd/:theme → /rnd/:theme/demo` is the `app/rnd/[theme]/page.tsx` route
+      (demo), and `next.config` has no `/rnd` redirect.
+- [ ] Nothing under `/rnd` can 404: open `/rnd/<new-slug>` and
+      `/rnd/<new-slug>/demo` routes resolve (brief, demo, or a redirect to
+      the brief or the index). A routing test asserts it.
+- [ ] The index entry carries `createdAt` (ISO day) and `updatedAt` when it
+      changed later, rendered as "19 Oct 2026" via `lib/rnd/dates.ts`.
 - [ ] `robots: { index: false, follow: false }` on every route's metadata.
 - [ ] No new npm dep added; no `doodle-icons`. `grep -rn "doodle-icons" app/rnd lib/rnd components/rnd` → no hits.
 - [ ] Sketch strings render via `dangerouslySetInnerHTML`; `{/* … */}` comments

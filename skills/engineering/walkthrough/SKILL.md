@@ -189,7 +189,7 @@ Follow `references/architecture.md` "Director tier":
 | `references/method.md` | investigating a host, writing stories, timing, entry points, copy |
 | `references/design.md` | tokens, type, every piece's anatomy, z ladder, motion, theming |
 | `references/architecture.md` | store, loop, drivers, nav guide, keys, focus pass, reader placement, openers, story picker and gating; director tier server design |
-| `references/pitfalls.md` | every bug the two builds hit, as rules (1 to 25 the first host, 26 to 39 the second) |
+| `references/pitfalls.md` | every bug the two builds hit, as rules (1 to 25 the first host, 26 to 40 the second) |
 | `references/narration.md` | the spoken narrator: fixed decisions, timing, autoplay, writing, generating, drift gate, upgrading an existing walkthrough |
 | `templates/audio/` | the clip generator (ElevenLabs over fetch, hash skip, manifest), the shared clip list, the drift test |
 | `templates/react/walkthrough/` | the client: types, store, local driver, loop, keys, nav guide, spotlight, reader, prompt layer, loader, bar, mount, copy, tokens, art adapter, tests |

@@ -41,5 +41,6 @@
 | 37 | A locale file turned invalid JSON after the translation run reported done | the run started each locale with `&`, so late writes landed after it exited, and the translator turned the German and Chinese curly quotes into bare `"` inside values | translate in the foreground or `wait` for every child; parse every fragment before composing; escape stray quotes inside values; compose and refresh any parity baseline only after all writers exit |
 | 38 | Two clip runs for one app raced on the manifest | English and Arabic generation ran at the same time | generate one locale at a time per app; a `--dry-run` across all locales must print `0 to generate` at the end |
 | 39 | A formatter turned `\u2014` in a dash-check regex into a literal dash | the formatter normalised escapes in source | keep dash checks in a script or test that the formatter does not rewrite, and grep the result |
+| 40 | A step about a tab lit nothing, and the tab changed only through the URL fallback | the host's tab strip rendered plain buttons with no `role="tab"`, and a tab spec searched only `[role="tab"]` | a tab spec tries `[role="tab"]`, then ONE button with the name (the first beside other buttons), never a link; on a host with no catalog, a test greps the source for every focus label |
 
 When a new bug turns up in a host, add a row here (and to nw-skills).

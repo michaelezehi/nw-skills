@@ -67,6 +67,31 @@ describe('findFocusTargets', () => {
     expect(found[0]!.click).toBe(true);
   });
 
+  it('takes a tab strip of plain buttons, and never the menu link with the same words', () => {
+    document.body.innerHTML = `
+      <nav><a href="/vc/settings">Notifications</a></nav>
+      <div><button>Profile</button><button>Notifications</button></div>`;
+    const found = findFocusTargets([{ name: 'Notifications', role: 'tab', click: true }]).flat();
+    expect(found).toHaveLength(1);
+    expect(found[0]!.element.tagName).toBe('BUTTON');
+  });
+
+  it('takes only the strip button, never a lone button with the same words', () => {
+    document.body.innerHTML = `
+      <section><button>Notifications</button></section>
+      <div><button>Profile</button><button>Notifications</button></div>`;
+    const found = findFocusTargets([{ name: 'Notifications', role: 'tab', click: true }]).flat();
+    expect(found).toHaveLength(1);
+    expect(found[0]!.element.previousElementSibling?.textContent).toBe('Profile');
+  });
+
+  it('prefers a real tab over a button with the same name', () => {
+    document.body.innerHTML = `<button>Blueprint</button><div role="tablist"><button role="tab">Blueprint</button></div>`;
+    const found = findFocusTargets([{ name: 'Blueprint', role: 'tab' }]).flat();
+    expect(found).toHaveLength(1);
+    expect(found[0]!.element.getAttribute('role')).toBe('tab');
+  });
+
   it('matches a label with a count or a dot after it, never a longer label', () => {
     expect(nameMatches('not checked in (49)', 'not checked in')).toBe(true);
     expect(nameMatches('payroll handoff.', 'payroll handoff')).toBe(true);

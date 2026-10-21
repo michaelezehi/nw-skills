@@ -92,10 +92,21 @@ function areaOf(label: HTMLElement): HTMLElement {
 function matchesFor(spec: FocusSpec, resolveName: (name: string) => string, root: ParentNode): HTMLElement[] {
   if ('selector' in spec) return Array.from(root.querySelectorAll<HTMLElement>(spec.selector));
   const wanted = normalizeName(resolveName(spec.name));
+  const find = (pool: string) =>
+    Array.from(root.querySelectorAll<HTMLElement>(pool)).filter(
+      (el) => isShown(el) && nameMatches(accessibleName(el), wanted),
+    );
   const pool = spec.role ? `[role="${spec.role}"]` : spec.area ? `${CONTROLS}, ${LABELS}` : CONTROLS;
-  const named = Array.from(root.querySelectorAll<HTMLElement>(pool)).filter(
-    (el) => isShown(el) && nameMatches(accessibleName(el), wanted),
-  );
+  let named = find(pool);
+  // Not every tab strip marks its buttons role="tab". Fall back to a button
+  // with the name, never a link, so a menu link with the same words stays dark.
+  // A strip has one button per label, so take one: the first beside other
+  // buttons, so a lone button with the same words is never clicked as well.
+  if (named.length === 0 && spec.role === 'tab') {
+    const buttons = find('button');
+    const inStrip = buttons.find((el) => (el.parentElement?.querySelectorAll(':scope > button').length ?? 0) > 1);
+    named = inStrip ? [inStrip] : buttons.slice(0, 1);
+  }
   // The innermost match wins, so a card round a button is not ringed as well.
   const innermost = named.filter((el) => !named.some((other) => other !== el && el.contains(other)));
   return spec.area ? innermost.map(areaOf) : innermost;

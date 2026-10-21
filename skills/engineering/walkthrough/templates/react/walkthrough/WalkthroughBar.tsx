@@ -15,6 +15,7 @@ import type { RunView } from './story-types';
 import type { useWalkthroughLoop } from './useWalkthroughLoop';
 import { WALKTHROUGH_COPY as COPY, stepProgressCopy } from './walkthrough-copy';
 import { useWalkthroughStore } from './walkthrough-store';
+import { stopNarration, unlockNarration } from './useNarration';
 import { WALKTHROUGH_UI_ATTR } from './nav-guide';
 import { PILL, cx } from './walkthrough-ui';
 
@@ -69,7 +70,7 @@ function Toggle({
 
 /**
  * The floating story bar: play or pause, previous and next step, start over,
- * where the story stands, and the Follow and Explain toggles.
+ * where the story stands, and the Follow, Explain and Sound toggles.
  */
 export function WalkthroughBar({
   run,
@@ -84,12 +85,21 @@ export function WalkthroughBar({
   const setFollow = useWalkthroughStore((st) => st.setFollow);
   const explain = useWalkthroughStore((st) => st.explain);
   const setExplain = useWalkthroughStore((st) => st.setExplain);
+  const sound = useWalkthroughStore((st) => st.sound);
+  const setSound = useWalkthroughStore((st) => st.setSound);
   const { busy, error, onPlay, onPause, onStep, onBack, onRestart, onRetry } = loop;
 
   const playing = run.status === 'playing';
   const done = run.status === 'done';
   const locked = busy !== null;
   const statusLine = done && busy === null ? COPY.done : progressLabel(run);
+
+  /** A click is a user gesture: unlock audio, and cut the clip before the step moves. */
+  const stepping = (act: () => Promise<void>) => () => {
+    unlockNarration();
+    stopNarration();
+    void act();
+  };
 
   return (
     <div
@@ -112,7 +122,11 @@ export function WalkthroughBar({
       ) : (
         <button
           type="button"
-          onClick={() => void onPlay()}
+          onClick={() => {
+            // Unlock only: a clip held by the pause carries on with the story.
+            unlockNarration();
+            void onPlay();
+          }}
           disabled={locked}
           className={cx(
             'inline-flex h-9 shrink-0 items-center gap-2 whitespace-nowrap px-4 text-xs font-semibold disabled:opacity-60',
@@ -130,7 +144,7 @@ export function WalkthroughBar({
 
       <button
         type="button"
-        onClick={() => void onBack()}
+        onClick={stepping(onBack)}
         disabled={locked || run.index < 2}
         aria-label={COPY.back}
         title={`${COPY.back}. ${COPY.keysHint}`}
@@ -140,7 +154,7 @@ export function WalkthroughBar({
       </button>
       <button
         type="button"
-        onClick={() => void onStep()}
+        onClick={stepping(onStep)}
         disabled={locked || playing || done}
         aria-label={COPY.step}
         title={`${COPY.step}. ${COPY.keysHint}`}
@@ -154,7 +168,7 @@ export function WalkthroughBar({
       </button>
       <button
         type="button"
-        onClick={() => void onRestart()}
+        onClick={stepping(onRestart)}
         disabled={locked}
         aria-label={COPY.restart}
         title={COPY.restart}
@@ -175,6 +189,16 @@ export function WalkthroughBar({
       <Toggle checked={follow} onChange={setFollow} label={COPY.follow} />
       <span className="mx-2 h-5 w-px shrink-0 bg-[var(--wt-line)]" aria-hidden />
       <Toggle checked={explain} onChange={setExplain} label={COPY.explain} title={COPY.explainHint} />
+      <span className="mx-2 h-5 w-px shrink-0 bg-[var(--wt-line)]" aria-hidden />
+      <Toggle
+        checked={sound}
+        onChange={(on) => {
+          if (on) unlockNarration();
+          setSound(on);
+        }}
+        label={COPY.sound}
+        title={COPY.soundHint}
+      />
       <button
         type="button"
         onClick={onEnd}

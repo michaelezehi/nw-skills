@@ -1,8 +1,12 @@
 // The arrow keys move the story: left asks for the previous step, right for
-// the next. Keys typed into a field, or with a modifier, stay with the page.
+// the next, and M turns the sound on or off. Keys typed into a field, or with
+// a modifier, stay with the page. Every handled key unlocks audio.
 
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { cleanup, fireEvent, render } from '@testing-library/react';
+
+const unlock = vi.hoisted(() => vi.fn());
+vi.mock('../useNarration', () => ({ unlockNarration: unlock }));
 
 import { useWalkthroughStore } from '../walkthrough-store';
 import { useStepKeys } from '../useStepKeys';
@@ -14,7 +18,8 @@ function Keys({ enabled }: { enabled: boolean }) {
 
 afterEach(() => {
   cleanup();
-  useWalkthroughStore.setState({ stepRequest: null });
+  useWalkthroughStore.setState({ stepRequest: null, sound: true });
+  unlock.mockReset();
 });
 
 describe('useStepKeys', () => {
@@ -34,5 +39,27 @@ describe('useStepKeys', () => {
     rerender(<Keys enabled={false} />);
     fireEvent.keyDown(document.body, { key: 'ArrowRight' });
     expect(useWalkthroughStore.getState().stepRequest).toBeNull();
+  });
+
+  it('M turns the sound off and on, and every handled key unlocks audio', () => {
+    render(<Keys enabled />);
+    fireEvent.keyDown(document.body, { key: 'm' });
+    expect(useWalkthroughStore.getState().sound).toBe(false);
+    fireEvent.keyDown(document.body, { key: 'M' });
+    expect(useWalkthroughStore.getState().sound).toBe(true);
+    expect(useWalkthroughStore.getState().stepRequest).toBeNull();
+    fireEvent.keyDown(document.body, { key: 'ArrowRight' });
+    expect(unlock).toHaveBeenCalledTimes(3);
+  });
+
+  it('leaves M typed into a field, with a modifier, or with no story alone', () => {
+    const { getByLabelText, rerender } = render(<Keys enabled />);
+    fireEvent.keyDown(getByLabelText('field'), { key: 'm' });
+    fireEvent.keyDown(document.body, { key: 'm', metaKey: true });
+    expect(useWalkthroughStore.getState().sound).toBe(true);
+    rerender(<Keys enabled={false} />);
+    fireEvent.keyDown(document.body, { key: 'm' });
+    expect(useWalkthroughStore.getState().sound).toBe(true);
+    expect(unlock).not.toHaveBeenCalled();
   });
 });

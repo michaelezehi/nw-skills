@@ -7,6 +7,7 @@ import type { RunView, WalkthroughPrompt, WalkthroughStory } from './story-types
 import { createLocalDriver } from './local-driver';
 import { useWalkthroughLoop } from './useWalkthroughLoop';
 import { useStepKeys } from './useStepKeys';
+import { useNarration } from './useNarration';
 import { useWalkthroughStore } from './walkthrough-store';
 import { WalkthroughBar } from './WalkthroughBar';
 import { ExplainReader } from './ExplainReader';
@@ -46,6 +47,9 @@ function Tour({ story, viewerId }: { story: WalkthroughStory; viewerId: string }
   useEffect(() => setRun(driver.current()), [driver]);
 
   const loop = useWalkthroughLoop({ run, driver });
+  // The narrator: mounted here once, read by the reader and the loop through the store.
+  // A director-tier run held by another tab reports `drivenElsewhere`; that tab speaks.
+  useNarration(run, run?.drivenElsewhere !== true);
 
   // Back and Next from the reader and the arrow keys come through the store.
   const stepRequest = useWalkthroughStore((st) => st.stepRequest);

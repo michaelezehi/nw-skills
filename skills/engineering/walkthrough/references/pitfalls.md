@@ -21,5 +21,11 @@
 | 17 | "Show me how" found nothing for menu destinations | dropdown links render into a portal only while the menu is open | mark the trigger and its menu container with `data-walkthrough-menu`; ring and click the trigger, wait for the menu, then ring the link |
 | 18 | Homes that are not one segment (`/{org}/{company}/overview`, `/me/overview`) caught every route | the one-segment home rule assumes flat homes | hosts with scoped homes pass an explicit homes list that matches only itself |
 | 19 | The spotlight ring hid under an open dropdown | the menu's own z (9999+) is above the ring's 120 | lift the ring above the menu only while it rings a link inside a marked menu |
+| 20 | The reader stayed open for good with sound on | it waited for the clip's `ended`, and a stalled download fires neither `ended` nor `error` | the reader gives up after `CLIP_CEILING_MS`; the Explain-off hold after `LEAD_CEILING_MS` |
+| 21 | Pausing the story stopped the voice, but the card closed mid sentence | the reader's countdown ignored the run's pause | with a clip under way, a paused run holds the countdown too; muted timing is unchanged |
+| 22 | A late `ended` from a cut clip moved the story on | the listener did not know which clip ended | every `play()` returns a token; `ended` and `error` from a stale token are dropped |
+| 23 | Every persona switch cut the lead clip | the switch remounts the layout, and the hook stopped on unmount | stop on unmount only after `UNMOUNT_GRACE_MS`; the player and narration state live outside the component |
+| 24 | Narration stayed silent on iOS Safari | the unlock and the clip used different elements, or `playsinline` was missing | one shared element, unlocked inside the click, with the property and the attribute |
+| 25 | The sound button announced "Turn sound off, pressed" | its name changed with its state while `aria-pressed` also changed | a fixed name ("Sound") and `aria-pressed` for on or off |
 
 When a new bug turns up in a host, add a row here (and to nw-skills).

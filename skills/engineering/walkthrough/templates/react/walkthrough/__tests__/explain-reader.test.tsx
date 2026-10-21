@@ -1,12 +1,13 @@
 // The reader: shows the step's picture and copy, counts down, pauses on
 // request, closes on Continue or at zero (which lets the story carry on),
-// and asks the bar for the previous step.
+// and asks the bar for the previous step. With sound on it waits for the
+// spoken detail instead, then a short grace, never past the ceiling.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 
-import { ExplainReader, EXPLAIN_SECONDS } from '../ExplainReader';
-import { useWalkthroughStore } from '../walkthrough-store';
+import { CLIP_CEILING_MS, DETAIL_GRACE_MS, ExplainReader, EXPLAIN_SECONDS } from '../ExplainReader';
+import { NARRATION_IDLE, useWalkthroughStore, type WalkthroughNarration } from '../walkthrough-store';
 
 const EXPLANATION = {
   storyLabel: 'Coach story',
@@ -20,8 +21,22 @@ const EXPLANATION = {
     route: '/coach/assignments',
     holdMs: 8000,
     explain: { art: 'default', what: 'Dana set the team a task.', why: 'Work between sessions.' },
+    narration: { lead: 'Dana sets a task.', detail: 'The task waits for the team.' },
   },
 };
+
+function speaking(patch: Partial<WalkthroughNarration>) {
+  useWalkthroughStore.setState({
+    narration: { ...NARRATION_IDLE, seen: true, stepId: 'coach-sets-task', story: 'coach', ...patch },
+  });
+}
+
+async function closesAt(ms: number) {
+  await tick(ms - 250);
+  expect(useWalkthroughStore.getState().explanation).not.toBeNull();
+  await tick(250);
+  expect(useWalkthroughStore.getState().explanation).toBeNull();
+}
 
 async function tick(ms: number) {
   await act(async () => {
@@ -31,7 +46,15 @@ async function tick(ms: number) {
 
 beforeEach(() => {
   vi.useFakeTimers();
-  useWalkthroughStore.setState({ explanation: EXPLANATION, pending: 0, stepRequest: null });
+  useWalkthroughStore.setState({
+    explanation: EXPLANATION,
+    pending: 0,
+    stepRequest: null,
+    readerPaused: false,
+    showMeHow: false,
+    sound: true,
+    narration: NARRATION_IDLE,
+  });
 });
 
 afterEach(() => {
@@ -75,5 +98,70 @@ describe('ExplainReader', () => {
     render(<ExplainReader />);
     fireEvent.click(screen.getByRole('button', { name: 'Previous step' }));
     expect(useWalkthroughStore.getState().stepRequest?.dir).toBe('back');
+  });
+
+  it('with sound on, waits for the detail clip, then closes 1.5s after it ends', async () => {
+    speaking({ lead: 'done', detail: 'playing' });
+    render(<ExplainReader />);
+    await tick(EXPLAIN_SECONDS * 1000 + 10_000);
+    expect(useWalkthroughStore.getState().explanation).not.toBeNull();
+    await act(async () => speaking({ lead: 'done', detail: 'done' }));
+    await closesAt(DETAIL_GRACE_MS);
+  });
+
+  it('with sound on, also waits while the lead is still playing', async () => {
+    speaking({ lead: 'playing', detail: 'idle' });
+    render(<ExplainReader />);
+    await tick(EXPLAIN_SECONDS * 1000 + 500);
+    expect(useWalkthroughStore.getState().explanation).not.toBeNull();
+  });
+
+  it('with sound on, gives up on a clip that never ends after the ceiling', async () => {
+    speaking({ lead: 'done', detail: 'playing' });
+    render(<ExplainReader />);
+    await closesAt(CLIP_CEILING_MS);
+  });
+
+  it('with sound off, or a failed clip, closes at 30s as before', async () => {
+    speaking({ lead: 'done', detail: 'playing' });
+    useWalkthroughStore.setState({ sound: false });
+    const first = render(<ExplainReader />);
+    await closesAt(EXPLAIN_SECONDS * 1000);
+    first.unmount();
+
+    act(() => useWalkthroughStore.setState({ explanation: EXPLANATION, sound: true }));
+    speaking({ lead: 'failed', detail: 'failed' });
+    render(<ExplainReader />);
+    await closesAt(EXPLAIN_SECONDS * 1000);
+  });
+
+  it('a paused run holds the reader while a clip is under way, and not without one', async () => {
+    speaking({ lead: 'done', detail: 'playing', runHold: true });
+    const first = render(<ExplainReader />);
+    await tick(CLIP_CEILING_MS * 2);
+    expect(useWalkthroughStore.getState().explanation).not.toBeNull();
+    first.unmount();
+
+    useWalkthroughStore.setState({ sound: false });
+    render(<ExplainReader />);
+    await tick(EXPLAIN_SECONDS * 1000);
+    expect(useWalkthroughStore.getState().explanation).toBeNull();
+  });
+
+  it('pausing holds the clip grace too, and the sound button keeps its name', async () => {
+    speaking({ lead: 'done', detail: 'done' });
+    render(<ExplainReader />);
+    fireEvent.click(screen.getByRole('button', { name: 'Pause the countdown' }));
+    expect(useWalkthroughStore.getState().readerPaused).toBe(true);
+    await tick(DETAIL_GRACE_MS * 4);
+    expect(useWalkthroughStore.getState().explanation).not.toBeNull();
+
+    const toggle = screen.getByRole('button', { name: 'Sound' });
+    expect(toggle.getAttribute('aria-pressed')).toBe('true');
+    fireEvent.click(toggle);
+    expect(useWalkthroughStore.getState().sound).toBe(false);
+    expect(toggle.getAttribute('aria-pressed')).toBe('false');
+    fireEvent.click(screen.getByRole('button', { name: 'Sound' }));
+    expect(useWalkthroughStore.getState().sound).toBe(true);
   });
 });

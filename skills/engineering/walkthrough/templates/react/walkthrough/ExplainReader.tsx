@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useEffectEvent, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   CaretLeftIcon,
@@ -8,26 +8,47 @@ import {
   PauseIcon,
   PlayIcon,
   SignpostIcon,
+  SpeakerHighIcon,
+  SpeakerSlashIcon,
   XIcon,
 } from '@phosphor-icons/react';
 
 import { WalkthroughArt } from './walkthrough-art';
 import { WALKTHROUGH_COPY as COPY, stepProgressCopy } from './walkthrough-copy';
-import { useWalkthroughStore, type WalkthroughExplanation } from './walkthrough-store';
+import {
+  useWalkthroughStore,
+  type WalkthroughExplanation,
+  type WalkthroughNarration,
+} from './walkthrough-store';
+import { getProgress } from './narration-player';
+import { unlockNarration } from './useNarration';
 import { WALKTHROUGH_UI_ATTR, findNavTarget, type NavTarget } from './nav-guide';
 import { NavSpotlight } from './NavSpotlight';
 import { EYEBROW, PILL, READING, ROUND_BUTTON, cx } from './walkthrough-ui';
 
 /** How long the reader holds a step before the story carries on by itself. */
 export const EXPLAIN_SECONDS = 30;
+/** With sound on, how long the reader stays up after the detail clip ends. */
+export const DETAIL_GRACE_MS = 1500;
+/** The longest the reader waits on a clip that never ends or fails, such as a stalled download. */
+export const CLIP_CEILING_MS = 60_000;
 
 const TICK_MS = 250;
 const RING_RADIUS = 15;
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 
-function CountdownRing({ remainingMs }: { remainingMs: number }) {
-  const share = Math.max(0, remainingMs) / (EXPLAIN_SECONDS * 1000);
-  const seconds = Math.ceil(Math.max(0, remainingMs) / 1000);
+/**
+ * The reader waits for the spoken detail: sound on, this step's narration
+ * under way, and no clip failed or cut. Otherwise the 30s countdown decides.
+ */
+export function waitsForClip(sound: boolean, n: WalkthroughNarration, stepId: string): boolean {
+  if (!sound || n.stepId !== stepId) return false;
+  if (n.detail === 'playing' || n.detail === 'done') return true;
+  return n.detail === 'idle' && n.lead === 'playing';
+}
+
+/** `share` of the ring still left, and the seconds to print, or null for none. */
+function CountdownRing({ share, seconds }: { share: number; seconds: number | null }) {
   return (
     <span className="relative inline-flex h-10 w-10 shrink-0 items-center justify-center">
       <svg viewBox="0 0 36 36" className="absolute inset-0 -rotate-90" aria-hidden>
@@ -45,7 +66,9 @@ function CountdownRing({ remainingMs }: { remainingMs: number }) {
           style={{ transition: `stroke-dashoffset ${TICK_MS}ms linear` }}
         />
       </svg>
-      <span className="text-[12px] font-semibold tabular-nums text-[var(--wt-ink-strong)]">{seconds}</span>
+      {seconds !== null && (
+        <span className="text-[12px] font-semibold tabular-nums text-[var(--wt-ink-strong)]">{seconds}</span>
+      )}
     </span>
   );
 }
@@ -99,25 +122,70 @@ function ReaderBody({
 }) {
   const setExplanation = useWalkthroughStore((st) => st.setExplanation);
   const requestStep = useWalkthroughStore((st) => st.requestStep);
+  const paused = useWalkthroughStore((st) => st.readerPaused);
+  const setPaused = useWalkthroughStore((st) => st.setReaderPaused);
+  const setShowMeHow = useWalkthroughStore((st) => st.setShowMeHow);
+  const sound = useWalkthroughStore((st) => st.sound);
+  const setSound = useWalkthroughStore((st) => st.setSound);
+  const narration = useWalkthroughStore((st) => st.narration);
   const [remainingMs, setRemainingMs] = useState(EXPLAIN_SECONDS * 1000);
-  const [paused, setPaused] = useState(false);
+  const [graceMs, setGraceMs] = useState(DETAIL_GRACE_MS);
+  const [clipShare, setClipShare] = useState<{ share: number; seconds: number } | null>(null);
   const [target, setTarget] = useState<NavTarget | null>(null);
   const [canGuide, setCanGuide] = useState(false);
   const { step, storyLabel, total, steps } = explanation;
   const close = () => setExplanation(null);
+  // The spotlight holds the clip while it rings the menu item.
+  const guide = (next: NavTarget | null) => {
+    setTarget(next);
+    setShowMeHow(next !== null);
+  };
+  // The reader can unmount with the spotlight up; never leave the clip held.
+  useEffect(() => () => setShowMeHow(false), [setShowMeHow]);
+
+  const clip = waitsForClip(sound, narration, step.id);
+  const clipDone = clip && narration.detail === 'done';
 
   // The countdown holds while a switch lands, while paused, and while the menu is shown.
-  const ticking = !paused && !switching && target === null;
+  // With a clip under way it also holds while the story is paused, as the clip does.
+  const ticking = !paused && !switching && target === null && !(clip && narration.runHold);
+  const onTick = useEffectEvent(() => {
+    // The 30s keeps running under a clip, so a clip that fails falls back to the plain timing.
+    setRemainingMs((ms) => ms - TICK_MS);
+    if (clipDone) setGraceMs((ms) => ms - TICK_MS);
+    const progress = clip && narration.detail === 'playing' ? getProgress() : null;
+    setClipShare(
+      progress
+        ? {
+            share: 1 - progress.currentTime / progress.duration,
+            seconds: Math.ceil(Math.max(0, progress.duration - progress.currentTime)),
+          }
+        : null,
+    );
+  });
   useEffect(() => {
     if (!ticking) return;
-    const timer = setInterval(() => setRemainingMs((ms) => ms - TICK_MS), TICK_MS);
+    const timer = setInterval(() => onTick(), TICK_MS);
     return () => clearInterval(timer);
   }, [ticking]);
 
-  // Out of time: the story carries on.
+  // Out of time, or the clip ended a moment ago: the story carries on.
+  const timeUp = clip
+    ? graceMs <= 0 || remainingMs <= EXPLAIN_SECONDS * 1000 - CLIP_CEILING_MS
+    : remainingMs <= 0;
   useEffect(() => {
-    if (remainingMs <= 0) setExplanation(null);
-  }, [remainingMs, setExplanation]);
+    if (timeUp) setExplanation(null);
+  }, [timeUp, setExplanation]);
+
+  let ring: { share: number; seconds: number | null } = {
+    share: Math.max(0, remainingMs) / (EXPLAIN_SECONDS * 1000),
+    seconds: Math.ceil(Math.max(0, remainingMs) / 1000),
+  };
+  if (clip) {
+    // Full while the lead finishes, then the clip's own progress, then empty.
+    ring = clipDone ? { share: 0, seconds: null } : (clipShare ?? { share: 1, seconds: null });
+  }
+  const soundLabel = sound ? COPY.soundTurnOff : COPY.soundTurnOn;
 
   // The menu link exists only once the new screen is up.
   useEffect(() => {
@@ -127,13 +195,31 @@ function ReaderBody({
 
   const showMeHow = () => {
     const found = findNavTarget(step.route);
-    if (found) setTarget(found);
+    if (found) guide(found);
   };
 
   return (
     <>
       <div className="flex items-center justify-between gap-3 px-5 pt-5">
         <p className={EYEBROW}>{storyLabel}</p>
+        {/* A fixed name with aria-pressed: a label that flips with the state reads as two buttons. */}
+        <button
+          type="button"
+          onClick={() => {
+            if (!sound) unlockNarration();
+            setSound(!sound);
+          }}
+          aria-label={COPY.sound}
+          aria-pressed={sound}
+          title={COPY.soundKey(soundLabel)}
+          className="ml-auto inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-[var(--wt-muted)] transition-colors hover:bg-[var(--wt-hover)] hover:text-[var(--wt-ink-strong)]"
+        >
+          {sound ? (
+            <SpeakerHighIcon className="h-4 w-4" weight="bold" aria-hidden />
+          ) : (
+            <SpeakerSlashIcon className="h-4 w-4" weight="bold" aria-hidden />
+          )}
+        </button>
         <button
           type="button"
           onClick={close}
@@ -187,10 +273,10 @@ function ReaderBody({
       </div>
 
       <div className="flex items-center gap-2 border-t border-[var(--wt-line)] px-5 py-4">
-        <CountdownRing remainingMs={remainingMs} />
+        <CountdownRing share={ring.share} seconds={ring.seconds} />
         <button
           type="button"
-          onClick={() => setPaused((p) => !p)}
+          onClick={() => setPaused(!paused)}
           aria-label={paused ? COPY.explainResume : COPY.explainPause}
           title={paused ? COPY.explainResume : COPY.explainPause}
           className={ROUND_BUTTON}
@@ -225,7 +311,7 @@ function ReaderBody({
         </button>
       </div>
 
-      {target && <NavSpotlight target={target} onDone={() => setTarget(null)} />}
+      {target && <NavSpotlight target={target} onDone={() => guide(null)} />}
     </>
   );
 }
@@ -235,7 +321,8 @@ function ReaderBody({
  * picture, what just happened and why it matters, where the step sits in the
  * whole story, and "Show me how to get there", which rings the menu item for
  * this screen and clicks it. A 30 second countdown, pausable, lets the story
- * carry on. It stays up through a screen switch (the countdown holds until
+ * carry on; with sound on the reader waits for the spoken detail instead,
+ * then 1.5 seconds more, and never past 60 seconds. It stays up through a screen switch (the countdown holds until
  * the new screen lands), so the viewer is never left on an empty page.
  */
 export function ExplainReader() {

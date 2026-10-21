@@ -33,6 +33,14 @@ export interface WalkthroughStep {
    * flow would send. Optional; most steps have none.
    */
   prompt?: { title: string; body: string; ctaLabel?: string; ctaRoute?: string };
+  /**
+   * What the narrator says. `lead` plays as the step lands; `detail` plays
+   * once the reader opens on it. Clips are generated ahead of time and one
+   * clip serves every viewer, so never put a viewer's name, a date or any
+   * other filled-in value here. Optional: a step without it is silent and
+   * keeps its plain timing.
+   */
+  narration?: { lead: string; detail: string };
 }
 
 export interface WalkthroughStory {

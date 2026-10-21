@@ -27,3 +27,18 @@ the story data, the entry point edits. Nothing else.
 - [ ] G7 Entry point present for every role story
   CHECK: grep -rn "startTour(" src | wc -l
   EXPECT: /^\s*[1-9][0-9]*\s*$/m
+
+Narration gates (skip with --no-narration):
+
+- [ ] G8 Every narrated step has both clips and the manifest matches the text
+  CHECK: pnpm vitest run narration-drift >/dev/null 2>&1; echo "exit $?"
+  EXPECT: exit 0
+- [ ] G9 Nothing left to generate
+  CHECK: npx tsx scripts/walkthrough/generate-narration.ts --stories src/walkthrough/stories.ts --out public/audio/walkthrough --dry-run 2>&1 | tail -1
+  EXPECT: /\b0 to generate/
+- [ ] G10 Sound preference persisted in localStorage
+  CHECK: grep -c "wt-sound" src/components/walkthrough/walkthrough-store.ts
+  EXPECT: /^\s*[1-9][0-9]*\s*$/m
+- [ ] G11 Every story's spoken length reported from the manifest
+  CHECK: node -e 'const m=require("./public/audio/walkthrough/manifest.json");const t={};for(const[k,v]of Object.entries(m.clips)){const s=k.split("/")[0];t[s]=(t[s]||0)+v.durationMs}console.log(Object.entries(t).map(([s,ms])=>s+" "+(ms/1000).toFixed(1)+"s").join(", "))'
+  EXPECT: /\d+\.\ds/

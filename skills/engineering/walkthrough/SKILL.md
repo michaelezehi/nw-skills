@@ -1,7 +1,7 @@
 ---
 name: walkthrough
-description: Add a guided walkthrough to any web app, one story per user role, with the house design. A story bar (play, pause, previous and next step, start over, arrow keys), a journey reader on the right (picture panel, what happened, why it matters, the whole journey, a 30 second pausable countdown, and "Show me how to get there", which rings the real menu item and clicks it), split prompt cards that stand in for emails, and a loader so a switch never shows a blank page. --director adds a server-held demo run that writes demo data, switches persona and steps back by undo and replay. Use when the user asks for a walkthrough, product tour, onboarding tour, guided demo, or "show users how to use the app".
-argument-hint: [--roles a,b] [--director] [--theme host|fa] [--audit]
+description: Add a guided walkthrough to any web app, one story per user role, with the house design. A story bar (play, pause, previous and next step, start over, arrow keys), a journey reader on the right (picture panel, what happened, why it matters, the whole journey, a 30 second pausable countdown, and "Show me how to get there", which rings the real menu item and clicks it), split prompt cards that stand in for emails, a loader so a switch never shows a blank page, and a spoken narrator for every step that the viewer can mute (pre-generated clips, sound on by default, M key). --director adds a server-held demo run that writes demo data, switches persona and steps back by undo and replay. On an app that already has a walkthrough, adds the narration to it. Use when the user asks for a walkthrough, product tour, onboarding tour, guided demo, "show users how to use the app", or wants audio, narration or a voice added to an existing tour.
+argument-hint: [--roles a,b] [--director] [--theme host|fa] [--no-narration] [--narrate] [--audit]
 ---
 
 # walkthrough: a guided tour of the app, one story per role
@@ -20,7 +20,15 @@ Arguments: `$ARGUMENTS`
 | `--director` | Add the demo tier: a server-held run, demo data writes with undo, persona switching, prompts in place of emails. Needs a sandbox or demo data layer, a persona model and an allowlist; if the host has none, stop and say so |
 | `--theme host` | Default. Map the `--wt-*` tokens onto the host theme |
 | `--theme fa` | Keep the warm cream house palette as is |
+| `--no-narration` | Skip the spoken narrator (no clips, no Sound switch). Narration is part of every install otherwise |
+| `--narrate` | Add narration only, to a walkthrough already in the host. Also chosen automatically when step 1 finds an install |
 | `--audit` | Review an existing walkthrough against `references/pitfalls.md` and the design spec; report, then fix on a yes |
+
+**Already installed?** Step 1 looks for `walkthrough-store.ts`,
+`useWalkthroughLoop.ts` or `ExplainReader.tsx` (or a tour of the host's own).
+When it finds one and the walkthrough has no narration, the run is the
+narration upgrade: follow `references/narration.md` "Adding narration to an
+existing walkthrough" and skip steps 2 to 5 below.
 
 ## Hard rules
 
@@ -50,6 +58,10 @@ Arguments: `$ARGUMENTS`
    and the route check. Never start a dev server or drive a browser.
 10. **Shared repos:** edit only the paths this task owns; commit by path as
     each unit passes; never `git add -A`, stash, reset or restore.
+11. **Narration never says a name and never blocks the story.** Clips are
+    made ahead of time from `step.narration`; any missing, failed, stalled or
+    muted clip falls back to the silent timing. Rules in
+    `references/narration.md`.
 
 ## Steps
 
@@ -78,6 +90,10 @@ prompt where the real product would send a message. Show the owner the step
 titles per role as a short list and wait for approval before building.
 Titles are the cheapest thing to change.
 
+Unless `--no-narration`, each step also gets `narration {lead, detail}`
+(`references/narration.md` "Writing the narration"). Write it after the titles
+are approved, and show one lead and one detail per story before generating.
+
 ### 3. Install the client
 
 Copy `templates/react/walkthrough/` into the host (for example
@@ -94,6 +110,12 @@ Copy `templates/react/walkthrough/` into the host (for example
 - Nav guide: fill `REACHED_THROUGH` from the investigation.
 - Not Tailwind: convert the class strings to the host's styling, keeping
   every value.
+- Narration (unless `--no-narration`): `narration-player.ts` and
+  `useNarration.ts` come with the folder. Copy `templates/audio/` to
+  `scripts/walkthrough/`, set `NARRATION_BASE` if static files are not served
+  from `/audio/walkthrough`, ask for `ELEVENLABS_API_KEY` with a `[!SECRET]`
+  callout, dry-run, generate, and commit the clips and `manifest.json`. Copy
+  `narration-drift.test.ts` next to the walkthrough tests.
 
 ### 4. Wire it in
 
@@ -130,6 +152,9 @@ Follow `references/architecture.md` "Director tier":
 - `node ~/.claude/skills/walkthrough/scripts/check-routes.mjs <stories> <app dir>`
   must print `0 missing`.
 - Grep the copy for dashes and script words.
+- Narration: the generator's `--dry-run` prints `0 to generate`, the drift
+  test passes, and the report gives each story's spoken length from the
+  manifest.
 - Gate-check the ledger, then delete it when delivered.
 - Report: what was installed where, the stories per role (titles), the
   checks with their real output, and what the owner should click through in
@@ -143,6 +168,8 @@ Follow `references/architecture.md` "Director tier":
 | `references/design.md` | tokens, type, every piece's anatomy, z ladder, motion, theming |
 | `references/architecture.md` | store, loop, drivers, nav guide, keys; director tier server design |
 | `references/pitfalls.md` | every bug the reference build hit, as rules |
+| `references/narration.md` | the spoken narrator: fixed decisions, timing, autoplay, writing, generating, drift gate, upgrading an existing walkthrough |
+| `templates/audio/` | the clip generator (ElevenLabs over fetch, hash skip, manifest), the shared clip list, the drift test |
 | `templates/react/walkthrough/` | the client: types, store, local driver, loop, keys, nav guide, spotlight, reader, prompt layer, loader, bar, mount, copy, tokens, art adapter, tests |
 | `templates/react/director/` | the Convex driver for the director tier |
 | `templates/convex/` | director tier tables, story types, write ledger, run module (pattern code) |

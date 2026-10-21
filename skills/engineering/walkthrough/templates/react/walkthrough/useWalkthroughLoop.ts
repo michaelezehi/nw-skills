@@ -12,6 +12,8 @@ export type LoopError = null | 'loop' | 'action';
 
 /** How long a route change may take before the loader gives up waiting on it. */
 const LAND_TIMEOUT_MS = 6_000;
+/** Explain off: the longest a step waits on a lead clip that never ends, such as a stalled download. */
+export const LEAD_CEILING_MS = 30_000;
 
 interface Options {
   /** The latest run, from whatever holds it (local state or a reactive query). */
@@ -139,9 +141,39 @@ export function useWalkthroughLoop({ run, driver, show }: Options) {
       };
     });
 
+  /**
+   * Resolves true once the step's lead clip is over: ended, failed, cut, sound
+   * off, never started, or stalled past `LEAD_CEILING_MS`. False at once when
+   * cancelled or unmounted.
+   */
+  const untilLeadSpoken = (stepId: string) =>
+    new Promise<boolean>((resolve) => {
+      const speaking = (s: ReturnType<typeof useWalkthroughStore.getState>) =>
+        s.sound && s.narration.stepId === stepId && s.narration.lead === 'playing';
+      if (!speaking(useWalkthroughStore.getState())) {
+        resolve(true);
+        return;
+      }
+      const finish = (carryOn: boolean) => {
+        clearTimeout(ceiling);
+        unsubscribe();
+        cancelWait.current = null;
+        resolve(carryOn);
+      };
+      const ceiling = setTimeout(() => finish(true), LEAD_CEILING_MS);
+      const unsubscribe = useWalkthroughStore.subscribe((state) => {
+        if (!speaking(state)) finish(true);
+      });
+      cancelWait.current = () => finish(false);
+    });
+
+  /** Explain off: the step's hold, and then the rest of its lead clip if it runs longer. */
+  const holdStep = async (step: WalkthroughStep) =>
+    (await wait(step.holdMs)) && untilLeadSpoken(step.id);
+
   /** The pause after a step: the reader when Explain is on, the step's hold when not. */
   const holdAfter = (view: RunView, step: WalkthroughStep) =>
-    openExplanation(view, step) ? untilExplained() : wait(step.holdMs);
+    openExplanation(view, step) ? untilExplained() : holdStep(step);
 
   const stillDriving = () => aliveRef.current && !stopLoop.current;
 

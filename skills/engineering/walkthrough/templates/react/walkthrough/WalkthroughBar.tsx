@@ -11,10 +11,11 @@ import {
   XIcon,
 } from '@phosphor-icons/react';
 
-import type { RunView } from './story-types';
+import type { RunView, WalkthroughStory } from './story-types';
 import type { useWalkthroughLoop } from './useWalkthroughLoop';
 import { WALKTHROUGH_COPY as COPY, stepProgressCopy } from './walkthrough-copy';
 import { useWalkthroughStore } from './walkthrough-store';
+import { StoryPicker } from './StoryPicker';
 import { stopNarration, unlockNarration } from './useNarration';
 import { WALKTHROUGH_UI_ATTR } from './nav-guide';
 import { PILL, cx } from './walkthrough-ui';
@@ -23,10 +24,15 @@ const iconButton =
   'inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-[var(--wt-ink-strong)] transition-colors hover:bg-[var(--wt-hover)] disabled:opacity-40 disabled:hover:bg-transparent';
 const spinner = 'animate-spin motion-reduce:animate-none';
 
-/** "Founder story · Step 3 of 9": the step on screen, or the one about to play. */
-export function progressLabel(run: RunView): string {
+/** "Step 3 of 9": the step on screen, or the one about to play. */
+function stepLine(run: RunView): string {
   const n = run.lastStep ? run.lastStep.index + 1 : Math.min(run.index + 1, run.total);
-  return `${run.storyLabel} · ${stepProgressCopy(n, run.total)}`;
+  return stepProgressCopy(n, run.total);
+}
+
+/** "Founder story · Step 3 of 9": the story, and the step on screen or the one about to play. */
+export function progressLabel(run: RunView): string {
+  return `${run.storyLabel} · ${stepLine(run)}`;
 }
 
 function Toggle({
@@ -70,16 +76,21 @@ function Toggle({
 
 /**
  * The floating story bar: play or pause, previous and next step, start over,
- * where the story stands, and the Follow, Explain and Sound toggles.
+ * where the story stands, and the Follow, Explain and Sound toggles. With
+ * more than one story the story name becomes a picker and the line beside it
+ * shows only the step count.
  */
 export function WalkthroughBar({
   run,
   loop,
   onEnd,
+  stories,
 }: {
   run: RunView;
   loop: ReturnType<typeof useWalkthroughLoop>;
   onEnd: () => void;
+  /** Every story this viewer may take. More than one turns the story name into a picker. */
+  stories?: Record<string, WalkthroughStory>;
 }) {
   const follow = useWalkthroughStore((st) => st.follow);
   const setFollow = useWalkthroughStore((st) => st.setFollow);
@@ -92,7 +103,8 @@ export function WalkthroughBar({
   const playing = run.status === 'playing';
   const done = run.status === 'done';
   const locked = busy !== null;
-  const statusLine = done && busy === null ? COPY.done : progressLabel(run);
+  const picking = stories !== undefined && Object.keys(stories).length > 1;
+  const statusLine = done && busy === null ? COPY.done : picking ? stepLine(run) : progressLabel(run);
 
   /** A click is a user gesture: unlock audio, and cut the clip before the step moves. */
   const stepping = (act: () => Promise<void>) => () => {
@@ -178,6 +190,7 @@ export function WalkthroughBar({
       </button>
 
       <span className="mx-2 hidden h-5 w-px shrink-0 bg-[var(--wt-line)] sm:block" aria-hidden />
+      {picking && <StoryPicker stories={stories} current={run.story} />}
       <p
         aria-live="polite"
         className="m-0 hidden whitespace-nowrap text-xs font-medium tabular-nums text-[var(--wt-body)] sm:block"

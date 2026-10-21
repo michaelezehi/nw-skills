@@ -83,6 +83,22 @@ npx tsx scripts/walkthrough/generate-narration.ts \
   (`NARRATION_BASE` in `useNarration.ts`, default `/audio/walkthrough`). If the
   host serves static files from a CDN, set it there; keep the layout.
 
+## More than one language
+
+- Text goes into every locale the host ships; voice only into the locales
+  the owner asks for (in the reference host, English and Arabic). A locale
+  with no clips plays the silent timing.
+- Clips live under a locale folder (`<out>/<locale>/<story>/<stepId>/...`)
+  and the manifest keys carry the locale. Run one locale at a time per app
+  (`--locale`), never two runs on one manifest at once.
+- Translate the step copy before generating that locale, then check it: no
+  dashes, no doubled braces, every narration line in the target script, and
+  every fragment parses as JSON. Translators turn curly quotes into bare
+  `"` inside values; escape them before composing.
+- Finish every translation write before composing the catalogs. A batch
+  started with `&` can still be writing after the shell says done.
+- End with a `--dry-run` over all locales: `0 to generate`.
+
 ## The drift gate
 
 Copy `templates/audio/narration-drift.test.ts` next to the host's tests and

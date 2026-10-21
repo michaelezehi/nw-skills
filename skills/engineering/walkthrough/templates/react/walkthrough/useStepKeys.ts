@@ -8,7 +8,12 @@ import { unlockNarration } from './useNarration';
 function isEditable(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   if (target.isContentEditable) return true;
-  return Boolean(target.closest('input, textarea, select, [role="slider"], [role="textbox"]'));
+  // A list, menu or combobox moves its own highlight with the arrows (the story picker is one).
+  return Boolean(
+    target.closest(
+      'input, textarea, select, [role="slider"], [role="textbox"], [role="combobox"], [role="listbox"], [role="option"], [role="menu"], [role="menuitem"]',
+    ),
+  );
 }
 
 /**

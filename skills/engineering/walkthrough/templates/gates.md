@@ -27,6 +27,15 @@ the story data, the entry point edits. Nothing else.
 - [ ] G7 Entry point present for every role story
   CHECK: grep -rn "startTour(" src | wc -l
   EXPECT: /^\s*[1-9][0-9]*\s*$/m
+- [ ] G12 Every step names the control it is about
+  CHECK: f=src/walkthrough/stories.ts; echo "routes=$(grep -c 'route:' $f) focus=$(grep -c 'focus:' $f)"
+  EXPECT: /routes=(\d+) focus=\1/
+- [ ] G13 Only tabs are clicked (a trigger that only opens a tab group may be abandoned with its name)
+  CHECK: grep -rn "click: true" src/walkthrough | grep -vc "role: 'tab'"
+  EXPECT: /^\s*0\s*$/m
+- [ ] G14 The reader moves clear of the step's subject
+  CHECK: grep -c "useReaderPlacement" src/components/walkthrough/ExplainReader.tsx
+  EXPECT: /^\s*[1-9][0-9]*\s*$/m
 
 Narration gates (skip with --no-narration):
 

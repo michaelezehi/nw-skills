@@ -63,6 +63,28 @@ while watching a founder screen). Each role gets its own story:
   notification. It is that message, in the product's own voice.
 - **Order**: the order a real person meets the screens. Start where a new
   user lands.
+- **Focus**: name the one control the step is about, so the viewer sees
+  where to click. A tab the step is about gets `click: true`; everything
+  else is lit only. Never click what runs, sends, saves, publishes, records,
+  generates, charges or opens a pop-up. A heading or stat label takes
+  `area: true` so its whole card lights. The pass lights only the clicked
+  specs, or the first spec when none click, so list the main control first.
+  The rest still count for where the reader sits.
+- **Routes with pop-ups**: never a full-screen or modal param
+  (`?companion=full`, `?jobId=`). A corner pop-up opened by a query is fine
+  if its param is in `OPENER_PARAMS`, and its step's focus names the pop-up
+  (a selector) so the reader moves clear of it.
+
+### Feature stories
+
+After the role stories, map the product's own standout pages into short
+feature stories (3 to 6 steps each): the critical path and what sets the
+product apart. Map them with one agent per app, each step citing its route,
+its focus keys and any trap (an overlay param, a button that creates
+something, a tab hidden on some plans). Get the titles approved, as for role
+stories. Each story says who gets it (roles) and what it needs (modules,
+menu switches, region); content for one country is gated on the company's
+own setup and has a region-neutral sibling.
 
 Show the owner the step titles per role and get a yes before
 building. Titles are the cheapest thing to change.
@@ -76,6 +98,9 @@ building. Titles are the cheapest thing to change.
 | Step hold, Explain off | 6 to 10 s | time to look at the screen |
 | Prompt card | 8 s, held on hover or focus | WCAG 2.2.1: never time out what someone is reading |
 | Spotlight before its click | 1.6 s | long enough to see where the item is |
+| Focus light before a tab click | 1.6 s, then a 0.35 s fade | the eye lands before the screen changes |
+| Focus pass ceiling | 12 s | a page that never renders the control never stalls the story |
+| Reader placement re-measure | every 1 s and on resize | a card that opens late still moves the reader |
 
 ## 5. Entry points
 

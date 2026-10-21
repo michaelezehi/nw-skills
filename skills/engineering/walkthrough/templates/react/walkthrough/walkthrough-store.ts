@@ -53,6 +53,8 @@ export interface WalkthroughExplanation {
   total: number;
   /** Every step's title in the story, in order. */
   steps: string[];
+  /** Every step's picture slug, in order, for the journey icons. */
+  arts?: string[];
 }
 
 export type StepDirection = 'back' | 'forward';
@@ -120,6 +122,9 @@ interface WalkthroughStore {
   setShowMeHow: (on: boolean) => void;
   narration: WalkthroughNarration;
   setNarration: (patch: Partial<WalkthroughNarration>) => void;
+  /** The step whose controls the focus pass is lighting up. The loop waits while this is set. */
+  focusing: WalkthroughStep | null;
+  setFocusing: (step: WalkthroughStep | null) => void;
 }
 
 export const useWalkthroughStore = create<WalkthroughStore>((set) => ({
@@ -158,6 +163,8 @@ export const useWalkthroughStore = create<WalkthroughStore>((set) => ({
   setShowMeHow: (on) => set({ showMeHow: on }),
   narration: NARRATION_IDLE,
   setNarration: (patch) => set((s) => ({ narration: { ...s.narration, ...patch } })),
+  focusing: null,
+  setFocusing: (focusing) => set({ focusing }),
 }));
 
 /**

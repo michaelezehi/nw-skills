@@ -47,10 +47,20 @@ no black primary buttons. The accent is one solid colour.
 
 ## Pieces
 
-**The reader** (`ExplainReader`): a column fixed on the far right.
-`right-4`, `top: var(--wt-header-h)`, `bottom: 92px` (clears the bar),
+**The reader** (`ExplainReader`): a column fixed on the reading end.
+`end-4`, `top: var(--wt-header-h)`, `bottom: 92px` (clears the bar),
 `width: min(380px, 100vw - 32px)`, radius 28, surface, reader shadow,
-`z-110`. Top to bottom:
+`z-110`. It never covers what the step is about; the whole screen is its
+canvas. Three places, first clear one wins:
+
+| Place | Box | When |
+|---|---|---|
+| `end` | the column above, on the reading end (left in Arabic and Urdu) | nothing the step names is under it |
+| `start` | the same column on the other side (`start-4`) | the subject is on the reading end, such as a Companion card |
+| `bottom` | centred above the bar, `width: min(760px, 100vw - 32px)`, `height: min(42vh, 360px)`, no picture panel | there is a subject on both sides; never cross over one |
+
+It slides in from the edge it sits on (up from below for `bottom`) and
+glides between places over 0.45 s. Top to bottom:
 
 1. Eyebrow with the story name, close cross on the right.
 2. Picture panel: `h-150px`, radius 22, art panel colour, art at a FIXED
@@ -59,8 +69,11 @@ no black primary buttons. The accent is one solid colour.
 4. "What happened" and "Why it matters", each an eyebrow over reading text.
 5. "Show me how to get there": outline pill with a signpost icon, only when
    a menu link is found.
-6. "The journey": a hairline, eyebrow, then every step with a dot (done:
-   filled dark with a tick; now: accent; to come: hollow).
+6. "The journey" (`JourneyList`): a hairline, eyebrow, then the steps told
+   in icons. The current step first, as the focus: a tinted row with its
+   icon in full colour and a "Now" eyebrow. Steps to come below it, muted.
+   Done steps move to the bottom, muted, each icon with a check badge.
+   Dotted hairlines (`--wt-dots`) between rows, never boxes round each one.
 7. Footer on a hairline: countdown ring (40px, ring colour), pause or play,
    previous step (from step 2), and "Continue" as the accent pill on the right.
 
@@ -72,8 +85,19 @@ by the reader's width plus 32px while the reader is open.
 
 **The bar** (`WalkthroughBar`): a pill centred at the bottom (`bottom-5`,
 `z-70`): Play (accent pill) or Pause (outline pill), previous, next, start
-over, a hairline, "Founder story · Step 3 of 9", a hairline, Follow toggle,
-Explain toggle, end cross.
+over, a hairline, "Founder story · Step 3 of 9" (a story picker in its place
+when the viewer has more than one story: the host's combobox, a rounded-full
+trigger, each option with its first step's icon, dashed hairlines between
+options), a hairline, Follow toggle, Explain toggle, Sound, end cross. On a
+narrow screen the picker may hide; the label stays.
+
+**The focus light** (`FocusLayer`): when a step lands, the page dims
+(`--wt-focus-dim`) round the one control the step is about, the control pops
+(scale 1 to 1.08 to 1 over 0.52 s), and a 2px ring (`--wt-spot-ring`, radius
+16, padded 8px, 6px accent halo) grows in from 0.85. It holds 1.6 s, clicks a
+tab if the step asks, then fades over 0.35 s. One light at a time; a label
+lights its whole card or stat, never just the pill round its text. `z-65`,
+pointer-events none.
 
 **The spotlight** (`NavSpotlight`): a 2px dark ring, radius 18, padded 6px
 round the menu item, with a 6px accent halo; a caption pill "Open Team"
@@ -85,12 +109,17 @@ reader so the explanation stays readable.
 
 ## Z ladder
 
-bar 70 · prompts 70 · loader 100 · reader 110 · spotlight 120. Keep the
-host's modals above 120 or close them when a tour starts.
+focus light 65 · bar 70 · prompts 70 · loader 100 · reader 110 ·
+spotlight 120. Keep the host's modals above 120 or close them when a tour
+starts. A pop-up a step opens (a Companion card) sits under the reader, so
+the reader moves aside rather than over it; its scrim may sit just under the
+focus light.
 
 ## Motion
 
-- Reader: in from `x: 24, opacity 0`, out to `x: 16`; 0.32s, ease `[0.2, 0.8, 0.2, 1]`.
+- Reader: in from `x: 24, opacity 0` (from its own edge; `y: 24` at the
+  bottom), out to `x: 16`; 0.32s, ease `[0.2, 0.8, 0.2, 1]`. A change of
+  place glides with framer `layout` over 0.45 s.
 - Card: spring `stiffness 380, damping 32, mass 0.8` from `x: 48, scale .96`.
 - Spotlight ring: from `scale 1.25`, 0.35s; caption 0.25s, 0.15s delay.
 - Countdown: `stroke-dashoffset` linear per 250ms tick.

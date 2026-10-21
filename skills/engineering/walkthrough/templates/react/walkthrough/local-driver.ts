@@ -41,6 +41,7 @@ export function viewOf(story: WalkthroughStory, saved: Saved): RunView {
     story: story.key,
     storyLabel: story.label,
     steps: story.steps.map((s) => s.title),
+    arts: story.steps.map((s) => s.explain.art),
     index,
     total,
     status: saved.status,

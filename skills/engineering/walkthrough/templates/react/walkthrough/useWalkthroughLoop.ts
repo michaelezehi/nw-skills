@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 
 import type { RunView, WalkthroughDriver, WalkthroughStep } from './story-types';
 import { useWalkthroughStore, withSwitch } from './walkthrough-store';
+import { withoutOpeners } from './opener-params';
 
 export type LoopBusy = null | 'starting' | 'stepping' | 'pausing' | 'restarting' | 'following';
 /** `loop`: the story stopped on its own and offers Retry. `action`: a button failed. */
@@ -12,6 +13,8 @@ export type LoopError = null | 'loop' | 'action';
 
 /** How long a route change may take before the loader gives up waiting on it. */
 const LAND_TIMEOUT_MS = 6_000;
+/** The longest a step waits on its focus pass, however the page behaves. */
+export const FOCUS_CEILING_MS = 12_000;
 /** Explain off: the longest a step waits on a lead clip that never ends, such as a stalled download. */
 export const LEAD_CEILING_MS = 30_000;
 
@@ -55,6 +58,7 @@ export function useWalkthroughLoop({ run, driver, show }: Options) {
     return () => {
       aliveRef.current = false;
       cancelWait.current?.();
+      useWalkthroughStore.getState().setFocusing(null);
     };
   }, []);
 
@@ -99,16 +103,25 @@ export function useWalkthroughLoop({ run, driver, show }: Options) {
       return;
     }
     const [path, query] = step.route.split('?') as [string, string | undefined];
-    if (pathRef.current === path) {
-      // Same page, another tab of it (`/settings?tab=...`): move the query in
-      // place. The page stays mounted, so no loader is needed.
-      if (query !== undefined && window.location.search !== `?${query}`) router.push(step.route);
-      return;
+    const movesTab = () => query !== undefined && window.location.search !== `?${query}`;
+    if (pathRef.current !== path) {
+      await withSwitch(async () => {
+        router.push(step.route);
+        await landOn(path);
+      });
+    } else {
+      // Same page: a pop-up the last step opened (`OPENER_PARAMS`) closes
+      // first, keeping the tab the page is on.
+      const closed = withoutOpeners(window.location.search, step.route);
+      if (closed !== null) router.replace(`${path}${closed}`);
+      // Another tab of it (`/settings?tab=...`): move the query in place. The
+      // page stays mounted, so no loader is needed.
+      if (movesTab() && !step.focus?.some((spec) => spec.click)) router.push(step.route);
     }
-    await withSwitch(async () => {
-      router.push(step.route);
-      await landOn(path);
-    });
+    // A step whose focus clicks the tab lets the viewer watch it happen; the
+    // query is only the fallback for a tab the pass could not find.
+    await untilFocused(step);
+    if (movesTab() && aliveRef.current) router.push(step.route);
   };
   // The loop reads the follow flag and path of the latest render.
   const showFromLoop = useEffectEvent((step: WalkthroughStep) => showStep(step));
@@ -117,9 +130,39 @@ export function useWalkthroughLoop({ run, driver, show }: Options) {
   const openExplanation = (view: RunView, step: WalkthroughStep): boolean => {
     const { explain, setExplanation } = useWalkthroughStore.getState();
     if (!explain) return false;
-    setExplanation({ step, storyLabel: view.storyLabel, total: view.total, steps: view.steps });
+    setExplanation({
+      step,
+      storyLabel: view.storyLabel,
+      total: view.total,
+      steps: view.steps,
+      arts: view.arts,
+    });
     return true;
   };
+
+  /**
+   * Runs the step's focus pass and resolves once it is over: finished,
+   * cleared by Back, Next or a pause, or past `FOCUS_CEILING_MS`.
+   */
+  const untilFocused = (step: WalkthroughStep) =>
+    new Promise<void>((resolve) => {
+      if (!step.focus?.length || !aliveRef.current) {
+        resolve();
+        return;
+      }
+      const store = useWalkthroughStore;
+      const finish = () => {
+        clearTimeout(ceiling);
+        unsubscribe();
+        if (store.getState().focusing === step) store.getState().setFocusing(null);
+        resolve();
+      };
+      const ceiling = setTimeout(finish, FOCUS_CEILING_MS);
+      const unsubscribe = store.subscribe((state) => {
+        if (state.focusing !== step) finish();
+      });
+      store.getState().setFocusing(step);
+    });
 
   /** Resolves true when the reader closes, or false at once when cancelled. */
   const untilExplained = () =>
@@ -234,6 +277,7 @@ export function useWalkthroughLoop({ run, driver, show }: Options) {
     // Cancel the wait BEFORE closing the reader: closing it first lets the loop step on.
     cancelWait.current?.();
     useWalkthroughStore.getState().setExplanation(null);
+    useWalkthroughStore.getState().setFocusing(null);
     if (runRef.current?.status === 'playing') runRef.current = await driver.pause();
     // A step may be mid switch; let it land first.
     await loopRef.current;

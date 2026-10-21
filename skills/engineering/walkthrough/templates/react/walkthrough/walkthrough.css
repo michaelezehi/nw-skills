@@ -18,6 +18,21 @@
   --wt-faint: #a0a19c; /* eyebrows, steps to come */
   --wt-dark: #23231f; /* done dots, spotlight ring */
 
+  /*
+   * Jobs with their own names, so a dark host can fix one without the others:
+   * a light ink on dark would hide a white tick on a light dot.
+   */
+  --wt-done-fill: #23231f; /* done dot in the journey */
+  --wt-done-tick: #ffffff; /* the tick inside it */
+  --wt-spot-ring: #23231f; /* the ring round a control the focus pass lights */
+  --wt-focus-dim: rgba(24, 24, 27, 0.32); /* the page round the controls a step lights up */
+
+  /* The journey list: dotted rows, the step on screen on a soft accent card */
+  --wt-dots: rgba(35, 35, 31, 0.24); /* dotted row separators, dashed picker rows */
+  --wt-now-surface: color-mix(in srgb, var(--wt-accent) 10%, var(--wt-surface)); /* current step card */
+  --wt-now-line: color-mix(in srgb, var(--wt-accent) 35%, transparent); /* its hairline all round */
+  --wt-icon-box: #f4f2ee; /* box behind a row icon */
+
   /* Accent: the primary pill and the current step */
   --wt-accent: #fde047;
   --wt-accent-hover: #facc15;
@@ -37,4 +52,4 @@
 }
 
 /* Dark hosts: override the same names, e.g.
-:root[data-theme='dark'] { --wt-surface: #1c1b19; --wt-ink: #f1efe9; ... } */
+:root[data-theme='dark'] { --wt-surface: #1c1b19; --wt-ink: #f1efe9; --wt-focus-dim: rgba(0, 0, 0, 0.5); ... } */

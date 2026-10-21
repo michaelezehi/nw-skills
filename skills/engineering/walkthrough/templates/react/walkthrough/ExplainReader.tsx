@@ -4,7 +4,6 @@ import { useEffect, useEffectEvent, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion';
 import {
   CaretLeftIcon,
-  CheckIcon,
   PauseIcon,
   PlayIcon,
   SignpostIcon,
@@ -13,6 +12,7 @@ import {
   XIcon,
 } from '@phosphor-icons/react';
 
+import { JourneyList } from './JourneyList';
 import { WalkthroughArt } from './walkthrough-art';
 import { WALKTHROUGH_COPY as COPY, stepProgressCopy } from './walkthrough-copy';
 import {
@@ -25,6 +25,8 @@ import { unlockNarration } from './useNarration';
 import { WALKTHROUGH_UI_ATTR, findNavTarget, type NavTarget } from './nav-guide';
 import { NavSpotlight } from './NavSpotlight';
 import { EYEBROW, PILL, READING, ROUND_BUTTON, cx } from './walkthrough-ui';
+import { asShown } from './focus-guide';
+import { useReaderPlacement, type ReaderPlacement } from './reader-placement';
 
 /** How long the reader holds a step before the story carries on by itself. */
 export const EXPLAIN_SECONDS = 30;
@@ -73,52 +75,15 @@ function CountdownRing({ share, seconds }: { share: number; seconds: number | nu
   );
 }
 
-/** Every step in the story: done, the one on screen, and what comes next. */
-function JourneyList({ steps, current }: { steps: string[]; current: number }) {
-  return (
-    <ol className="m-0 list-none space-y-2.5 p-0">
-      {steps.map((title, i) => {
-        const done = i < current;
-        const now = i === current;
-        return (
-          <li key={`${i}-${title}`} className="flex items-start gap-3">
-            <span
-              className={cx(
-                'mt-0.5 grid h-4 w-4 shrink-0 place-items-center rounded-full border',
-                done && 'border-[var(--wt-dark)] bg-[var(--wt-dark)] text-white',
-                now && 'border-[var(--wt-dark)] bg-[var(--wt-accent)]',
-                !done && !now && 'border-[var(--wt-dark)]/25 bg-white',
-              )}
-              aria-hidden
-            >
-              {done && <CheckIcon className="h-2.5 w-2.5" weight="bold" />}
-            </span>
-            <span
-              className={cx(
-                'text-[12.5px] leading-[1.4]',
-                now
-                  ? 'font-semibold text-[var(--wt-ink-strong)]'
-                  : done
-                    ? 'text-[var(--wt-muted)]'
-                    : 'text-[var(--wt-faint)]',
-              )}
-              aria-current={now ? 'step' : undefined}
-            >
-              {title}
-            </span>
-          </li>
-        );
-      })}
-    </ol>
-  );
-}
-
 function ReaderBody({
   explanation,
   switching,
+  compact,
 }: {
   explanation: WalkthroughExplanation;
   switching: boolean;
+  /** The short bottom panel: no picture, so the words fit. */
+  compact: boolean;
 }) {
   const setExplanation = useWalkthroughStore((st) => st.setExplanation);
   const requestStep = useWalkthroughStore((st) => st.requestStep);
@@ -133,7 +98,7 @@ function ReaderBody({
   const [clipShare, setClipShare] = useState<{ share: number; seconds: number } | null>(null);
   const [target, setTarget] = useState<NavTarget | null>(null);
   const [canGuide, setCanGuide] = useState(false);
-  const { step, storyLabel, total, steps } = explanation;
+  const { step, storyLabel, total, steps, arts } = explanation;
   const close = () => setExplanation(null);
   // The spotlight holds the clip while it rings the menu item.
   const guide = (next: NavTarget | null) => {
@@ -232,9 +197,11 @@ function ReaderBody({
 
       <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-4">
         {/* Fixed pixel art inside a clipped box: a % size spills out of the panel. */}
-        <div className="mt-3 grid h-[150px] place-items-center overflow-hidden rounded-[22px] bg-[var(--wt-art-panel)]">
-          <WalkthroughArt slug={step.explain.art} size={128} />
-        </div>
+        {!compact && (
+          <div className="mt-3 grid h-[150px] place-items-center overflow-hidden rounded-[22px] bg-[var(--wt-art-panel)]">
+            <WalkthroughArt slug={step.explain.art} size={128} />
+          </div>
+        )}
 
         <p className={cx(EYEBROW, 'mt-5')}>{stepProgressCopy(step.index + 1, total)}</p>
         <h2 className="m-0 mt-2 text-[21px] font-medium leading-[1.18] -tracking-[0.03em] text-[var(--wt-ink)]">
@@ -267,7 +234,7 @@ function ReaderBody({
         {steps.length > 1 && (
           <div className="mt-6 border-t border-[var(--wt-line)] pt-4">
             <p className={cx(EYEBROW, 'mb-3')}>{COPY.journey}</p>
-            <JourneyList steps={steps} current={step.index} />
+            <JourneyList steps={steps} arts={arts} current={step.index} />
           </div>
         )}
       </div>
@@ -316,38 +283,86 @@ function ReaderBody({
   );
 }
 
+/** The reader's geometry on screen, matching its classes below and `--wt-*` in walkthrough.css. */
+const READER_GEOMETRY = { readerWidth: 380, top: 84, bottomGap: 92 };
+
+const SIDE = 'top-[var(--wt-header-h)] bottom-[92px] w-[min(var(--wt-reader-w),calc(100vw-32px))]';
+const PLACED: Record<ReaderPlacement, string> = {
+  end: `${SIDE} end-4`,
+  start: `${SIDE} start-4`,
+  bottom: 'inset-x-0 bottom-[92px] mx-auto h-[min(42vh,360px)] w-[min(760px,calc(100vw-32px))]',
+};
+
 /**
- * The journey reader: after each step a panel on the right shows the
- * picture, what just happened and why it matters, where the step sits in the
- * whole story, and "Show me how to get there", which rings the menu item for
- * this screen and clicks it. A 30 second countdown, pausable, lets the story
- * carry on; with sound on the reader waits for the spoken detail instead,
- * then 1.5 seconds more, and never past 60 seconds. It stays up through a screen switch (the countdown holds until
- * the new screen lands), so the viewer is never left on an empty page.
+ * The journey reader: after each step a panel shows the picture, what just
+ * happened and why it matters, where the step sits in the whole story, and
+ * "Show me how to get there", which rings the menu item for this screen and
+ * clicks it. A 30 second countdown, pausable, lets the story carry on; with
+ * sound on the reader waits for the spoken detail instead, then 1.5 seconds
+ * more, and never past 60 seconds. It stays up through a screen switch (the
+ * countdown holds until the new screen lands), so the viewer is never left
+ * on an empty page.
+ *
+ * It sits on the inline end (logical `end-4`, so the left on a right-to-left
+ * page) unless that covers what the step is about: then it moves to the
+ * other side, or to a shorter panel along the bottom (`useReaderPlacement`).
+ * `resolveName` turns a focus spec's name into the label on screen; see
+ * `FocusSpec`.
  */
-export function ExplainReader() {
+export function ExplainReader({ resolveName = asShown }: { resolveName?: (name: string) => string }) {
   const explanation = useWalkthroughStore((st) => st.explanation);
   const switching = useWalkthroughStore((st) => st.pending > 0);
-  const reduceMotion = useReducedMotion();
 
   return (
     <AnimatePresence>
       {explanation && (
-        <motion.aside
+        <ReaderShell
           key={explanation.step.id}
-          {...{ [WALKTHROUGH_UI_ATTR]: '' }}
-          role="complementary"
-          aria-label={COPY.explainLabel}
-          data-testid="walkthrough-reader"
-          initial={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 24 }}
-          animate={{ opacity: 1, x: 0 }}
-          exit={reduceMotion ? { opacity: 0 } : { opacity: 0, x: 16 }}
-          transition={{ duration: 0.32, ease: [0.2, 0.8, 0.2, 1] }}
-          className="fixed bottom-[92px] right-4 top-[var(--wt-header-h)] z-[110] flex w-[min(var(--wt-reader-w),calc(100vw-32px))] flex-col overflow-hidden rounded-[28px] border border-[var(--wt-line)] bg-[var(--wt-surface)] shadow-[var(--wt-shadow-reader)]"
-        >
-          <ReaderBody explanation={explanation} switching={switching} />
-        </motion.aside>
+          explanation={explanation}
+          switching={switching}
+          resolveName={resolveName}
+        />
       )}
     </AnimatePresence>
+  );
+}
+
+/** One step's reader, placed clear of what the step is about; it glides when the place changes. */
+function ReaderShell({
+  explanation,
+  switching,
+  resolveName,
+}: {
+  explanation: WalkthroughExplanation;
+  switching: boolean;
+  resolveName: (name: string) => string;
+}) {
+  const reduceMotion = useReducedMotion();
+  const rtl = typeof document !== 'undefined' && document.documentElement.dir === 'rtl';
+  const placement = useReaderPlacement(explanation.step.focus, resolveName, { ...READER_GEOMETRY, rtl });
+  // Slides in from the edge it sits on: the inline end, the inline start, or up from below.
+  const edge = placement === 'end' ? (rtl ? -1 : 1) : placement === 'start' ? (rtl ? 1 : -1) : 0;
+  const enter = placement === 'bottom' ? { y: 24 } : { x: 24 * edge };
+  const leave = placement === 'bottom' ? { y: 16 } : { x: 16 * edge };
+
+  return (
+    <motion.aside
+      layout={!reduceMotion}
+      {...{ [WALKTHROUGH_UI_ATTR]: '' }}
+      role="complementary"
+      aria-label={COPY.explainLabel}
+      data-testid="walkthrough-reader"
+      data-placement={placement}
+      initial={reduceMotion ? { opacity: 0 } : { opacity: 0, ...enter }}
+      animate={{ opacity: 1, x: 0, y: 0 }}
+      exit={reduceMotion ? { opacity: 0 } : { opacity: 0, ...leave }}
+      transition={{ duration: 0.32, ease: [0.2, 0.8, 0.2, 1], layout: { duration: 0.45, ease: [0.2, 0.8, 0.2, 1] } }}
+      className={cx(
+        'fixed z-[110] flex flex-col overflow-hidden rounded-[28px] border border-[var(--wt-line)] bg-[var(--wt-surface)] shadow-[var(--wt-shadow-reader)]',
+        PLACED[placement],
+      )}
+    >
+      <ReaderBody explanation={explanation} switching={switching} compact={placement === 'bottom'} />
+    </motion.aside>
   );
 }

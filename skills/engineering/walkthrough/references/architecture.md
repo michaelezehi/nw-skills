@@ -10,10 +10,14 @@ Walkthrough (mount once in the signed-in layout)
      ├─ useStepKeys(enabled)            arrow keys → store.requestStep
      ├─ effect on store.stepRequest     → loop.onBack / loop.onForward
      ├─ SwitchLoader                    store.pending > 0
+     ├─ FocusLayer                      store.focusing → light, pop, click a tab
      ├─ PromptLayer                     the step's prompt (local) or wt_prompts (director)
      ├─ ExplainReader                   store.explanation
+     │   ├─ ReaderShell (per step)      useReaderPlacement → end | start | bottom
+     │   ├─ JourneyList                 current first, done at the bottom
      │   └─ NavSpotlight                findNavTarget(step.route)
      └─ WalkthroughBar                  run + loop handlers
+         └─ StoryPicker                 only with more than one story
 ```
 
 ### The store (`walkthrough-store.ts`, Zustand)
@@ -26,6 +30,7 @@ Walkthrough (mount once in the signed-in layout)
 | `explanation` | the open reader; the loop waits while it is set |
 | `pending` | screen switches in flight; the loader shows above zero |
 | `stepRequest` | `{dir, n}` asked by the reader or keys; the bar's owner acts |
+| `focusing` | the step whose focus pass is running; the loop waits while it is set, and clearing it (Back, Next, pause) ends the pass |
 
 Only the loop moves the run. The reader and the keys never call the driver;
 they raise `stepRequest`, and one effect in `Tour` calls `onBack` or
@@ -47,6 +52,8 @@ while playing:
   next = driver.advance(view.index)
   if next.index !== view.index + 1: stop      (stale, or another tab moved it)
   show(next.lastStep)                          (route change under the loader, or persona switch)
+    same path: take off opener params the step does not set, then move ?tab= in place
+    untilFocused(step)                         (the focus pass, never past FOCUS_CEILING_MS 12s)
   holdAfter(next):  Explain on  → open reader, wait until it closes
                     Explain off → wait step.holdMs
 ```
@@ -81,8 +88,78 @@ starts from the top; never block on it.
 
 Left and right arrows, on window in capture phase, only while a story is
 under way (`run.status !== 'idle'`). Ignored in inputs, textareas, selects,
-sliders, contenteditable, and with any modifier. `preventDefault` +
-`stopPropagation` when handled, so the page does not also move.
+sliders, contenteditable, combobox, listbox, option and menu roles, and with
+any modifier. `preventDefault` + `stopPropagation` when handled, so the page
+does not also move.
+
+### The focus pass (`FocusLayer`, `focus-guide.ts`)
+
+A step names what it talks about in `focus?: FocusSpec[]`:
+
+```ts
+type FocusSpec = ({ name: string; role?: 'tab'; area?: true } | { selector: string }) & { click?: true };
+```
+
+- `name` is a catalog key, resolved in the viewer's language and matched to a
+  control's accessible name (`aria-label`, an input's placeholder, else its
+  text), with a count or a dot after it allowed ("Time off 4"). Host
+  components need no markup. `selector` is for a control with no stable label.
+- `area` lights the card or stat round a label instead of the label: climb
+  past pills (rounded and under 48px tall) to the first rounded box, else the
+  widest box below a row wider than 70% of the screen.
+- `click` is for tabs only. The pass lights it, waits `FOCUS_HOLD_MS` (1.6 s),
+  clicks, and fades. A step whose route has `?tab=` and a clicking focus lets
+  the viewer watch the click; the query is pushed only if the tab never showed.
+- `primaryFocus`: a step lights only what it clicks, one stage at a time, or
+  its first spec when it clicks nothing. Stages split at each click, since
+  what comes after only exists once the click has changed the screen.
+- Skipped: the walkthrough's own UI, `aria-hidden`, and anything faded out
+  (opacity under 0.01 on it or a parent). The finder polls for
+  `FOCUS_FIND_MS` (2.5 s), then goes on with whatever it found.
+- z 65: over the page, under the bar, reader and spotlight. A host scrim just
+  under it (a Companion card's at z 60) still closes on a click, so never
+  click through one.
+
+### Reader placement (`reader-placement.ts`)
+
+Each step's reader mounts as its own `ReaderShell` (keyed by step id) and
+asks `useReaderPlacement(step.focus, t, geometry)` where to sit. It measures
+every target the step's focus names (all specs, not only the primary one) and
+takes the first place that covers none of them: `end` (the usual side,
+mirrored in RTL), `start`, then `bottom`, a shorter panel above the bar with
+no picture. When all three cover something it takes the one that covers
+least. It measures on mount, every second and on resize, so a card that
+opens late still moves it, and glides there with framer `layout`.
+`geometry` must match the reader's classes: width, top (header height) and
+the bottom gap above the bar.
+
+### Openers (`opener-params.ts`)
+
+`OPENER_PARAMS` lists the query params that open a pop-up in the host
+(`companion` for a Companion card on `?companion=1`). The loop takes off any
+the next step does not set itself when it stays on the same page, keeping the
+other params; a route to another page drops them already. The `Tour` unmount
+(end of tour, or a jump to another story) takes them off too. A host whose
+pop-ups are not URL driven needs a close hook per opener instead; say so in
+the report.
+
+### Several stories per viewer (`StoryPicker`)
+
+A viewer may take a role story plus feature stories. `Walkthrough` gets every
+story the viewer may take, keyed by story key; the bar shows a picker when
+there is more than one. Picking cuts the narration and calls `startTour(key)`.
+Each story keeps its own place (`wt-run:<viewer>:<story>`). The picker is the
+host's own design-system combobox, never a raw `<select>`, with each story's
+first-step icon and dashed separators matching the journey list.
+
+Which stories a viewer gets is decided once, from their own setup:
+
+- Role (`roles` on the story) and, per step, anything the host can switch
+  off (modules, menu switches, white label, plan).
+- The company's setup, never the viewer's: `regions` / `notRegions` from the
+  company record for country content (a Saudi-only compliance story), with a
+  region-neutral sibling for everyone else.
+- A story left with fewer than 3 steps after its gates is not offered.
 
 ## Director tier (`--director`)
 

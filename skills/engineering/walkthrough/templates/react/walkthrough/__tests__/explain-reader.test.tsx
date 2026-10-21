@@ -1,7 +1,9 @@
 // The reader: shows the step's picture and copy, counts down, pauses on
 // request, closes on Continue or at zero (which lets the story carry on),
 // and asks the bar for the previous step. With sound on it waits for the
-// spoken detail instead, then a short grace, never past the ceiling.
+// spoken detail instead, then a short grace, never past the ceiling. It
+// sits clear of what the step is about, dropping to a short bottom panel with
+// no picture when both sides would cover it.
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
@@ -69,7 +71,8 @@ describe('ExplainReader', () => {
     expect(screen.getByText('Coach story')).toBeTruthy();
     expect(screen.getByText('Step 3 of 7')).toBeTruthy();
     expect(screen.getByRole('heading', { name: 'Dana sets a task' })).toBeTruthy();
-    expect(screen.getAllByText('Dana sets a task')[1]!.getAttribute('aria-current')).toBe('step');
+    const journey = screen.getByTestId('walkthrough-journey');
+    expect(journey.querySelector('[aria-current="step"]')!.textContent).toContain('Dana sets a task');
     expect(screen.getByText('Dana set the team a task.')).toBeTruthy();
     expect(screen.getByText('Work between sessions.')).toBeTruthy();
   });
@@ -163,5 +166,28 @@ describe('ExplainReader', () => {
     expect(toggle.getAttribute('aria-pressed')).toBe('false');
     fireEvent.click(screen.getByRole('button', { name: 'Sound' }));
     expect(useWalkthroughStore.getState().sound).toBe(true);
+  });
+
+  it('sits on its usual side, and drops to a short panel with no picture when both sides cover the step', () => {
+    const first = render(<ExplainReader />);
+    expect(screen.getByTestId('walkthrough-reader').getAttribute('data-placement')).toBe('end');
+    first.unmount();
+
+    // One control by each edge of the screen: either side would cover one.
+    document.body.insertAdjacentHTML(
+      'beforeend',
+      '<button id="left">Export</button><button id="right" aria-label="Export"></button>',
+    );
+    const at = (left: number) => ({ left, right: left + 120, top: 200, bottom: 240, width: 120, height: 40 }) as DOMRect;
+    document.getElementById('left')!.getBoundingClientRect = () => at(30);
+    document.getElementById('right')!.getBoundingClientRect = () => at(window.innerWidth - 150);
+    const step = { ...EXPLANATION.step, focus: [{ name: 'Export' }] };
+    act(() => useWalkthroughStore.setState({ explanation: { ...EXPLANATION, step } }));
+    render(<ExplainReader />);
+    const reader = screen.getByTestId('walkthrough-reader');
+    expect(reader.getAttribute('data-placement')).toBe('bottom');
+    expect(reader.querySelector('img[src$="default.webp"][width="128"]')).toBeNull();
+    document.getElementById('left')!.remove();
+    document.getElementById('right')!.remove();
   });
 });

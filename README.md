@@ -46,7 +46,7 @@ Several skills point at `~/.claude/skills/unlazy/scripts/gate-check.mjs` and `~/
 | [`ts-upgrade`](skills/engineering/ts-upgrade/SKILL.md) | Move a repo's type checking to TypeScript 7, the native compiler, without breaking ESLint, tsup, Next, Expo, Remotion, Convex, CI or Docker builds, and measure before and after. | Original |
 | [`unlazy`](skills/engineering/unlazy/SKILL.md) | Anti-laziness execution discipline, required on every task sized L or XL (the /prd-ch scale) and run on request for anything smaller. | Modified from [Leonxlnx/unlazy](https://github.com/Leonxlnx/unlazy) |
 | [`vercel-react-best-practices`](skills/engineering/vercel-react-best-practices/SKILL.md) | React and Next.js performance optimization guidelines from Vercel Engineering. | Modified from [vercel-labs/agent-skills](https://github.com/vercel-labs/agent-skills) |
-| [`walkthrough`](skills/engineering/walkthrough/SKILL.md) | Add a guided walkthrough to any web app, one story per user role: a story bar with arrow keys, a journey reader with "show me how to get there", split prompt cards, a spoken narrator the viewer can mute (also added to an existing tour), and an optional demo tier... | Original |
+| [`walkthrough`](skills/engineering/walkthrough/SKILL.md) | Add a guided walkthrough to any web app, one story per user role plus feature stories: a story bar with arrow keys and a story picker, a focus light on the one control each step is about, a journey reader that moves clear of what it explains with "show me how to get there", split prompt cards, a spoken narrator the viewer can mute (also added to an existing tour), and an optional demo tier... | Original |
 
 ### Design and frontend
 

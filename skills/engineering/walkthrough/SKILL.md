@@ -1,6 +1,6 @@
 ---
 name: walkthrough
-description: Add a guided walkthrough to any web app, one story per user role, with the house design. A story bar (play, pause, previous and next step, start over, arrow keys), a journey reader on the right (picture panel, what happened, why it matters, the whole journey, a 30 second pausable countdown, and "Show me how to get there", which rings the real menu item and clicks it), split prompt cards that stand in for emails, a loader so a switch never shows a blank page, and a spoken narrator for every step that the viewer can mute (pre-generated clips, sound on by default, M key). --director adds a server-held demo run that writes demo data, switches persona and steps back by undo and replay. On an app that already has a walkthrough, adds the narration to it. Use when the user asks for a walkthrough, product tour, onboarding tour, guided demo, "show users how to use the app", or wants audio, narration or a voice added to an existing tour.
+description: Add a guided walkthrough to any web app, one story per user role plus feature stories for the standout pages, gated by role and by the company's own setup, with the house design. A story bar (play, pause, previous and next step, start over, arrow keys, a picker when the viewer has several stories), a focus light that dims the page round the one control a step is about and clicks the tab it names, a journey reader that moves clear of whatever the step is about (its usual side, the other side, or a panel along the bottom) with the picture, what happened, why it matters, the journey in icons, a 30 second pausable countdown, and "Show me how to get there", which rings the real menu item and clicks it, split prompt cards that stand in for emails, a loader so a switch never shows a blank page, and a spoken narrator for every step that the viewer can mute (pre-generated clips, sound on by default, M key). --director adds a server-held demo run that writes demo data, switches persona and steps back by undo and replay. On an app that already has a walkthrough, adds the narration to it. Use when the user asks for a walkthrough, product tour, onboarding tour, guided demo, "show users how to use the app", or wants audio, narration or a voice added to an existing tour.
 argument-hint: [--roles a,b] [--director] [--theme host|fa] [--no-narration] [--narrate] [--audit]
 ---
 
@@ -10,6 +10,9 @@ Ported from a working build: a three-role SaaS sandbox (founder, coach and
 investor). Its reader, bar, cards, nav guide and run engine shipped and were
 checked in the browser by the owner. The templates are generic copies of
 those files and pass their ported tests (`templates/react/walkthrough/__tests__`).
+A second host (an HR and an ATS app, English and Arabic voice, 11 text
+locales) added the focus light, reader placement, opener close, story
+picker, feature stories and company gating; its bugs are pitfalls 26 to 39.
 
 Arguments: `$ARGUMENTS`
 
@@ -58,7 +61,17 @@ existing walkthrough" and skip steps 2 to 5 below.
    and the route check. Never start a dev server or drive a browser.
 10. **Shared repos:** edit only the paths this task owns; commit by path as
     each unit passes; never `git add -A`, stash, reset or restore.
-11. **Narration never says a name and never blocks the story.** Clips are
+11. **Never cover what the step is about.** Each step names its one control
+    in `focus`; the focus light shows it, and the reader moves to the other
+    side or the bottom rather than sit on it (`reader-placement.ts`).
+12. **Light, never click, except tabs.** A step clicks only a tab it names.
+    Anything that runs, creates, sends or opens a pop-up is lit only. A
+    pop-up a step does open (a query param in `OPENER_PARAMS`) closes when
+    the story moves on or the tour ends.
+13. **Gate on the setup, not the viewer.** Country content shows only when
+    the company's own region says so; a step a module or plan hides drops
+    out; a story under 3 steps is not offered.
+14. **Narration never says a name and never blocks the story.** Clips are
     made ahead of time from `step.narration`; any missing, failed, stalled or
     muted clip falls back to the silent timing. Rules in
     `references/narration.md`.
@@ -85,10 +98,12 @@ caller.
 ### 2. Write the stories, then get a yes
 
 Per `references/method.md` §2 and §3: 5 to 9 steps per role, each with a
-title, a real route, what happened, why it matters, art, a hold, and a
-prompt where the real product would send a message. Show the owner the step
-titles per role as a short list and wait for approval before building.
-Titles are the cheapest thing to change.
+title, a real route, what happened, why it matters, art, a hold, a `focus`
+naming the one control it is about (a tab it clicks, or a control it only
+lights), and a prompt where the real product would send a message. Then map
+the feature stories (§3 "Feature stories"), with who gets each and what it
+needs. Show the owner the step titles per story as a short list and wait for
+approval before building. Titles are the cheapest thing to change.
 
 Unless `--no-narration`, each step also gets `narration {lead, detail}`
 (`references/narration.md` "Writing the narration"). Write it after the titles
@@ -151,14 +166,21 @@ Follow `references/architecture.md` "Director tier":
   changes).
 - `node ~/.claude/skills/walkthrough/scripts/check-routes.mjs <stories> <app dir>`
   must print `0 missing`.
-- Grep the copy for dashes and script words.
+- Grep the copy for dashes and script words, in every locale.
+- Every focus `name` resolves in the catalog (the stories test should check
+  it), only tabs carry `click`, and no route carries a full-screen or modal
+  param. Every query param a step uses to open a pop-up is in
+  `OPENER_PARAMS`.
+- Every locale's catalog parses and has the same keys as English (diff the
+  composed bundles' leaf keys; a compose can pass while a locale is short).
 - Narration: the generator's `--dry-run` prints `0 to generate`, the drift
   test passes, and the report gives each story's spoken length from the
   manifest.
 - Gate-check the ledger, then delete it when delivered.
 - Report: what was installed where, the stories per role (titles), the
   checks with their real output, and what the owner should click through in
-  the browser. State plainly what was not verified.
+  the browser (a step whose reader should move, a step that opens and then
+  closes a pop-up, a story picked from the bar). State plainly what was not verified.
 
 ## Files in this skill
 
@@ -166,8 +188,8 @@ Follow `references/architecture.md` "Director tier":
 |---|---|
 | `references/method.md` | investigating a host, writing stories, timing, entry points, copy |
 | `references/design.md` | tokens, type, every piece's anatomy, z ladder, motion, theming |
-| `references/architecture.md` | store, loop, drivers, nav guide, keys; director tier server design |
-| `references/pitfalls.md` | every bug the reference build hit, as rules |
+| `references/architecture.md` | store, loop, drivers, nav guide, keys, focus pass, reader placement, openers, story picker and gating; director tier server design |
+| `references/pitfalls.md` | every bug the two builds hit, as rules (1 to 25 the first host, 26 to 39 the second) |
 | `references/narration.md` | the spoken narrator: fixed decisions, timing, autoplay, writing, generating, drift gate, upgrading an existing walkthrough |
 | `templates/audio/` | the clip generator (ElevenLabs over fetch, hash skip, manifest), the shared clip list, the drift test |
 | `templates/react/walkthrough/` | the client: types, store, local driver, loop, keys, nav guide, spotlight, reader, prompt layer, loader, bar, mount, copy, tokens, art adapter, tests |

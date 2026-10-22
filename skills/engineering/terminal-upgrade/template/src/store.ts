@@ -28,6 +28,8 @@ export interface DeckState {
   callErrorCount: number;
   /** Largest memory and cpu holders on the machine; replaced only when the list changes. */
   hogs: Hog[];
+  /** Every coding agent session on the machine, idle ones first; replaced only when the list changes. */
+  agents: Hog[];
 
   apply(serviceId: string, signals: Signal[]): void;
   /** A card added while the deck runs, last in order. A known id is left as it is. */
@@ -37,8 +39,8 @@ export interface DeckState {
   addCall(call: Omit<ConvexCall, 'id'>): void;
   /** Several calls in one store update, as a feed chunk brings them. */
   addCalls(calls: readonly Omit<ConvexCall, 'id'>[]): void;
-  /** Per-service usage, and the hogs from the same scan when given. */
-  setUsage(usage: Record<string, { memMb: number; cpu: number }>, hogs?: Hog[]): void;
+  /** Per-service usage, and the hogs and agent sessions from the same scan when given. */
+  setUsage(usage: Record<string, { memMb: number; cpu: number }>, hogs?: Hog[], agents?: Hog[]): void;
   dismissError(id: number): void;
 }
 
@@ -90,6 +92,7 @@ export function createDeckStore(configs: ServiceConfig[], meta: DeckMeta) {
     callCount: 0,
     callErrorCount: 0,
     hogs: [],
+    agents: [],
 
     apply(serviceId, signals) {
       if (signals.length === 0) return;
@@ -185,10 +188,13 @@ export function createDeckStore(configs: ServiceConfig[], meta: DeckMeta) {
       }));
     },
 
-    setUsage(usage, hogs) {
+    setUsage(usage, hogs, agents) {
       set((state) => {
         // An unchanged hog list keeps its reference, so nothing that reads it re-renders.
-        const nextHogs = hogs !== undefined && !sameHogs(state.hogs, hogs) ? { hogs } : {};
+        const nextHogs = {
+          ...(hogs !== undefined && !sameHogs(state.hogs, hogs) ? { hogs } : {}),
+          ...(agents !== undefined && !sameHogs(state.agents, agents) ? { agents } : {}),
+        };
         let services = state.services;
         for (const [id, u] of Object.entries(usage)) {
           const current = state.services[id];
@@ -202,7 +208,7 @@ export function createDeckStore(configs: ServiceConfig[], meta: DeckMeta) {
           services[id] = { ...current, memMb: u.memMb, cpu: u.cpu, memHistory: history };
         }
         // Returning the state itself skips the store's notify, so a still tick costs nothing.
-        if (services === state.services) return 'hogs' in nextHogs ? nextHogs : state;
+        if (services === state.services) return Object.keys(nextHogs).length > 0 ? nextHogs : state;
         return { services, ...nextHogs };
       });
     },
@@ -227,6 +233,7 @@ export function toSnapshot(state: DeckState, limit = 20): DeckSnapshot {
     errors: state.errors.slice(-limit),
     calls: state.calls.slice(-limit),
     hogs: state.hogs,
+    agents: state.agents,
     totals: {
       memMb: Math.round(services.reduce((sum, s) => sum + s.memMb, 0)),
       cpu: Math.round(services.reduce((sum, s) => sum + s.cpu, 0)),

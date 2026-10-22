@@ -41,6 +41,7 @@ import { HogPanel, HogStrip } from './HogPanel.tsx';
 import { HogView } from './HogView.tsx';
 import { clearNotice } from './hogCopy.ts';
 import { panelRegions, planHogPanel, stripRegions, type HitRegion, type HogHit } from './hogPlan.ts';
+import { splitBlock } from './hogLayout.ts';
 import { enableMouse, hitTest, isClick, parseMouse } from './mouse.ts';
 import { useHogs } from './useHogs.ts';
 import { usePrompt } from './usePrompt.ts';
@@ -101,7 +102,7 @@ function* hotAts(apps: readonly ServiceState[], events: readonly { kind: string;
   for (const e of events) if (e.kind === 'reload') yield e.at;
 }
 
-type DeckInput = { action: UiAction; ctx: UiContext } | { hog: number } | { error: number };
+type DeckInput = { action: UiAction; ctx: UiContext } | { hog: number; panel: 'hogs' | 'agents' } | { error: number };
 
 function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckStore; controls: DeckControls; theme: Theme; serviceDirs: Record<string, string>; startUi?: Partial<UiState> }) {
   // Data slices only, compared shallowly; the per-second uptime ticks inside the title.
@@ -117,6 +118,7 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
       callCount: s.callCount,
       callErrorCount: s.callErrorCount,
       hogs: s.hogs,
+      agents: s.agents,
     })),
   );
   const { columns, rows } = useWindowSize();
@@ -127,7 +129,7 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
   const watchers = useMemo(() => all.filter((s) => s.kind === 'watch'), [all]);
 
   const [ui, dispatch] = useReducer(
-    (current: typeof initialUi, input: DeckInput) => ('hog' in input ? selectHog(current, input.hog) : 'error' in input ? openError(current, input.error) : reduceUi(current, input.action, input.ctx)),
+    (current: typeof initialUi, input: DeckInput) => ('hog' in input ? selectHog(current, input.hog, input.panel) : 'error' in input ? openError(current, input.error) : reduceUi(current, input.action, input.ctx)),
     initialUi,
     (base) => ({ ...base, ...startUi }),
   );
@@ -146,32 +148,38 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
 
   const plain = ui.mode === 'plain';
   const hogs = state.hogs;
+  const agents = state.agents;
   // Layouts from primitives, kept while those hold, so the grids and strips that take them stay memoised.
   // A run deck is about its one command: the machine's other hogs stay out of it.
   const runDeck = isRunDeck(state.meta, apps);
   const shownHogs = ui.hogsHidden || runDeck ? 0 : hogs.length;
+  const shownAgents = ui.hogsHidden || runDeck ? 0 : agents.length;
   const layout = useMemo(
-    () => computeLayout({ columns, rows, services: apps.length, errors: errors.length, view: ui.view, activity: ui.activity, hogs: shownHogs }),
-    [columns, rows, apps.length, errors.length, ui.view, ui.activity, shownHogs],
+    () => computeLayout({ columns, rows, services: apps.length, errors: errors.length, view: ui.view, activity: ui.activity, hogs: shownHogs, agents: shownAgents }),
+    [columns, rows, apps.length, errors.length, ui.view, ui.activity, shownHogs, shownAgents],
   );
   const plainLayout = useMemo(
-    () => computePlainLayout({ columns, rows, services: apps.length, errors: errors.length, view: ui.view, activity: ui.activity, hogs: shownHogs }),
-    [columns, rows, apps.length, errors.length, ui.view, ui.activity, shownHogs],
+    () => computePlainLayout({ columns, rows, services: apps.length, errors: errors.length, view: ui.view, activity: ui.activity, hogs: shownHogs, agents: shownAgents }),
+    [columns, rows, apps.length, errors.length, ui.view, ui.activity, shownHogs, shownAgents],
   );
   const hogPanelShown = plain ? plainLayout.hogPanel : layout.hogPanel;
   const panels = useMemo<Focus[]>(() => {
     const list: Focus[] = ['services'];
     if (!plain && layout.tier !== 'narrow') list.push('calls', 'timeline');
-    if (hogPanelShown) list.push('hogs');
+    if (hogPanelShown && hogs.length > 0) list.push('hogs');
+    if (hogPanelShown && agents.length > 0) list.push('agents');
     if (errors.length > 0) list.push('errors');
     return list;
-  }, [plain, layout.tier, hogPanelShown, errors.length]);
+  }, [plain, layout.tier, hogPanelShown, hogs.length, agents.length, errors.length]);
 
   // Newest-first ids: the selection follows an item by id, so new arrivals do not move it.
   const callIds = useMemo(() => ids(filterCalls(calls, ui.filter)), [calls, ui.filter]);
   const eventIds = useMemo(() => ids(events), [events]);
   const errorIds = useMemo(() => ids(errors), [errors]);
   const hogIds = useMemo(() => hogs.map((h) => h.pid), [hogs]);
+  const agentIds = useMemo(() => agents.map((h) => h.pid), [agents]);
+  // The `m` view and the stop actions see both lists.
+  const allHogs = useMemo(() => [...hogs, ...agents], [hogs, agents]);
   const scrollMax = useRef(0);
   const logScrollMax = useRef(0);
   const logWindow = useRef<readonly string[]>([]);
@@ -183,6 +191,7 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
     events: eventIds,
     errors: errorIds,
     hogs: hogIds,
+    agents: agentIds,
     page: Math.max(1, (ui.view === 'error' ? rows - 1 : viewRows) - 8),
     // The open view and the log pane write their limits while rendering; read again at the key press.
     scrollMax: 0,
@@ -196,14 +205,16 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
   const selectedError = errors.find((e) => e.id === errorIds[errorIndex]);
   const focus: Focus = panels.includes(ui.focus) ? ui.focus : 'services';
   const hogIndex = Math.max(0, hogIds.indexOf(ui.hogPid ?? -1));
-  const selectedHog: Hog | undefined = hogs[hogIndex];
+  const agentIndex = Math.max(0, agentIds.indexOf(ui.hogPid ?? -1));
+  /** The selection: the pid when it is still listed, else the first of the focused panel. */
+  const selectedHog: Hog | undefined = allHogs.find((h) => h.pid === ui.hogPid) ?? (focus === 'agents' ? agents[0] : allHogs[0]);
   /** The hog the keys act on: the hog view's or the focused panel's selection. */
-  const hogTarget = ui.view === 'hogs' || (ui.view === 'deck' && focus === 'hogs') ? selectedHog : undefined;
+  const hogTarget = ui.view === 'hogs' || (ui.view === 'deck' && (focus === 'hogs' || focus === 'agents')) ? selectedHog : undefined;
 
   const eventNotice = useNotice(state.events);
   const [localNotice, showNotice] = useLocalNotice();
   const notice = localNotice ?? eventNotice;
-  const hogActions = useHogs(hogs, controls, showNotice, now);
+  const hogActions = useHogs(allHogs, controls, showNotice, now);
   const scriptPalette = useScripts(ui.view === 'scripts', controls, (name, id) => {
     dispatch({ action: 'close', ctx });
     showNotice(id ? { kind: 'saved', service: '', text: `Running ${name}` } : { kind: 'failed', service: '', text: `${name} is not a script here` });
@@ -266,8 +277,8 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
     }
     if (hit?.kind !== 'stop' && hit?.kind !== 'orphans' && hit?.kind !== 'idle') hogActions.disarm();
     if (!hit) return;
-    const hog = 'pid' in hit ? hogs.find((h) => h.pid === hit.pid) : undefined;
-    if ('pid' in hit) dispatch({ hog: hit.pid });
+    const hog = 'pid' in hit ? allHogs.find((h) => h.pid === hit.pid) : undefined;
+    if ('pid' in hit) dispatch({ hog: hit.pid, panel: hog?.scope === 'agent' ? 'agents' : 'hogs' });
     if (hit.kind === 'stop') return hogActions.stop(hog);
     if (hit.kind === 'restart') return restartHog(hog);
     if (hit.kind === 'clear') return clearHog(hog);
@@ -336,7 +347,7 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
     if (ui.view === 'scripts') return <ScriptList entries={scriptPalette.entries} query={scriptPalette.query} index={scriptPalette.index} width={columns} rows={innerRows} />;
     if (ui.view === 'hogs') {
       const armed = hogActions.armed;
-      return <HogView hogs={hogs} width={columns} rows={innerRows} selectedPid={selectedHog?.pid} armedPid={typeof armed?.target === 'number' ? armed.target : undefined} armedOrphans={armed?.target === 'orphans'} armedIdle={armed?.target === 'idle'} />;
+      return <HogView hogs={allHogs} width={columns} rows={innerRows} selectedPid={selectedHog?.pid} armedPid={typeof armed?.target === 'number' ? armed.target : undefined} armedOrphans={armed?.target === 'orphans'} armedIdle={armed?.target === 'idle'} />;
     }
     // The logs take the feed's rows; the feed is back one `l` or an escape later.
     if (ui.activity === 'logs' && selectedService) {
@@ -362,15 +373,22 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
   regions.current = [];
   let hogBlock: ReactNode = null;
   const armed = hogActions.armed;
-  const plan = useMemo(() => (hogRows > 0 && hogPanelShown ? planHogPanel(hogs, columns, hogRows, hogIndex, armed) : undefined), [hogRows, hogPanelShown, hogs, columns, hogIndex, armed]);
+  // MEMORY HOGS on top, AGENT SESSIONS under it, sharing the block's rows.
+  const split = splitBlock(hogRows, hogs.length, agents.length);
+  const plan = useMemo(() => (split.hogs > 0 && hogPanelShown ? planHogPanel(hogs, columns, split.hogs, hogIndex, armed) : undefined), [split.hogs, hogPanelShown, hogs, columns, hogIndex, armed]);
+  const agentPlan = useMemo(() => (split.agents > 0 && hogPanelShown ? planHogPanel(agents, columns, split.agents, agentIndex, armed, 'agents') : undefined), [split.agents, hogPanelShown, agents, columns, agentIndex, armed]);
   if (hogRows > 0 && hogPanelShown) {
-    if (plan) {
-      regions.current = panelRegions(plan, hogTop, columns);
-      hogBlock = <HogPanel plan={plan} width={columns} rows={hogRows} focused={focus === 'hogs'} selectedPid={selectedHog?.pid} />;
-    }
+    if (plan) regions.current = panelRegions(plan, hogTop, columns);
+    if (agentPlan) regions.current.push(...panelRegions(agentPlan, hogTop + split.hogs, columns));
+    hogBlock = (
+      <Box flexDirection="column" width={columns} height={hogRows} overflow="hidden">
+        {plan ? <HogPanel plan={plan} width={columns} rows={split.hogs} focused={focus === 'hogs'} selectedPid={selectedHog?.pid} /> : null}
+        {agentPlan ? <HogPanel plan={agentPlan} width={columns} rows={split.agents} focused={focus === 'agents'} selectedPid={selectedHog?.pid} /> : null}
+      </Box>
+    );
   } else if (hogRows > 0) {
     regions.current = stripRegions(hogTop, columns);
-    hogBlock = <HogStrip hogs={hogs} width={columns} />;
+    hogBlock = <HogStrip hogs={allHogs} width={columns} />;
   }
   if (promptPlan) {
     const regionTop = plain ? plainLayout.header + plainLayout.services : layout.header + layout.services;
@@ -389,7 +407,7 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
           errors.length,
         )
       : undefined;
-  const hints = prompter.hints ?? footerHints(ui.mode, ui.activity, columns, ui.view, runDeck ? 0 : hogs.length, ui.hogsHidden, state.meta.mode !== undefined, errors.length);
+  const hints = prompter.hints ?? footerHints(ui.mode, ui.activity, columns, ui.view, runDeck ? 0 : allHogs.length, ui.hogsHidden, state.meta.mode !== undefined, errors.length);
   const footer = footerRegions(errors, summaryWidth(columns, hints), rows - 1);
   if (errorPlan) {
     scrollMax.current = errorPlan.maxOffset;
@@ -418,7 +436,7 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
         ) : (
           <VerboseView {...shared} layout={layout} focus={focus} serviceIndex={serviceIndex} callIndex={callIndex} eventIndex={eventIndex} filter={ui.filter} paused={ui.paused} collapsed={ui.collapsed} />
         )}
-        <Footer errors={errors} columns={columns} mode={ui.mode} activity={ui.activity} view={ui.view} hogs={runDeck ? 0 : hogs.length} hogsHidden={ui.hogsHidden} inputHints={prompter.hints} typeHint={state.meta.mode !== undefined} />
+        <Footer errors={errors} columns={columns} mode={ui.mode} activity={ui.activity} view={ui.view} hogs={runDeck ? 0 : allHogs.length} hogsHidden={ui.hogsHidden} inputHints={prompter.hints} typeHint={state.meta.mode !== undefined} />
         {notice ? <Notice notice={notice} columns={columns} /> : null}
       </Box>
     </ThemeProvider>

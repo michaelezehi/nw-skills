@@ -92,6 +92,16 @@ export function idleNotice(sessions: readonly Hog[], results: readonly KillResul
   return { ok: false, text: `Stopped ${done.length} of ${sessions.length} ${noun(sessions.length)}` };
 }
 
+/** `8 sessions · 3 idle · 3.4 GB`. */
+export function agentTotal(sessions: readonly Hog[]): string {
+  const idle = sessions.filter((h) => h.stale).length;
+  const mb = sessions.reduce((sum, h) => sum + h.memMb, 0);
+  const parts = [`${sessions.length} ${sessions.length === 1 ? 'session' : 'sessions'}`];
+  if (idle > 0) parts.push(`${idle} idle`);
+  parts.push(formatMb(mb));
+  return parts.join(' · ');
+}
+
 /** `4.1 GB held by 5 processes`. */
 export function hogTotal(hogs: readonly Hog[]): string {
   const mb = hogs.reduce((sum, h) => sum + h.memMb, 0);

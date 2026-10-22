@@ -2,7 +2,7 @@
 import type { View } from './layout.ts';
 import { nextFilter, type CallFilter } from './ConvexCalls.tsx';
 
-export type Focus = 'services' | 'calls' | 'timeline' | 'hogs' | 'errors';
+export type Focus = 'services' | 'calls' | 'timeline' | 'hogs' | 'agents' | 'errors';
 export type Mode = 'plain' | 'verbose';
 export type Panel = 'calls' | 'timeline';
 /**
@@ -30,7 +30,7 @@ export interface UiState {
   callId?: number;
   eventId?: number;
   errorId?: number;
-  /** Selected memory hog by pid; undefined follows the largest. */
+  /** Selected memory hog or agent session by pid; undefined follows the first of the focused panel. */
   hogPid?: number;
   /** The memory hogs block is hidden from the deck; `M` brings it back. */
   hogsHidden: boolean;
@@ -77,6 +77,8 @@ export interface UiContext {
   errors: readonly number[];
   /** Hog pids, largest first. */
   hogs?: readonly number[];
+  /** Agent session pids, idle ones first. */
+  agents?: readonly number[];
   /** Rows one page scrolls. */
   page: number;
   /** Furthest the open error view can scroll; the view reports it. */
@@ -151,12 +153,14 @@ function moveSelection(state: UiState, ctx: UiContext, step: number): UiState {
       return { ...state, errorId: stepId(ctx.errors, state.errorId, step) };
     case 'hogs':
       return { ...state, hogPid: stepId(ctx.hogs ?? [], state.hogPid, step) };
+    case 'agents':
+      return { ...state, hogPid: stepId(ctx.agents ?? [], state.hogPid, step) };
   }
 }
 
-/** Select a hog by pid, as a click on its row does, and focus the hog panel. */
-export function selectHog(state: UiState, pid: number): UiState {
-  return { ...state, hogPid: pid, focus: state.view === 'deck' ? 'hogs' : state.focus };
+/** Select a hog or an agent session by pid, as a click on its row does, and focus its panel. */
+export function selectHog(state: UiState, pid: number, panel: 'hogs' | 'agents' = 'hogs'): UiState {
+  return { ...state, hogPid: pid, focus: state.view === 'deck' ? panel : state.focus };
 }
 
 /** Open the error view on error `id`, as a click on the tray or the footer does. */
@@ -183,7 +187,8 @@ export function reduceUi(state: UiState, action: UiAction, ctx: UiContext): UiSt
   const inView = state.view !== 'deck';
   const scroll = (step: number) => ({ ...state, scroll: scrollBy(state.scroll, step, ctx.scrollMax) });
   const scrollLog = (step: number) => ({ ...state, logScroll: scrollBy(state.logScroll, step, ctx.logScrollMax) });
-  const stepHog = (step: number) => ({ ...state, hogPid: stepId(ctx.hogs ?? [], state.hogPid, step) });
+  // The `m` view lists the hogs, then the agent sessions.
+  const stepHog = (step: number) => ({ ...state, hogPid: stepId([...(ctx.hogs ?? []), ...(ctx.agents ?? [])], state.hogPid, step) });
   switch (action) {
     case 'focusNext':
       return inView ? state : moveFocus(state, ctx, 1);
@@ -254,7 +259,7 @@ export function reduceUi(state: UiState, action: UiAction, ctx: UiContext): UiSt
     case 'scripts':
       return state.view === 'scripts' ? back(state) : open(state, 'scripts');
     case 'toggleHogs':
-      return { ...state, hogsHidden: !state.hogsHidden, focus: state.focus === 'hogs' ? 'services' : state.focus };
+      return { ...state, hogsHidden: !state.hogsHidden, focus: state.focus === 'hogs' || state.focus === 'agents' ? 'services' : state.focus };
   }
 }
 

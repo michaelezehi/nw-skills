@@ -1,6 +1,6 @@
 import { execFile, execFileSync } from 'node:child_process';
 import { classify } from './classify.ts';
-import { agentPids, claudeLastActive, pickAgents, withAgents } from './agents.ts';
+import { agentPids, claudeLastActive, pickAgents } from './agents.ts';
 import type { AgentContext } from './agents.ts';
 import type { DeckStore } from './store.ts';
 import type { Hog, HogScope, KillResult } from './types.ts';
@@ -449,12 +449,11 @@ export async function currentTree(root: number, listed: readonly number[]): Prom
   return listed.filter((pid) => present.has(pid));
 }
 
-/** The hogs and the AI sessions from one scan with command lines. */
-function scanHogs(rows: PsRow[], root: string, roots: Record<string, number>, options: SamplerOptions): Hog[] {
+/** The hogs and the agent sessions from one scan with command lines; a session's processes are never also a hog. */
+function scanHogs(rows: PsRow[], root: string, roots: Record<string, number>, options: SamplerOptions): { hogs: Hog[]; agents: Hog[] } {
   const keep = new Set([process.pid, ...Object.values(roots)]);
   const agents = pickAgents(rows, { keep, now: Date.now(), idleAfterSec: options.agentIdleSec, lastActive: options.lastActive ?? claudeLastActive });
-  const hogs = pickHogs(rows, { root, roots, self: process.pid, caches: options.caches?.(), skip: agentPids(agents) });
-  return withAgents(hogs, agents, HOG_MIN_MEM_MB, HOG_MIN_CPU);
+  return { hogs: pickHogs(rows, { root, roots, self: process.pid, caches: options.caches?.(), skip: agentPids(agents) }), agents };
 }
 
 export interface Sampler {
@@ -503,7 +502,8 @@ export function startSampler(store: DeckStore, roots: () => Record<string, numbe
       const rows = await scan(withHogs);
       if (!stopped && rows.length > 0) {
         const state = store.getState();
-        state.setUsage(sumTrees(rows, current), withHogs ? scanHogs(rows, state.meta.root, current, options) : undefined);
+        const scanned = withHogs ? scanHogs(rows, state.meta.root, current, options) : undefined;
+        state.setUsage(sumTrees(rows, current), scanned?.hogs, scanned?.agents);
       }
     } finally {
       busy = false;

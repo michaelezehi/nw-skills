@@ -4,7 +4,7 @@
  * go with it), with how long it has been idle. A Claude session started with
  * `--session-id` reads its idle time from its transcript's last write; any other session
  * counts as idle only when it is quiet and older than the limit. A session past the limit
- * is stale, and the hog panel always shows it so it can be stopped.
+ * is stale. The deck lists them in the AGENT SESSIONS panel, stale ones first.
  */
 import { readdirSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
@@ -79,7 +79,7 @@ export interface AgentContext {
   lastActive?: (row: PsRow, name: string) => number | undefined;
 }
 
-/** Every agent session, largest first. A session whose tree holds a kept pid is left out. Pure. */
+/** Every agent session, stale ones first, then largest. A session whose tree holds a kept pid is left out. Pure. */
 export function pickAgents(rows: readonly PsRow[], ctx: AgentContext): Hog[] {
   const idleAfter = ctx.idleAfterSec ?? AGENT_IDLE_SEC;
   const names = new Map<number, string>();
@@ -136,7 +136,7 @@ export function pickAgents(rows: readonly PsRow[], ctx: AgentContext): Hog[] {
       ...(title ? { title } : {}),
     });
   }
-  return out.sort((a, b) => b.memMb - a.memMb || a.pid - b.pid);
+  return out.sort((a, b) => Number(Boolean(b.stale)) - Number(Boolean(a.stale)) || b.memMb - a.memMb || a.pid - b.pid);
 }
 
 /** The pids every session holds, so the hog scan leaves them to the session rows. */
@@ -144,13 +144,6 @@ export function agentPids(agents: readonly Hog[]): Set<number> {
   const set = new Set<number>();
   for (const a of agents) for (const pid of a.pids ?? [a.pid]) set.add(pid);
   return set;
-}
-
-/** The hogs plus every stale session and every session heavy enough to be a hog, largest first. */
-export function withAgents(hogs: readonly Hog[], agents: readonly Hog[], minMemMb: number, minCpu: number): Hog[] {
-  const shown = agents.filter((a) => a.stale || a.memMb >= minMemMb || a.cpu >= minCpu);
-  if (shown.length === 0) return [...hogs];
-  return [...hogs, ...shown].sort((a, b) => b.memMb - a.memMb || b.cpu - a.cpu || a.pid - b.pid);
 }
 
 const CLAUDE_PROJECTS = join(homedir(), '.claude', 'projects');

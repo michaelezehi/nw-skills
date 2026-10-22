@@ -24,6 +24,8 @@ export interface LayoutInput {
   activity?: Activity;
   /** Hogs in the store: they take the panel or the strip at the bottom. */
   hogs?: number;
+  /** Agent sessions in the store: their panel sits under the hogs. */
+  agents?: number;
 }
 
 export interface Layout {
@@ -120,12 +122,13 @@ export function computeLayout(input: LayoutInput): Layout {
   const out: Layout = { ...base, rows: input.rows, hogRows: 1 };
   if (block !== 'panel') return out;
   const hogs = input.hogs ?? 0;
+  const agents = input.agents ?? 0;
   if (base.grid) {
-    const grown = growFromGrid(hogs, base.services, input.services, input.columns);
+    const grown = growFromGrid(hogs, base.services, input.services, input.columns, agents);
     if (grown.taken === 0) return out;
     return { ...out, services: grown.services, grid: grown.grid, hogRows: 1 + grown.taken, hogPanel: true };
   }
-  const taken = panelGrowth(hogs, base.middle - HOG_MIN_REGION);
+  const taken = panelGrowth(hogs, base.middle - HOG_MIN_REGION, agents);
   if (taken === 0) return out;
   return { ...out, middle: base.middle - taken, hogRows: 1 + taken, hogPanel: true };
 }

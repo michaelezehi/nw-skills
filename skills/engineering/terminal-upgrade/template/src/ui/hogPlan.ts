@@ -7,7 +7,7 @@
  */
 import type { Hog } from '../types.ts';
 import { cellWidth, formatMb } from './format.ts';
-import { clearable, confirmLines, hogHints, hogLabel, hogTotal } from './hogCopy.ts';
+import { agentTotal, clearable, confirmLines, hogHints, hogLabel, hogTotal } from './hogCopy.ts';
 
 export const STOP_LABEL = '[ Stop ]';
 export const STOP_ARMED_LABEL = '[ Stop? ]';
@@ -112,7 +112,10 @@ export function windowStart(total: number, visible: number, selected: number): n
   return Math.max(0, Math.min(selected - visible + 1, total - visible));
 }
 
-function rulePlan(hogs: readonly Hog[], width: number, hidden: number, armed: Armed | undefined): HogRulePlan {
+/** Which list a panel draws: the memory hogs, or the agent sessions. */
+export type PanelKind = 'hogs' | 'agents';
+
+function rulePlan(hogs: readonly Hog[], width: number, hidden: number, armed: Armed | undefined, kind: PanelKind): HogRulePlan {
   const orphans = hogs.filter((h) => h.orphan).length;
   const idle = hogs.filter((h) => h.stale).length;
   const armedOrphans = armed?.target === 'orphans' && orphans > 0;
@@ -122,7 +125,7 @@ function rulePlan(hogs: readonly Hog[], width: number, hidden: number, armed: Ar
   // One button: the orphans while there are any, then the idle sessions.
   const right = orphans > 0 ? (armedOrphans ? `[ Stop ${orphans} ${noun}? ]` : '[ Stop all orphans ]') : idle > 0 ? (armedIdle ? `[ Stop ${idle} ${idleNoun}? ]` : `[ Stop ${idleNoun} ]`) : '';
   const armedText = armedOrphans ? `press S or click again to stop ${orphans} ${noun}` : armedIdle ? `press A or click again to stop ${idle} ${idleNoun}` : undefined;
-  const parts = ['MEMORY HOGS', armedText ?? hogTotal(hogs)];
+  const parts = [kind === 'agents' ? 'AGENT SESSIONS' : 'MEMORY HOGS', armedText ?? (kind === 'agents' ? agentTotal(hogs) : hogTotal(hogs))];
   if (hidden > 0) parts.push(`m shows ${hidden} more`);
   const fits = (title: string, r: string) => width - (2 + cellWidth(title) + 1 + 1) - (r ? cellWidth(r) + 2 : 0) >= 1;
   let rightText = right;
@@ -134,7 +137,7 @@ function rulePlan(hogs: readonly Hog[], width: number, hidden: number, armed: Ar
 }
 
 /** Everything the panel of `width` by `rows` (rules included) draws, with the button positions. */
-export function planHogPanel(hogs: readonly Hog[], width: number, rows: number, selected: number, armed?: Armed): HogPanelPlan | undefined {
+export function planHogPanel(hogs: readonly Hog[], width: number, rows: number, selected: number, armed?: Armed, kind: PanelKind = 'hogs'): HogPanelPlan | undefined {
   const inner = Math.max(0, width - 4);
   const content = Math.max(0, rows - 2);
   const ruled = content >= 3;
@@ -143,7 +146,7 @@ export function planHogPanel(hogs: readonly Hog[], width: number, rows: number, 
   const shown = hogs.slice(start, start + visible);
   const cols = hogColumns(shown, inner);
   const hidden = hogs.length - shown.length;
-  const rule = rulePlan(hogs, width, hidden, armed);
+  const rule = rulePlan(hogs, width, hidden, armed, kind);
   if (!cols) return { cols: { nameW: 0, counts: false, badge: false, bar: false, cpu: false, age: false, restart: false, clear: false, hintW: 0 }, rows: [], hidden: hogs.length, rule, ruled };
   const stopX = inner - STOP_W;
   const restartX = stopX - 1 - RESTART_W;

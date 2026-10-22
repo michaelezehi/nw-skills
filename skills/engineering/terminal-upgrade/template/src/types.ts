@@ -253,6 +253,8 @@ export interface DeckSnapshot {
   calls: ConvexCall[];
   /** Processes holding the most memory or cpu, run, platform and system alike, largest first. */
   hogs: Hog[];
+  /** Every coding agent session on the machine, idle ones first. */
+  agents: Hog[];
   /** `errors` counts every open error; the `errors` list above holds only the latest few. */
   totals: { memMb: number; cpu: number; calls: number; callErrors: number; errors: number };
 }

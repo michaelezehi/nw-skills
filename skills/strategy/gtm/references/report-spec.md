@@ -31,6 +31,7 @@
 - `assumptions` print under the title, each prefixed "Assumption:".
 - `cover` names an HTML fragment (relative to the JSON) for page one, designed per `references/cover.md`. Leave it out for a plain black cover drawn from the title and summary; set it to `false` for no cover.
 - `parts` bundles other report JSONs after this one, each starting on a new page, into one document and one PDF. Sibling links like `[validate](validate-idea.html)` become in-document links. `/gtm on` uses this for the index.
+- Every page carries a sticky "Download PDF" button. With `--pdf` it downloads that file; without it, it opens the browser's save-as-PDF. Always render with `--pdf` so the button hands over the real file.
 - Add `--pdf <file>` to the render command for a PDF (A4, headless Chrome; set `CHROME_PATH` if Chrome lives elsewhere).
 
 ## Blocks

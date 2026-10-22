@@ -11,7 +11,7 @@
 // Without it, or for a missing name, a plain drawn glyph is used, so the page always renders.
 
 import { readFileSync, writeFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
-import { join, dirname, resolve, basename } from 'node:path';
+import { join, dirname, resolve, basename, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
@@ -218,6 +218,14 @@ if (spec.cover !== false) {
 
 const body = [renderPart(spec, slug(specPath)), ...parts.map((p) => renderPart(p.spec, p.id))].join('\n');
 
+// Every page carries a download button: the PDF rendered with it, or the browser's save-as-PDF.
+const dlIcon = '<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10.5l5 5 5-5M5 19.5h14"/></svg>';
+const pdfHref = pdfPath ? relative(dirname(resolve(outPath)), resolve(pdfPath)).split('\\').join('/') : null;
+const download = pdfHref
+  ? `<a class="dl-btn" href="${esc(encodeURI(pdfHref))}" download>${dlIcon}<span>Download PDF</span></a>`
+  : `<button class="dl-btn" type="button" onclick="window.print()">${dlIcon}<span>Download PDF</span></button>`;
+const topbar = `<div class="topbar"><div class="wrap"><span class="eyebrow">${esc(spec.project || spec.title || '')}</span>${download}</div></div>`;
+
 const html = `<!doctype html>
 <html lang="en">
 <head>
@@ -317,6 +325,14 @@ const html = `<!doctype html>
   .part + .part { margin-top:48px; border-top:1.5px solid var(--ink); }
   footer { padding:30px 0 60px; margin-top:24px; border-top:1px dashed #cfcfcf; font-size:13px; color:var(--mute); }
 
+  .topbar { position:sticky; top:0; z-index:10; background:rgba(255,255,255,.92); backdrop-filter:blur(8px); border-bottom:1px solid var(--hair); }
+  .topbar .wrap { display:flex; justify-content:space-between; align-items:center; gap:16px; padding-top:10px; padding-bottom:10px; }
+  .topbar .eyebrow { white-space:nowrap; overflow:visible; }
+  .dl-btn { display:inline-flex; align-items:center; gap:8px; flex:none; white-space:nowrap; background:var(--ink); color:var(--paper); border:0; border-radius:999px; padding:10px 18px; font:500 14px/1 "Geist", system-ui, sans-serif; text-decoration:none; cursor:pointer; }
+  .dl-btn:hover { background:#333; }
+  .dl-btn:focus-visible { outline:2px solid var(--ink); outline-offset:3px; }
+  .dl-btn svg { width:16px; height:16px; }
+
   /* cover: an A4-shaped panel on screen, the whole first page in print */
   .cover { position:relative; width:100%; aspect-ratio:210 / 297; max-height:1240px; margin:32px auto 0; border-radius:22px; overflow:hidden; }
   .cover-default { background:var(--ink); color:var(--paper); padding:7% 8%; display:flex; flex-direction:column; justify-content:space-between; }
@@ -332,6 +348,7 @@ const html = `<!doctype html>
   @page { size:A4; margin:16mm 14mm 18mm; }
   @page cover { margin:0; }
   @media print {
+    .topbar { display:none; }
     body { font-size:10.5pt; line-height:1.55; }
     section { padding:16px 0 4px; }
     .chip { width:38px; height:38px; } .chip svg { width:22px; height:22px; }
@@ -355,6 +372,7 @@ const html = `<!doctype html>
 </style>
 </head>
 <body>
+${topbar}
 <div class="wrap">
   ${cover}
   <main>

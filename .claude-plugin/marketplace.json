@@ -9,14 +9,15 @@
     {
       "name": "nw-skills",
       "source": "./",
-      "description": "New Ward skills: Michael Ezehi's agent skills and slash commands for engineering, design and writing.",
+      "description": "New Ward skills: Michael Ezehi's agent skills and slash commands for engineering, design, writing and strategy.",
       "category": "productivity",
       "keywords": [
         "skills",
         "claude-code",
         "engineering",
         "design",
-        "writing"
+        "writing",
+        "strategy"
       ]
     },
     {

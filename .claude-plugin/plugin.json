@@ -1,7 +1,7 @@
 {
   "name": "nw-skills",
-  "version": "1.3.0",
-  "description": "New Ward skills: Michael Ezehi's agent skills and slash commands for engineering, design and writing.",
+  "version": "1.4.0",
+  "description": "New Ward skills: Michael Ezehi's agent skills and slash commands for engineering, design, writing and strategy.",
   "author": {
     "name": "Michael Ezehi",
     "url": "https://github.com/michaelezehi"
@@ -13,7 +13,8 @@
     "claude-code",
     "engineering",
     "design",
-    "writing"
+    "writing",
+    "strategy"
   ],
   "skills": [
     "./skills/design/apple-design",
@@ -52,7 +53,8 @@
     "./skills/writing/humanizer",
     "./skills/writing/rnd",
     "./skills/writing/unslop",
-    "./skills/writing/writing-clearly-and-concisely"
+    "./skills/writing/writing-clearly-and-concisely",
+    "./skills/strategy/gtm"
   ],
   "commands": "./commands"
 }

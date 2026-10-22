@@ -29,7 +29,7 @@ Copy any folder under `skills/<category>/` into `~/.claude/skills/`, and any fil
 
 Several skills point at `~/.claude/skills/unlazy/scripts/gate-check.mjs` and `~/.claude/skills/unslop/SKILL.md`. Install unlazy and unslop first if you take only a few.
 
-## Skills (38)
+## Skills (39)
 
 ### Engineering
 
@@ -86,6 +86,12 @@ Several skills point at `~/.claude/skills/unlazy/scripts/gate-check.mjs` and `~/
 | [`rnd`](skills/writing/rnd/SKILL.md) | Create a shareable internal R&D page from a team brief, a votable consensus spec with a participant intro gate (--consensus), a screen-by-screen product build deck... | Original |
 | [`unslop`](skills/writing/unslop/SKILL.md) | Cut AI tells from any writing. | Original |
 | [`writing-clearly-and-concisely`](skills/writing/writing-clearly-and-concisely/SKILL.md) | Strunk companion for prose humans will read. | Modified from [softaworks/agent-toolkit](https://github.com/softaworks/agent-toolkit) |
+
+### Strategy
+
+| Skill | What it does | Origin |
+|---|---|---|
+| [`gtm`](skills/strategy/gtm/SKILL.md) | Go-to-market toolkit for any project: `/gtm` lists eleven sub-commands (validate, brief, competitors, personas, interviews, mvp, pricing, plan, metrics, fundraise, deck); each run reads what the project knows, sources every outside claim and opens a one-page black-and-white report. | Modified from [emotixco/claude-skills-founder](https://github.com/emotixco/claude-skills-founder) |
 
 ## Commands
 

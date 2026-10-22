@@ -54,19 +54,16 @@ function icon(name) {
 const esc = (s) =>
   String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
-// Inline marks: **bold**, `code`, [label](https://url). Everything else is escaped.
+// Inline marks: **bold**, `code`, [label](https://url) or [label](sibling.html). Everything else is escaped.
 function inline(s) {
   return esc(s)
     .replace(/\*\*(.+?)\*\*/g, '<b>$1</b>')
     .replace(/`([^`]+)`/g, '<code>$1</code>')
-    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+    .replace(/\[([^\]]+)\]\(((?:\.\/)?[\w.-]+\.html)\)/g, '<a href="$2">$1</a>');
 }
 
-const scribble =
-  '<svg class="scribble" viewBox="0 0 300 12" preserveAspectRatio="none" aria-hidden="true"><path d="M2 8 C 60 3, 120 11, 180 6 S 270 4, 298 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>';
 
-const ring =
-  '<svg class="ring" viewBox="0 0 120 80" aria-hidden="true"><path d="M60 6 C 100 4, 116 24, 114 42 C 112 64, 84 76, 56 74 C 24 72, 6 58, 8 38 C 10 18, 34 6, 66 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
 
 const BLOCKS = {
   p: (b) => `<p>${inline(b.text)}</p>`,
@@ -77,7 +74,7 @@ const BLOCKS = {
     `<div class="callout sk"><span class="lbl">${esc(b.label || 'Note')}</span><p>${inline(b.text)}</p></div>`,
   verdict: (b) => `
     <div class="verdict sk">
-      <div class="score">${ring}<span>${esc(b.score)}${b.out_of ? `<small>/${esc(b.out_of)}</small>` : ''}</span></div>
+      <div class="score"><span>${esc(b.score)}${b.out_of ? `<small>/${esc(b.out_of)}</small>` : ''}</span></div>
       <div><span class="lbl">${esc(b.label || 'Verdict')}</span><p class="big">${inline(b.headline || '')}</p>${b.text ? `<p>${inline(b.text)}</p>` : ''}</div>
     </div>`,
   stats: (b) =>
@@ -123,7 +120,7 @@ const sections = (spec.sections || [])
   <section>
     <div class="sec-head">
       <span class="chip sk">${icon(s.icon || 'flag')}</span>
-      <div><span class="num">${String(i + 1).padStart(2, '0')}</span><h2>${inline(s.heading)}</h2>${scribble}</div>
+      <div><span class="num">${String(i + 1).padStart(2, '0')}</span><h2>${inline(s.heading)}</h2></div>
     </div>
     ${(s.blocks || []).map(block).join('\n')}
   </section>`,
@@ -132,7 +129,7 @@ const sections = (spec.sections || [])
 
 const done = (spec.steps || []).length
   ? `<section class="did">
-      <div class="sec-head"><span class="chip sk">${icon('decision-stamp')}</span><div><span class="num">00</span><h2>What I did</h2>${scribble}</div></div>
+      <div class="sec-head"><span class="chip sk">${icon('decision-stamp')}</span><div><span class="num">00</span><h2>What I did</h2></div></div>
       <ol class="steps">${spec.steps.map((s) => `<li>${inline(s)}</li>`).join('')}</ol>
     </section>`
   : '';
@@ -143,14 +140,14 @@ const assumptions = (spec.assumptions || []).length
 
 const next = (spec.next || []).length
   ? `<section>
-      <div class="sec-head"><span class="chip sk">${icon('flag')}</span><div><span class="num">→</span><h2>Next</h2>${scribble}</div></div>
+      <div class="sec-head"><span class="chip sk">${icon('flag')}</span><div><span class="num">→</span><h2>Next</h2></div></div>
       <ul class="ticks">${spec.next.map((n) => `<li>${inline(n)}</li>`).join('')}</ul>
     </section>`
   : '';
 
 const sources = (spec.sources || []).length
   ? `<section class="sources">
-      <div class="sec-head"><span class="chip sk">${icon('domain-link')}</span><div><span class="num">§</span><h2>Sources</h2>${scribble}</div></div>
+      <div class="sec-head"><span class="chip sk">${icon('domain-link')}</span><div><span class="num">§</span><h2>Sources</h2></div></div>
       <ul>${spec.sources
         .map(
           (s) =>
@@ -168,27 +165,27 @@ const html = `<!doctype html>
 <title>${esc(spec.title)}</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif&family=Caveat:wght@500;600&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root { --ink:#111; --paper:#fff; --mute:#666; --hair:#e6e6e6; --wash:#f6f6f4; --icon-accent:#cfcfcf; }
   * { box-sizing:border-box; }
   html { -webkit-text-size-adjust:100%; }
-  body { margin:0; background:var(--paper); color:var(--ink); font:400 16px/1.65 "Instrument Sans", system-ui, sans-serif; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:400 16px/1.65 "Geist", system-ui, sans-serif; }
   .wrap { max-width:960px; margin:0 auto; padding:0 16px; }
   @media (min-width:720px) { .wrap { padding:0 32px; } }
 
-  /* hand-drawn outline: uneven radii so nothing reads as a square box */
-  .sk { border:1.6px solid var(--ink); border-radius:18px 26px 16px 28px / 26px 16px 28px 18px; }
+  /* rounded outline, never a square box */
+  .sk { border:1.5px solid var(--ink); border-radius:18px; }
 
   header { padding:56px 0 28px; }
-  .eyebrow, .lbl, .num, th, .stat .l, .muted { font-family:"Instrument Sans", system-ui, sans-serif; }
+  .eyebrow, .lbl, .num, th, .stat .l { font-family:"Geist Mono", ui-monospace, monospace; }
   .eyebrow { font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--mute); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .title-row { display:flex; gap:18px; align-items:center; margin:14px 0 10px; }
   .hero-ic { width:76px; height:76px; flex:none; display:grid; place-items:center; }
   .hero-ic svg { width:46px; height:46px; }
-  h1 { font:400 clamp(36px,6vw,58px)/1.02 "Instrument Serif", Georgia, serif; letter-spacing:-.01em; margin:0; }
+  h1 { font:600 clamp(34px,5.6vw,56px)/1.04 "Geist", system-ui, sans-serif; letter-spacing:-.035em; margin:0; }
   .sub { font-size:18px; color:#333; max-width:720px; margin:6px 0 0; }
-  .hand { font-family:"Caveat", cursive; font-size:22px; line-height:1.2; color:#333; }
+  .aside { font-size:17px; font-weight:500; color:var(--ink); margin:10px 0 0; letter-spacing:-.01em; }
 
   svg.nw { color:var(--ink); }
   svg.nw [data-layer="face"] { fill:var(--icon-face, transparent); }
@@ -201,8 +198,7 @@ const html = `<!doctype html>
   .chip { width:46px; height:46px; flex:none; display:grid; place-items:center; background:var(--paper); }
   .chip svg { width:26px; height:26px; }
   .num { font-size:12px; color:var(--mute); letter-spacing:.1em; }
-  h2 { font:400 28px/1.15 "Instrument Serif", Georgia, serif; margin:0; }
-  .scribble { display:block; width:min(220px,60%); height:10px; margin-top:4px; color:var(--ink); }
+  h2 { font:600 26px/1.2 "Geist", system-ui, sans-serif; margin:0; }
   h3 { font-size:17px; font-weight:600; margin:4px 0; }
   p { margin:0 0 12px; max-width:740px; }
   a { color:var(--ink); text-underline-offset:3px; }
@@ -210,7 +206,7 @@ const html = `<!doctype html>
   .muted { color:var(--mute); font-size:13px; }
   .lbl { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--mute); white-space:nowrap; display:block; margin-bottom:6px; }
 
-  .assume { margin:6px 0 4px; padding:14px 18px; background:var(--wash); border-radius:16px 22px 14px 20px; font-size:14px; color:#444; }
+  .assume { margin:6px 0 4px; padding:14px 18px; background:var(--wash); border-radius:16px; font-size:14px; color:#444; }
   .assume p { margin:0 0 4px; }
 
   ul.ticks { list-style:none; padding:0; margin:0 0 12px; max-width:760px; }
@@ -218,23 +214,22 @@ const html = `<!doctype html>
   ul.ticks li::before { content:""; position:absolute; left:3px; top:.62em; width:11px; height:6px; border-left:2px solid var(--ink); border-bottom:2px solid var(--ink); transform:rotate(-48deg); border-radius:1px; }
   ol.steps { counter-reset:s; list-style:none; padding:0; margin:0 0 12px; display:grid; gap:8px; }
   ol.steps li { counter-increment:s; position:relative; padding:2px 0 2px 40px; }
-  ol.steps li::before { content:counter(s); position:absolute; left:0; top:0; width:28px; height:28px; display:grid; place-items:center; font:600 13px/1 "Instrument Sans", sans-serif; border:1.6px solid var(--ink); border-radius:50% 46% 52% 48% / 48% 52% 46% 50%; }
+  ol.steps li::before { content:counter(s); position:absolute; left:0; top:0; width:28px; height:28px; display:grid; place-items:center; font:600 13px/1 "Geist", system-ui, sans-serif; border:1.6px solid var(--ink); border-radius:50%; }
 
-  .note { font-family:"Caveat", cursive; font-size:23px; line-height:1.25; color:#333; }
+  .note { font-size:15.5px; color:var(--mute); }
   .callout { padding:16px 20px; margin:6px 0 16px; }
   .callout p:last-child { margin:0; }
 
   .verdict { display:flex; gap:22px; align-items:center; padding:20px 22px; margin:6px 0 16px; }
   .score { position:relative; width:120px; height:80px; flex:none; display:grid; place-items:center; }
-  .score .ring { position:absolute; inset:0; width:100%; height:100%; color:var(--ink); }
-  .score span { font:400 38px/1 "Instrument Serif", Georgia, serif; white-space:nowrap; }
+  .score span { font:600 44px/1 "Geist", system-ui, sans-serif; white-space:nowrap; }
   .score small { font-size:18px; color:var(--mute); }
-  .big { font:400 22px/1.3 "Instrument Serif", Georgia, serif; margin-bottom:6px; }
+  .big { font:600 21px/1.3 "Geist", system-ui, sans-serif; margin-bottom:6px; }
   @media (max-width:560px) { .verdict { flex-direction:column; align-items:flex-start; } }
 
   .stats { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%,170px),1fr)); gap:12px; margin:6px 0 16px; }
   .stat { padding:14px 16px; }
-  .stat .v { font:400 32px/1.1 "Instrument Serif", Georgia, serif; white-space:nowrap; }
+  .stat .v { font:600 30px/1.1 "Geist", system-ui, sans-serif; white-space:nowrap; }
   .stat .l { font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--mute); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 
   .tbl { overflow-x:auto; margin:6px 0 16px; padding:4px 6px; }
@@ -250,7 +245,7 @@ const html = `<!doctype html>
   .card.target .lbl, .card.target .meta, .card.target .foot { color:#bdbdbd; }
   .card.target ul.ticks li::before { border-color:var(--paper); }
   .card.target a { color:var(--paper); }
-  .price { font:400 34px/1.1 "Instrument Serif", Georgia, serif; white-space:nowrap; margin:4px 0 2px; }
+  .price { font:600 32px/1.1 "Geist", system-ui, sans-serif; white-space:nowrap; margin:4px 0 2px; }
   .meta { font-size:13px; color:var(--mute); }
   .card ul.ticks { margin-top:12px; font-size:14.5px; }
   .foot { margin-top:auto; padding-top:10px; border-top:1px dashed currentColor; font-size:13px; color:var(--mute); }
@@ -270,7 +265,7 @@ const html = `<!doctype html>
       <h1>${inline(spec.title)}</h1>
     </div>
     ${spec.subtitle ? `<p class="sub">${inline(spec.subtitle)}</p>` : ''}
-    ${spec.aside ? `<p class="hand">${inline(spec.aside)}</p>` : ''}
+    ${spec.aside ? `<p class="aside">${inline(spec.aside)}</p>` : ''}
     ${assumptions}
   </header>
   <main>

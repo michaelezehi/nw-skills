@@ -32,6 +32,7 @@ const ICON_DIR = process.env.NW_ICONS_DIR || '';
 // Sub-command → icon name. Reports may also name any icon in NW_ICONS_DIR directly.
 const SKILL_ICONS = {
   validate: 'insight-bulb',
+  feature: 'skill-puzzle',
   brief: 'doc-stack',
   competitors: 'radar',
   personas: 'people-search',

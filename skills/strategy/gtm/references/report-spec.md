@@ -55,6 +55,7 @@ Header icon names by sub-command (used when `NW_ICONS_DIR` holds icons by these 
 | Sub-command | Icon |
 |---|---|
 | validate | `insight-bulb` |
+| feature | `skill-puzzle` |
 | brief | `doc-stack` |
 | competitors | `radar` |
 | personas | `people-search` |

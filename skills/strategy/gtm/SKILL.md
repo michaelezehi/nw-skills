@@ -1,7 +1,7 @@
 ---
 name: gtm
-description: Go-to-market toolkit for any project. Eleven sub-commands that validate an idea, write a product brief, map competitors, draft personas and interview scripts, triage an MVP, set pricing, plan a launch, pick metrics, prepare a raise and outline a pitch deck. Each run reads what the project already knows, sources every outside claim, saves the analysis and opens a one-page black-and-white report. Use when the user types /gtm, "GTM:", "gtm pricing", or asks what to charge, who the competitors are, how to launch, whether an idea holds up, or how to prepare a raise or a deck.
-argument-hint: "[validate|brief|competitors|personas|interviews|mvp|pricing|plan|metrics|fundraise|deck] [what you want looked at]"
+description: Go-to-market toolkit for any project. Eleven sub-commands that validate an idea, write a product brief, map competitors, draft personas and interview scripts, triage an MVP, set pricing, plan a launch, pick metrics, prepare a raise and outline a pitch deck. Each run reads what the project already knows, sources every outside claim, saves the analysis and hands back a black-and-white PDF report with a cover designed by Fable 5.1. `/gtm on [repo]` runs the whole review on any repo and returns one shareable PDF. Use when the user types /gtm, "GTM:", "gtm pricing", "gtm on", or asks what to charge, who the competitors are, how to launch, whether an idea holds up, or how to prepare a raise or a deck.
+argument-hint: "[on <repo>|validate|brief|competitors|personas|interviews|mvp|pricing|plan|metrics|fundraise|deck] [what you want looked at]"
 ---
 
 # /gtm
@@ -14,6 +14,7 @@ Read the first word of the input (also accept "GTM: pricing" and "gtm:pricing").
 
 | Sub-command | Also matches | What it does | Reference |
 |---|---|---|---|
+| `on` | all, full, review | The whole review of a repo: facts, the core runs in waves, an index, one PDF with a designed cover | `references/on.md` |
 | `validate` | idea, validate-idea | 7-dimension scorecard, fatal questions, 3 cheap experiments, build/pivot/kill verdict | `references/validate.md` |
 | `brief` | product-brief | Problem, audience, value proposition, 5 to 7 features, 90-day metrics, risks | `references/brief.md` |
 | `competitors` | competitor-matrix, competition | 5 to 8 sourced competitors, feature matrix, gaps, threat ranking | `references/competitors.md` |
@@ -30,7 +31,7 @@ Read the first word of the input (also accept "GTM: pricing" and "gtm:pricing").
 
 If the input is empty, or the first word matches nothing, print the table above as a menu (sub-command and what it does only), then add one line:
 
-"Run one with `/gtm <sub-command> <what you want looked at>`, for example `/gtm pricing our phone call product`."
+"Run one with `/gtm <sub-command> <what you want looked at>`, for example `/gtm pricing our phone call product`, or the whole review with `/gtm on <repo>`."
 
 Then show what `<gtm>/` already holds in this project (per `references/conventions.md`), if anything, so the user can see which runs exist. Stop there.
 
@@ -40,8 +41,8 @@ Then show what `<gtm>/` already holds in this project (per `references/conventio
 2. Look at the project itself before asking anything: `CLAUDE.md`, pricing config, plan names, landing copy.
 3. Follow the sub-command reference. Search the web for every outside claim.
 4. Save `<gtm>/<skill-name>.md`, append new user-stated facts to `facts.md`.
-5. Write the report JSON per `references/report-spec.md`, render it with `scripts/render-report.mjs`, open it.
-6. Reply with the verdict in one or two lines, the two paths, and up to two next sub-commands.
+5. Write the report JSON per `references/report-spec.md`, have Fable 5.1 design the cover per `references/cover.md`, render HTML and PDF with `scripts/render-report.mjs`, open the PDF.
+6. Reply with the verdict in one or two lines, the PDF path, and up to two next sub-commands.
 
 Landing-page and email copy are not sub-commands here.
 

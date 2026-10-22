@@ -19,7 +19,9 @@
   "sections": [ { "heading": "Pricing model analysis", "icon": "control-sliders", "blocks": [] } ],
   "next": ["Run `/gtm plan` to turn these prices into a launch plan"],
   "sources": [ { "label": "Paired on the App Store", "url": "https://...", "checked": "22 Oct 2026" } ],
-  "footer": "optional"
+  "footer": "optional",
+  "cover": "pricing-strategy.cover.html",
+  "parts": ["validate-idea.report.json", "pricing-strategy.report.json"]
 }
 ```
 
@@ -27,6 +29,9 @@
 - `summary` renders as the verdict block with `score` set large. Use it for the single most important answer: a score (`19` out of `35`), a price, a verdict word.
 - `steps` renders as "What I did": what was read, searched, scored and saved. 3 to 7 items.
 - `assumptions` print under the title, each prefixed "Assumption:".
+- `cover` names an HTML fragment (relative to the JSON) for page one, designed per `references/cover.md`. Leave it out for a plain black cover drawn from the title and summary; set it to `false` for no cover.
+- `parts` bundles other report JSONs after this one, each starting on a new page, into one document and one PDF. Sibling links like `[validate](validate-idea.html)` become in-document links. `/gtm on` uses this for the index.
+- Add `--pdf <file>` to the render command for a PDF (A4, headless Chrome; set `CHROME_PATH` if Chrome lives elsewhere).
 
 ## Blocks
 

@@ -61,15 +61,16 @@ Follow `~/.claude/skills/unslop/SKILL.md`. The short version:
 - Don't end with a summary of what you already said.
 - Stay under the sub-command's word limit (the `.md`; the HTML carries the same content, not more).
 
-## 6. The HTML report
+## 6. The report and PDF
 
-Every run ends with a one-page, black-and-white report that shows what was done and what it found.
+Every run ends with a black-and-white report, as an HTML page and a PDF to share, opening on a cover designed by Fable 5.1.
 
 1. Write `<gtm>/<skill-name>.report.json` following `references/report-spec.md`. Carry the analysis over faithfully: the verdict, the tables, the tiers, the sources. Do not add claims that are not in the `.md`.
-2. Render it:
+2. Dispatch the cover agent per `references/cover.md` (`model: "fable"`), and set `"cover"` in the JSON to its file.
+3. Render:
    ```bash
-   node ~/.claude/skills/gtm/scripts/render-report.mjs <gtm>/<skill-name>.report.json <gtm>/<skill-name>.html
+   node ~/.claude/skills/gtm/scripts/render-report.mjs <gtm>/<skill-name>.report.json <gtm>/<skill-name>.html --pdf "<gtm>/<project>-<skill-name>-<YYYY-MM-DD>.pdf"
    ```
-3. If the renderer exits with code 2, it found a dash. Fix the JSON and render again.
-4. Open the page for the user with `open <gtm>/<skill-name>.html` (macOS).
-5. Delete the `.report.json` once the page renders, unless the user wants it kept.
+4. Exit code 2 means a dash; fix the JSON and render again. Exit code 3 means no Chrome; say so and hand over the HTML.
+5. Read page 1 and the page with the widest table in the PDF. Nothing may be cut off and the cover must fill page 1.
+6. `open` the PDF. Keep the `.report.json` so the report can be re-rendered.

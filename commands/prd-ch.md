@@ -34,7 +34,7 @@ A PRD is a document, not an implementation, so the run is bounded:
 ## Step 0 — Parse flags, size the job
 
 Flags: `--size S|M|L` · `--html`/`-h` · `--teams`/`-t` · `--worktree`/`-w` ·
-`--loop`.
+`--loop` · `--no-validate` (skip the feature validator).
 
 If `--size` is absent, infer from the task and **state your pick in one line**:
 
@@ -75,9 +75,23 @@ narrow brief and `"medium"` thoroughness (`"very thorough"` only for L):
 Each agent returns raw findings only. Ask for ≤ 40 lines each. **You do not
 re-read what they read**; you cite their paths.
 
+**Feature validator: always, when the PRD adds to a product that already
+exists.** In the same launch, dispatch one more agent (`model: "opus"`, not
+Explore, because it searches the web) to run the `/gtm feature` sub-command
+on the feature: it follows `~/.claude/skills/gtm/references/feature.md` and
+`references/conventions.md` (skip their HTML and facts steps), uses the
+project's `<gtm>` folder and any earlier `/gtm` runs there, and owns only
+`<gtm>/feature-<slug>.md`. Its input is the feature as the user described it.
+It returns the score out of 35, the verdict (build it, test first, park it,
+kill it), every point of pushback, and the cheapest test it proposes. Skip it
+only for a brand-new product with nothing live, or when the user passes
+`--no-validate`. The point is to see the pushback before the PRD commits to
+building: do not soften it, and do not let it block the PRD either.
+
 Progress panel (`~/.claude/references/progress-panel.md`): before the launch,
 report `title` (the slug), one `tasks` row per reader at tier `medium`, titled
-exactly as its Agent `description`, plus a last row `Write PRD files` at tier
+exactly as its Agent `description`, a row for the feature validator at tier
+`careful` when it runs, plus a last row `Write PRD files` at tier
 `careful`, and `phase: "delegate"`. Each reader brief carries the worker step
 line. Bump `done` as each reader returns, `phase: "design"` while writing, and
 `finished: true` once the files are written.
@@ -95,7 +109,10 @@ Write files in this order, each **once**:
    decisions taken and why, file paths. Bullet-dense, no narrative.
 2. **FILES.md** (M/L) — table: path · modify/create/reference · what changes.
 3. **PRD.md** — sections, in order: Summary (≤ 5 lines) · Problem · Goals /
-   Non-goals · Requirements (numbered `R1…`) · Technical design (data,
+   Non-goals · Validation (the feature validator's score, verdict and every
+   pushback point, each answered: accepted and changed in this PRD, or
+   rejected with the reason; link `<gtm>/feature-<slug>.md`) ·
+   Requirements (numbered `R1…`) · Technical design (data,
    backend, frontend, config; reuse names from investigation) · Task list ·
    Cross-check table (`R# ↔ T#`, flag orphans both ways) · Testing (name the
    **seams** — the public interfaces each test observes: a mutation, an API
@@ -130,6 +147,8 @@ Write files in this order, each **once**:
 ## Step 3 — Finish
 
 - One line summarizing size, file count, and the 2–3 biggest open questions.
+- The validator's verdict in one line. If it said park it or kill it, end with an
+  `> [!ASK]` asking whether to go ahead anyway, test first, or drop it.
 - `<promise>PRD_COMPLETE</promise>`
 
 Do **not** offer to start implementation; that is `/ch` or the user's call.

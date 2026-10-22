@@ -8,7 +8,7 @@
 // `cover: "cover.html"` (path relative to the spec) puts that HTML fragment on page one;
 // without it a plain cover is drawn from the title and summary.
 // Icons: layered line icons (face, shade, accent, ink groups) read from $NW_ICONS_DIR.
-// Without it, or for a missing name, a plain drawn glyph is used, so the page always renders.
+// Missing icons fall back to a plain drawn glyph, so the page always renders.
 
 import { readFileSync, writeFileSync, existsSync, mkdtempSync, rmSync, statSync } from 'node:fs';
 import { join, dirname, resolve, basename, relative } from 'node:path';
@@ -85,46 +85,116 @@ function inline(s) {
     });
 }
 
+// Text length without the inline marks, for layout decisions.
+const plain = (s) =>
+  String(s ?? '')
+    .replace(/\*\*|`/g, '')
+    .replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
+
+const rows = (items, cls) => `<ul class="rows${cls ? ' ' + cls : ''}">${(items || []).map((i) => `<li>${inline(i)}</li>`).join('')}</ul>`;
+const steps = (items) => `<ol class="steps">${(items || []).map((i) => `<li>${inline(i)}</li>`).join('')}</ol>`;
+
+// A table whose cells are paragraphs is not a table: every row becomes an entry, the first
+// column its title and each other column a labelled line. A leading number column ("#")
+// rides along with the title.
+function entries(head, body, colMax, hl) {
+  const idx = head.length >= 3 && colMax[0] <= 3 ? 1 : 0;
+  return `<div class="entries">${body
+    .map((r, i) => {
+      const title = idx ? `<span class="idx">${inline(r[0])}</span>${inline(r[1])}` : inline(r[0]);
+      const fields = head
+        .map((h, c) =>
+          c > idx && plain(r[c]) !== ''
+            ? `<div class="f"><span class="k">${esc(h)}</span><div class="t">${inline(r[c])}</div></div>`
+            : '',
+        )
+        .join('');
+      return `<div class="entry${hl.has(i) ? ' hl' : ''}"><div class="e-title">${title}</div><div class="e-fields">${fields}</div></div>`;
+    })
+    .join('')}</div>`;
+}
+
+function table(b) {
+  const head = b.head || [];
+  const body = (b.rows || []).map((r) => r.map((c) => c ?? ''));
+  const cols = Math.max(head.length, ...body.map((r) => r.length), 0);
+  const colMax = Array.from({ length: cols }, (_, c) => Math.max(0, ...body.map((r) => plain(r[c]).length)));
+  const longCols = colMax.filter((m) => m > 90).length;
+  const paraCols = colMax.filter((m) => m > 60).length;
+  const maxCell = Math.max(0, ...colMax);
+  const hl = new Set(b.highlight || []);
+  // Decided per table: long text gets room as entries, short cells stay a matrix.
+  const stacked = (cols >= 4 && (longCols >= 1 || paraCols >= 2)) || (cols === 3 && (longCols >= 2 || maxCell > 160));
+  if (stacked) return entries(head, body, colMax, hl);
+
+  const wide = cols >= 6;
+  // Short cells never wrap; the limit shrinks as columns multiply so a row still fits the page.
+  const nowrapMax = cols <= 3 ? 24 : cols <= 5 ? 16 : 8;
+  // Wide matrices get fixed column widths from their content, so no row can push past the page edge.
+  const weights = colMax.map((m, c) => {
+    // Header words are uppercase mono, about 1.4 times as wide as body text.
+    const headWord = Math.max(0, ...String(head[c] ?? '').split(/\s+/).map((w) => w.length * 1.4));
+    return Math.sqrt(Math.min(30, Math.max(9, m, headWord)));
+  });
+  const total = weights.reduce((a, w) => a + w, 0);
+  const colgroup = wide
+    ? `<colgroup>${weights.map((w) => `<col style="width:${((w / total) * 100).toFixed(2)}%">`).join('')}</colgroup>`
+    : '';
+  const cell = (c) => {
+    const n = plain(c).length;
+    return `<td${n > 0 && n <= nowrapMax ? ' class="nw"' : ''}>${inline(c)}</td>`;
+  };
+  return `
+    <div class="tbl"><table${wide ? ' class="wide"' : ''}>${colgroup}
+      <thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead>
+      <tbody>${body.map((r, i) => `<tr${hl.has(i) ? ' class="hl"' : ''}>${r.map(cell).join('')}</tr>`).join('')}</tbody>
+    </table></div>`;
+}
+
+function cards(b) {
+  const items = b.items || [];
+  // Cards that carry lists read as line-separated rows; plain cards sit in a grid that does not stretch.
+  const stack = items.some((c) => (c.points || []).length);
+  return `<div class="cards ${stack ? 'stack' : 'grid'}">${items
+    .map(
+      (c) => `
+      <div class="card${c.target ? ' target' : ''}">
+        <div class="c-head">
+          ${c.tag ? `<span class="tag">${esc(c.tag)}</span>` : ''}
+          <h3>${inline(c.title)}</h3>
+          ${c.price ? `<div class="price">${esc(c.price)}</div>` : ''}
+          ${c.meta ? `<div class="meta">${inline(c.meta)}</div>` : ''}
+        </div>
+        <div class="c-body">
+          ${(c.points || []).length ? rows(c.points) : ''}
+          ${c.foot ? `<div class="foot">${inline(c.foot)}</div>` : ''}
+        </div>
+      </div>`,
+    )
+    .join('')}</div>`;
+}
+
 const BLOCKS = {
   p: (b) => `<p>${inline(b.text)}</p>`,
-  list: (b) => `<ul class="ticks">${(b.items || []).map((i) => `<li>${inline(i)}</li>`).join('')}</ul>`,
-  steps: (b) => `<ol class="steps">${(b.items || []).map((i) => `<li>${inline(i)}</li>`).join('')}</ol>`,
+  list: (b) => rows(b.items),
+  steps: (b) => steps(b.items),
   note: (b) => `<p class="note">${inline(b.text)}</p>`,
-  callout: (b) =>
-    `<div class="callout sk"><span class="lbl">${esc(b.label || 'Note')}</span><p>${inline(b.text)}</p></div>`,
+  callout: (b) => `<div class="callout"><span class="lbl">${esc(b.label || 'Note')}</span><p>${inline(b.text)}</p></div>`,
   verdict: (b) => `
-    <div class="verdict sk">
+    <div class="verdict">
       <div class="score"><span>${esc(b.score)}${b.out_of ? `<small>/${esc(b.out_of)}</small>` : ''}</span></div>
       <div><span class="lbl">${esc(b.label || 'Verdict')}</span><p class="big">${inline(b.headline || '')}</p>${b.text ? `<p>${inline(b.text)}</p>` : ''}</div>
     </div>`,
-  stats: (b) =>
-    `<div class="stats">${(b.items || [])
-      .map((s) => `<div class="stat sk"><div class="v">${esc(s.value)}</div><div class="l">${esc(s.label)}</div></div>`)
-      .join('')}</div>`,
-  table: (b) => `
-    <div class="tbl sk"><table>
-      <thead><tr>${(b.head || []).map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead>
-      <tbody>${(b.rows || [])
-        .map(
-          (r, i) =>
-            `<tr${(b.highlight || []).includes(i) ? ' class="hl"' : ''}>${r.map((c) => `<td>${inline(c)}</td>`).join('')}</tr>`,
-        )
-        .join('')}</tbody>
-    </table></div>`,
-  cards: (b) =>
-    `<div class="cards">${(b.items || [])
-      .map(
-        (c) => `
-      <div class="card sk${c.target ? ' target' : ''}">
-        ${c.tag ? `<span class="lbl">${esc(c.tag)}</span>` : ''}
-        <h3>${inline(c.title)}</h3>
-        ${c.price ? `<div class="price">${esc(c.price)}</div>` : ''}
-        ${c.meta ? `<div class="meta">${inline(c.meta)}</div>` : ''}
-        ${c.points ? `<ul class="ticks">${c.points.map((p) => `<li>${inline(p)}</li>`).join('')}</ul>` : ''}
-        ${c.foot ? `<div class="foot">${inline(c.foot)}</div>` : ''}
-      </div>`,
-      )
-      .join('')}</div>`,
+  stats: (b) => {
+    const items = b.items || [];
+    // Long labels or long values read better as rows than as a grid of tiles.
+    const asRows = items.some((s) => plain(s.label).length > 40 || plain(s.value).length > 12) || items.length > 6;
+    return `<div class="stats ${asRows ? 'rows' : 'grid'}">${items
+      .map((s) => `<div class="stat"><div class="v">${esc(s.value)}</div><div class="l">${esc(s.label)}</div></div>`)
+      .join('')}</div>`;
+  },
+  table,
+  cards,
 };
 
 function block(b) {
@@ -134,7 +204,7 @@ function block(b) {
 }
 
 function secHead(ic, num, heading) {
-  return `<div class="sec-head"><span class="chip sk">${icon(ic)}</span><div><span class="num">${esc(num)}</span><h2>${inline(heading)}</h2></div></div>`;
+  return `<div class="sec-head"><span class="chip">${icon(ic)}</span><div><span class="num">${esc(num)}</span><h2>${inline(heading)}</h2></div></div>`;
 }
 
 // One report: header, verdict, what was done, sections, next, sources.
@@ -150,21 +220,18 @@ function renderPart(s, id) {
     )
     .join('\n');
   const done = (s.steps || []).length
-    ? `<section class="did">${secHead('decision-stamp', '00', 'What I did')}
-        <ol class="steps">${s.steps.map((x) => `<li>${inline(x)}</li>`).join('')}</ol></section>`
+    ? `<section class="did">${secHead('decision-stamp', '00', 'What I did')}${steps(s.steps)}</section>`
     : '';
   const assumptions = (s.assumptions || []).length
     ? `<div class="assume">${s.assumptions.map((a) => `<p>Assumption: ${inline(a)}</p>`).join('')}</div>`
     : '';
-  const next = (s.next || []).length
-    ? `<section>${secHead('flag', '→', 'Next')}<ul class="ticks">${s.next.map((n) => `<li>${inline(n)}</li>`).join('')}</ul></section>`
-    : '';
+  const next = (s.next || []).length ? `<section>${secHead('flag', '→', 'Next')}${rows(s.next)}</section>` : '';
   const sources = (s.sources || []).length
     ? `<section class="sources">${secHead('domain-link', '§', 'Sources')}
-        <ul>${s.sources
+        <ul class="rows">${s.sources
           .map(
             (x) =>
-              `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label || x.url)}</a>${x.checked ? ` <span class="muted">checked ${esc(x.checked)}</span>` : ''}</li>`,
+              `<li><a href="${esc(x.url)}" target="_blank" rel="noopener">${esc(x.label || x.url)}</a>${x.checked ? `<span class="muted">checked ${esc(x.checked)}</span>` : ''}</li>`,
           )
           .join('')}</ul></section>`
     : '';
@@ -173,7 +240,7 @@ function renderPart(s, id) {
     <header class="part-head">
       <div class="eyebrow">${esc(['gtm ' + (s.skill || ''), s.project, s.date].filter(Boolean).join(' · '))}</div>
       <div class="title-row">
-        <span class="hero-ic sk">${icon(ic)}</span>
+        <span class="hero-ic">${icon(ic)}</span>
         <h1>${inline(s.title)}</h1>
       </div>
       ${s.subtitle ? `<p class="sub">${inline(s.subtitle)}</p>` : ''}
@@ -237,25 +304,22 @@ const html = `<!doctype html>
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root { --ink:#111; --paper:#fff; --mute:#666; --hair:#e6e6e6; --wash:#f6f6f4; --icon-accent:#cfcfcf; }
+  :root { --ink:#111; --paper:#fff; --mute:#6b6b6b; --hair:#e4e4e1; --wash:#f6f6f4; --icon-accent:#cfcfcf; --mono:"Geist Mono", ui-monospace, monospace; --sans:"Geist", system-ui, sans-serif; }
   * { box-sizing:border-box; }
-  html { -webkit-text-size-adjust:100%; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
-  body { margin:0; background:var(--paper); color:var(--ink); font:400 16px/1.65 "Geist", system-ui, sans-serif; }
-  .wrap { max-width:960px; margin:0 auto; padding:0 16px; }
+  html { -webkit-text-size-adjust:100%; -webkit-print-color-adjust:exact; print-color-adjust:exact; hyphens:none; -webkit-hyphens:none; }
+  body { margin:0; background:var(--paper); color:var(--ink); font:400 14.5px/1.6 var(--sans); }
+  .wrap { max-width:880px; margin:0 auto; padding:0 16px; }
   @media (min-width:720px) { .wrap { padding:0 32px; } }
 
-  /* rounded outline, never a square box */
-  .sk { border:1.5px solid var(--ink); border-radius:18px; }
-
-  .eyebrow, .lbl, .num, th, .stat .l { font-family:"Geist Mono", ui-monospace, monospace; }
-  .eyebrow { font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--mute); }
-  .part-head { padding:56px 0 28px; }
-  .title-row { display:flex; gap:18px; align-items:center; margin:14px 0 10px; }
-  .hero-ic { width:76px; height:76px; flex:none; display:grid; place-items:center; }
-  .hero-ic svg { width:46px; height:46px; }
-  h1 { font:600 clamp(34px,5.6vw,56px)/1.04 "Geist", system-ui, sans-serif; letter-spacing:-.035em; margin:0; }
-  .sub { font-size:18px; color:#333; max-width:720px; margin:6px 0 0; }
-  .aside { font-size:17px; font-weight:500; color:var(--ink); margin:10px 0 0; letter-spacing:-.01em; }
+  .eyebrow, .lbl, .num, .tag, .idx, .k, th, .stats.grid .l, .sources .muted { font-family:var(--mono); }
+  .eyebrow { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--mute); }
+  .part-head { padding:48px 0 20px; }
+  .title-row { display:flex; gap:14px; align-items:center; margin:12px 0 8px; }
+  .hero-ic { width:52px; height:52px; flex:none; display:grid; place-items:center; border:1px solid var(--ink); border-radius:14px; }
+  .hero-ic svg { width:30px; height:30px; }
+  h1 { font:600 clamp(26px,3.8vw,36px)/1.1 var(--sans); letter-spacing:-.025em; margin:0; }
+  .sub { font-size:15.5px; line-height:1.5; color:#333; max-width:680px; margin:4px 0 0; }
+  .aside { font-size:14.5px; font-weight:500; color:var(--ink); margin:10px 0 0; max-width:680px; }
 
   svg.nw { color:var(--ink); }
   svg.nw [data-layer="face"] { fill:var(--icon-face, transparent); }
@@ -263,88 +327,129 @@ const html = `<!doctype html>
   svg.nw [data-layer="accent"] { fill:var(--icon-accent); }
   svg.nw [data-layer="ink"] { fill:currentColor; }
 
-  section { padding:30px 0 6px; }
-  .sec-head { display:flex; gap:14px; align-items:center; margin-bottom:14px; }
-  .chip { width:46px; height:46px; flex:none; display:grid; place-items:center; background:var(--paper); }
-  .chip svg { width:26px; height:26px; }
-  .num { font-size:12px; color:var(--mute); letter-spacing:.1em; }
-  h2 { font:600 26px/1.2 "Geist", system-ui, sans-serif; letter-spacing:-.02em; margin:0; }
-  h3 { font-size:17px; font-weight:600; margin:4px 0; letter-spacing:-.01em; }
-  p { margin:0 0 12px; max-width:740px; }
-  a { color:var(--ink); text-underline-offset:3px; }
-  code { font:13px "Geist Mono", ui-monospace, monospace; background:var(--wash); padding:1px 6px; border-radius:6px; }
-  .muted { color:var(--mute); font-size:13px; }
-  .lbl { font-size:11px; letter-spacing:.12em; text-transform:uppercase; color:var(--mute); display:block; margin-bottom:6px; }
+  /* room between sections, little inside them */
+  section { padding:40px 0 0; }
+  .sec-head { display:flex; gap:12px; align-items:center; margin-bottom:14px; }
+  .chip { width:34px; height:34px; flex:none; display:grid; place-items:center; border:1px solid var(--ink); border-radius:10px; background:var(--paper); }
+  .chip svg { width:20px; height:20px; }
+  .num { display:block; font-size:10.5px; color:var(--mute); letter-spacing:.1em; line-height:1.2; margin-bottom:2px; }
+  h2 { font:600 20px/1.25 var(--sans); letter-spacing:-.015em; margin:0; }
+  h3 { font-size:15px; line-height:1.35; font-weight:600; margin:0; letter-spacing:-.01em; }
+  p { margin:0 0 10px; max-width:680px; }
+  a { color:var(--ink); text-underline-offset:3px; text-decoration-thickness:1px; overflow-wrap:anywhere; }
+  code { font:12.5px var(--mono); background:var(--wash); padding:1px 5px; border-radius:4px; overflow-wrap:anywhere; }
+  b { font-weight:600; }
+  .muted { color:var(--mute); font-size:12.5px; }
+  .lbl { font-size:10.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--mute); display:block; margin-bottom:5px; }
+  .note { font-size:14px; color:var(--mute); }
 
-  .assume { margin:6px 0 4px; padding:14px 18px; background:var(--wash); border-radius:16px; font-size:14px; color:#444; }
-  .assume p { margin:0 0 4px; }
+  .assume { margin:14px 0 0; max-width:680px; font-size:13px; color:#555; border-top:1px solid var(--hair); }
+  .assume p { margin:0; padding:5px 0; border-bottom:1px solid var(--hair); }
 
-  ul.ticks { list-style:none; padding:0; margin:0 0 12px; max-width:760px; }
-  ul.ticks li { position:relative; padding-left:26px; margin-bottom:7px; }
-  ul.ticks li::before { content:""; position:absolute; left:3px; top:.62em; width:11px; height:6px; border-left:2px solid var(--ink); border-bottom:2px solid var(--ink); transform:rotate(-48deg); border-radius:1px; }
-  ol.steps { counter-reset:s; list-style:none; padding:0; margin:0 0 12px; display:grid; gap:8px; }
-  ol.steps li { counter-increment:s; position:relative; padding:2px 0 2px 40px; }
-  ol.steps li::before { content:counter(s); position:absolute; left:0; top:0; width:28px; height:28px; display:grid; place-items:center; font:600 13px/1 "Geist", sans-serif; border:1.5px solid var(--ink); border-radius:50%; }
+  /* line-separated items: lists, steps, sources */
+  ul.rows, ol.steps { list-style:none; padding:0; margin:4px 0 20px; max-width:740px; border-top:1px solid var(--hair); }
+  ul.rows li, ol.steps li { padding:8px 0; border-bottom:1px solid var(--hair); }
+  ol.steps { counter-reset:s; }
+  ol.steps li { counter-increment:s; position:relative; padding-left:36px; }
+  ol.steps li::before { content:counter(s, decimal-leading-zero); position:absolute; left:0; top:10px; font:500 11px/1.6 var(--mono); letter-spacing:.06em; color:var(--mute); }
 
-  .note { font-size:15.5px; color:var(--mute); }
-  .callout { padding:16px 20px; margin:6px 0 16px; }
+  .callout { padding:12px 0; margin:8px 0 22px; max-width:740px; border-top:1px solid var(--ink); border-bottom:1px solid var(--ink); }
   .callout p:last-child { margin:0; }
 
-  .verdict { display:flex; gap:26px; align-items:center; padding:22px 24px; margin:6px 0 16px; }
-  .score { flex:none; min-width:96px; }
-  .score span { font:600 52px/1 "Geist", system-ui, sans-serif; letter-spacing:-.04em; white-space:nowrap; }
-  .score small { font-size:20px; color:var(--mute); letter-spacing:0; }
-  .big { font:600 21px/1.3 "Geist", system-ui, sans-serif; letter-spacing:-.015em; margin-bottom:6px; }
+  .verdict { display:flex; gap:24px; align-items:center; padding:18px 22px; margin:10px 0 20px; border:1px solid var(--ink); border-radius:14px; }
+  .verdict p { max-width:none; }
+  .score { flex:none; min-width:80px; }
+  .score span { font:600 40px/1 var(--sans); letter-spacing:-.035em; white-space:nowrap; }
+  .score small { font-size:16px; color:var(--mute); letter-spacing:0; }
+  .big { font:600 17px/1.35 var(--sans); letter-spacing:-.012em; margin-bottom:4px; }
   @media (max-width:560px) { .verdict { flex-direction:column; align-items:flex-start; } }
 
-  /* labels wrap instead of being cut off */
-  .stats { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%,200px),1fr)); gap:12px; margin:6px 0 16px; }
-  .stat { padding:14px 16px; }
-  .stat .v { font:600 30px/1.1 "Geist", system-ui, sans-serif; letter-spacing:-.03em; white-space:nowrap; }
-  .stat .l { font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--mute); margin-top:4px; }
+  /* stats: a quiet grid, or rows when labels run long; labels wrap, values never do */
+  .stats { margin:4px 0 20px; border-top:1px solid var(--ink); }
+  .stats.grid { display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%,150px),1fr)); gap:0 24px; }
+  .stat { padding:12px 0; border-bottom:1px solid var(--hair); }
+  .stat .v { font:600 24px/1.1 var(--sans); letter-spacing:-.02em; white-space:nowrap; }
+  .stats.grid .l { font-size:10.5px; letter-spacing:.08em; text-transform:uppercase; color:var(--mute); margin-top:6px; line-height:1.45; }
+  /* rows share one grid, so the value column fits the longest value and labels line up */
+  .stats.rows { display:grid; grid-template-columns:max-content 1fr; column-gap:20px; align-items:baseline; }
+  .stats.rows .stat { display:contents; }
+  .stats.rows .v, .stats.rows .l { padding:10px 0; border-bottom:1px solid var(--hair); }
+  .stats.rows .l { font-size:14px; color:#333; }
 
-  .tbl { overflow-x:auto; margin:6px 0 16px; padding:4px 6px; }
-  table { border-collapse:collapse; width:100%; font-size:14.5px; }
-  th, td { text-align:left; vertical-align:top; padding:10px 12px; border-bottom:1px dashed #cfcfcf; overflow-wrap:break-word; hyphens:auto; }
-  th { font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--mute); font-weight:500; border-bottom:1.5px solid var(--ink); }
-  tr:last-child td { border-bottom:0; }
-  tr.hl td { background:var(--wash); font-weight:500; }
+  /* tables: hairline rows, no outer box; short cells never wrap */
+  .tbl { overflow-x:auto; margin:4px 0 22px; }
+  table { border-collapse:collapse; width:100%; font-size:14px; line-height:1.45; }
+  th, td { text-align:left; vertical-align:top; padding:9px 16px 9px 0; border-bottom:1px solid var(--hair); overflow-wrap:break-word; }
+  th:last-child, td:last-child { padding-right:0; }
+  th { font-size:10.5px; line-height:1.4; letter-spacing:.08em; text-transform:uppercase; color:var(--mute); font-weight:500; padding-top:0; padding-bottom:8px; border-bottom:1px solid var(--ink); }
+  td.nw { white-space:nowrap; }
+  tr.hl td { background:var(--wash); font-weight:500; box-shadow:inset 0 1px 0 var(--ink); }
+  table.wide { table-layout:fixed; font-size:12.5px; line-height:1.4; }
+  table.wide th, table.wide td { padding:7px 8px 7px 0; }
+  table.wide th { font-size:9.5px; letter-spacing:.02em; }
 
-  .cards { display:grid; gap:14px; grid-template-columns:repeat(auto-fill, minmax(min(100%,260px),1fr)); margin:6px 0 16px; }
-  .card { padding:18px 18px 16px; display:flex; flex-direction:column; }
-  .card.target { background:var(--ink); color:var(--paper); }
-  .card.target .lbl, .card.target .meta, .card.target .foot { color:#bdbdbd; }
-  .card.target ul.ticks li::before { border-color:var(--paper); }
-  .card.target a { color:var(--paper); }
-  .card.target code { background:#2b2b2b; color:var(--paper); }
-  .price { font:600 32px/1.1 "Geist", system-ui, sans-serif; letter-spacing:-.03em; margin:4px 0 2px; }
-  .meta { font-size:13px; color:var(--mute); }
-  .card ul.ticks { margin-top:12px; font-size:14.5px; }
-  .foot { margin-top:auto; padding-top:10px; border-top:1px dashed currentColor; font-size:13px; color:var(--mute); }
+  /* a long-text table as entries: title left, labelled lines right */
+  .entries { margin:4px 0 22px; border-top:1px solid var(--ink); }
+  .entry { display:grid; grid-template-columns:minmax(150px,26%) 1fr; gap:6px 28px; padding:14px 0; border-bottom:1px solid var(--hair); }
+  /* the wash runs past the text edge by shadow, so nothing widens the page */
+  .entry.hl, .card.target { background:var(--wash); box-shadow:14px 0 0 var(--wash), -14px 0 0 var(--wash); }
+  .e-title { font-size:14.5px; line-height:1.4; font-weight:600; letter-spacing:-.01em; }
+  .idx { font-size:11px; font-weight:400; color:var(--mute); letter-spacing:.06em; margin-right:10px; }
+  .e-fields { display:grid; grid-template-columns:fit-content(150px) 1fr; gap:6px 16px; align-items:start; }
+  .f { display:contents; }
+  .k { font-size:10.5px; line-height:1.5; letter-spacing:.08em; text-transform:uppercase; color:var(--mute); padding-top:3px; }
+  .t { font-size:14px; line-height:1.55; }
 
-  .sources ul { padding-left:18px; font-size:14px; }
-  .sources li { margin-bottom:5px; overflow-wrap:anywhere; }
-  .part + .part { margin-top:48px; border-top:1.5px solid var(--ink); }
-  footer { padding:30px 0 60px; margin-top:24px; border-top:1px dashed #cfcfcf; font-size:13px; color:var(--mute); }
+  /* cards: a grid that does not stretch, or rows when they hold lists; the target carries a filled tag */
+  .cards { margin:4px 0 22px; border-top:1px solid var(--ink); }
+  .cards.grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%,220px),1fr)); gap:0 28px; align-items:start; }
+  .card { padding:14px 0 16px; border-bottom:1px solid var(--hair); }
+  .cards.stack .card { display:grid; grid-template-columns:minmax(150px,28%) 1fr; gap:6px 28px; }
+  .tag { display:inline-block; font-size:10.5px; line-height:1; letter-spacing:.08em; text-transform:uppercase; color:var(--mute); margin-bottom:8px; }
+  .card.target .tag { background:var(--ink); color:var(--paper); padding:5px 8px 4px; border-radius:999px; }
+  .price { font:600 24px/1.1 var(--sans); letter-spacing:-.02em; margin:6px 0 2px; }
+  .meta { font-size:12.5px; color:var(--mute); margin-top:4px; }
+  .card ul.rows { margin:0; max-width:none; border-top:0; font-size:14px; }
+  .card ul.rows li { padding:5px 0; }
+  .card ul.rows li:first-child { padding-top:0; }
+  .cards.grid .card ul.rows { margin-top:10px; border-top:1px solid var(--hair); }
+  .cards.grid .card ul.rows li:first-child { padding-top:5px; }
+  .card ul.rows li:last-child { border-bottom:0; }
+  .foot { margin-top:8px; padding-top:8px; border-top:1px solid var(--hair); font-size:12.5px; color:var(--mute); }
+
+  .sources ul.rows { max-width:none; font-size:13px; }
+  .sources li { display:flex; justify-content:space-between; gap:16px; padding:6px 0; }
+  .sources li a { min-width:0; }
+  .sources .muted { flex:none; font-size:10.5px; letter-spacing:.04em; white-space:nowrap; padding-top:3px; }
+  .part + .part { margin-top:56px; border-top:1px solid var(--ink); }
+  footer { padding:24px 0 56px; margin-top:40px; border-top:1px solid var(--hair); font-size:12.5px; color:var(--mute); }
+  @media (max-width:640px) {
+    .entry, .cards.stack .card { grid-template-columns:1fr; gap:4px; }
+    .stats.rows { grid-template-columns:1fr; } .stats.rows .v { padding-bottom:0; border-bottom:0; } .stats.rows .l { padding-top:2px; }
+    .e-fields { grid-template-columns:1fr; gap:2px; } .f .k { margin-top:4px; }
+  }
 
   .topbar { position:sticky; top:0; z-index:10; background:rgba(255,255,255,.92); backdrop-filter:blur(8px); border-bottom:1px solid var(--hair); }
   .topbar .wrap { display:flex; justify-content:space-between; align-items:center; gap:16px; padding-top:10px; padding-bottom:10px; }
   .topbar .eyebrow { white-space:nowrap; overflow:visible; }
-  .dl-btn { display:inline-flex; align-items:center; gap:8px; flex:none; white-space:nowrap; background:var(--ink); color:var(--paper); border:0; border-radius:999px; padding:10px 18px; font:500 14px/1 "Geist", system-ui, sans-serif; text-decoration:none; cursor:pointer; }
+  .dl-btn { display:inline-flex; align-items:center; gap:8px; flex:none; white-space:nowrap; background:var(--ink); color:var(--paper); border:0; border-radius:999px; padding:9px 16px; font:500 13px/1 var(--sans); text-decoration:none; cursor:pointer; }
   .dl-btn:hover { background:#333; }
   .dl-btn:focus-visible { outline:2px solid var(--ink); outline-offset:3px; }
-  .dl-btn svg { width:16px; height:16px; }
+  .dl-btn svg { width:15px; height:15px; }
 
   /* cover: an A4-shaped panel on screen, the whole first page in print */
   .cover { position:relative; width:100%; aspect-ratio:210 / 297; max-height:1240px; margin:32px auto 0; border-radius:22px; overflow:hidden; }
   .cover-default { background:var(--ink); color:var(--paper); padding:7% 8%; display:flex; flex-direction:column; justify-content:space-between; }
   .cover-default .eyebrow, .cover-default .lbl { color:#bdbdbd; }
+  .cover-default .eyebrow { font-size:12px; letter-spacing:.14em; }
+  .cover-default .lbl { font-size:11px; letter-spacing:.12em; margin-bottom:6px; }
   .cover-default .cv-top { display:flex; align-items:center; gap:14px; }
   .cover-default .cv-mark { width:64px; height:64px; display:grid; place-items:center; border:1.5px solid var(--paper); border-radius:18px; color:var(--paper); }
   .cover-default .cv-mark svg { width:38px; height:38px; color:var(--paper); }
   .cover-default h1 { font-size:clamp(40px,7vw,80px); line-height:.98; letter-spacing:-.045em; max-width:12ch; }
   .cover-default .cv-mid p { font-size:19px; color:#d6d6d6; max-width:30ch; margin-top:18px; }
   .cover-default .cv-foot { display:flex; justify-content:space-between; align-items:flex-end; gap:24px; border-top:1px solid #444; padding-top:18px; }
+  .cover-default .cv-foot .eyebrow { white-space:nowrap; }
   .cover-default .cv-foot b { font-weight:600; font-size:18px; letter-spacing:-.01em; }
 
   @page { size:A4; margin:16mm 14mm 18mm; }
@@ -352,52 +457,64 @@ const html = `<!doctype html>
   @page onepage { margin:9mm 12mm 8mm; }
   @media print {
     .topbar { display:none; }
-    body { font-size:10.5pt; line-height:1.55; }
-    section { padding:16px 0 4px; }
-    .chip { width:38px; height:38px; } .chip svg { width:22px; height:22px; }
-    h2 { font-size:17pt; }
-    .stats, .cards, .tbl, .verdict, .callout { margin:4px 0 12px; }
+    body { font-size:9.5pt; line-height:1.5; }
     .wrap { max-width:none; padding:0; }
-    .cover { page:cover; width:210mm; height:297mm; max-height:none; aspect-ratio:auto; margin:0; border-radius:0; break-after:page; }
-    .part { break-before:page; }
-    .part + .part { margin-top:0; border-top:0; }
-    .part-head { padding-top:0; }
-    h1 { font-size:30pt; }
-    section, .verdict, .card, .stat, .callout, tr { break-inside:avoid; }
+    .cover { page:cover; width:210mm; height:297mm; max-height:none; aspect-ratio:auto; margin:0; border-radius:0; break-after:page; } .part { break-before:page; }
+    .part + .part { margin-top:0; border-top:0; } .part-head { padding:0 0 14px; }
+    .hero-ic { width:44px; height:44px; border-radius:12px; } .hero-ic svg { width:26px; height:26px; }
+    h1 { font-size:22pt; }
+    .sub { font-size:10.5pt; } .aside { font-size:10pt; }
+    section { padding:22px 0 0; }
+    .sec-head { margin-bottom:10px; } .chip { width:30px; height:30px; border-radius:9px; } .chip svg { width:18px; height:18px; }
+    h2 { font-size:13.5pt; } h3 { font-size:10.5pt; }
+    .num { font-size:7pt; }
+    p { margin-bottom:7px; }
+    .note { font-size:9pt; }
+    .verdict { padding:12px 16px; gap:18px; margin:6px 0 14px; border-radius:12px; }
+    .score span { font-size:30pt; } .score small { font-size:12pt; } .big { font-size:12.5pt; }
+    ul.rows, ol.steps, .tbl, .entries, .cards, .stats { margin:2px 0 14px; }
+    .callout { margin:6px 0 14px; padding:8px 0; }
+    ul.rows li, ol.steps li { padding:5px 0; } ol.steps li { padding-left:30px; } ol.steps li::before { top:6px; font-size:7.5pt; }
+    .stat, .stats.rows .v, .stats.rows .l { padding:7px 0; } .stat .v { font-size:17pt; } .stats.grid .l { font-size:7pt; margin-top:4px; } .stats.rows .l { font-size:9.5pt; }
+    section, .verdict, .card, .stat, .callout, .entry, tr { break-inside:avoid; }
     .sec-head { break-after:avoid; }
     .tbl { overflow:visible; }
-    table { font-size:9.5pt; }
-    th, td { padding:6px 7px; }
-    th { font:600 8pt/1.3 "Geist", system-ui, sans-serif; letter-spacing:0; text-transform:none; color:var(--ink); }
+    table { font-size:8.8pt; } table.wide { font-size:7.6pt; }
+    th, td { padding:5px 10px 5px 0; } table.wide th, table.wide td { padding:4px 5px 4px 0; }
+    th { font-size:7pt; padding-bottom:5px; } table.wide th { font-size:6.6pt; }
+    .entry { padding:9px 0; gap:4px 20px; } .entry.hl, .card.target { box-shadow:10px 0 0 var(--wash), -10px 0 0 var(--wash); }
+    .e-title { font-size:10pt; } .t { font-size:9pt; } .k { font-size:6.8pt; padding-top:2px; } .e-fields { grid-template-columns:fit-content(110px) 1fr; gap:3px 12px; }
+    .card { padding:9px 0 10px; } .cards.stack .card { gap:4px 20px; }
+    .tag { font-size:7pt; margin-bottom:5px; } .price { font-size:16pt; margin:4px 0 1px; } .meta { font-size:8.5pt; }
+    .card ul.rows { font-size:9pt; } .card ul.rows li { padding:3px 0; } .foot { font-size:8.5pt; margin-top:5px; padding-top:5px; }
+    .sources ul.rows { font-size:8.5pt; } .sources li { padding:4px 0; } .sources .muted { font-size:7pt; }
     a { text-decoration:none; }
-    footer { padding-bottom:0; }
+    code { font-size:8pt; }
+    footer { margin-top:24px; padding:12px 0 0; font-size:8.5pt; }
     /* one-page layout: a dense single sheet, sections may share a page */
-    .one-page { font-size:8.6pt; line-height:1.42; }
-    .one-page .wrap { page:onepage; }
-    .one-page .part-head { padding:0 0 6px; }
-    .one-page .title-row { margin:4px 0 4px; gap:10px; }
-    .one-page .hero-ic { width:40px; height:40px; } .one-page .hero-ic svg { width:24px; height:24px; }
-    .one-page h1 { font-size:20pt; }
-    .one-page .sub { font-size:9.5pt; } .one-page .aside { font-size:9pt; margin-top:4px; }
-    .one-page section { padding:7px 0 0; break-inside:auto; }
-    .one-page .sec-head { margin-bottom:5px; gap:8px; }
-    .one-page .chip { width:26px; height:26px; border-radius:9px; } .one-page .chip svg { width:15px; height:15px; }
-    .one-page h2 { font-size:11.5pt; } .one-page .num { display:none; }
-    .one-page .verdict { padding:9px 14px; gap:14px; margin:4px 0 4px; border-radius:12px; }
-    .one-page .score span { font-size:28pt; } .one-page .big { font-size:11pt; margin-bottom:2px; }
-    .one-page p, .one-page ul.ticks, .one-page ol.steps { margin-bottom:5px; }
-    .one-page ul.ticks li { margin-bottom:2px; padding-left:20px; }
-    .one-page ol.steps { gap:3px; } .one-page ol.steps li { padding-left:28px; } .one-page ol.steps li::before { width:19px; height:19px; font-size:8pt; }
-    .one-page .stats { grid-template-columns:repeat(4, 1fr); gap:6px; margin:3px 0 5px; }
-    .one-page .stat { padding:6px 9px; border-radius:11px; } .one-page .stat .v { font-size:13pt; } .one-page .stat .l { font-size:6.5pt; }
-    .one-page .cards { grid-template-columns:repeat(3, 1fr); gap:6px; margin:3px 0 5px; }
-    .one-page .card { padding:8px 10px; border-radius:12px; } .one-page .card h3 { font-size:9.5pt; } .one-page .card ul.ticks { margin-top:4px; font-size:8.4pt; }
-    .one-page .foot { font-size:7.8pt; padding-top:5px; }
-    .one-page .tbl, .one-page .callout { margin:3px 0 5px; border-radius:12px; } .one-page .callout { padding:7px 12px; }
-    .one-page table { font-size:8.2pt; } .one-page th, .one-page td { padding:3px 7px; }
-    .one-page .sources ul { font-size:7.6pt; } .one-page .sources li { margin-bottom:1px; }
-    .one-page footer { margin-top:3px; padding-top:4px; font-size:7.2pt; }
-    .one-page code { font-size:7.6pt; padding:0 4px; }
+    .one-page { font-size:8.6pt; line-height:1.42; } .one-page .wrap { page:onepage; }
+    .one-page .part-head { padding:0 0 6px; } .one-page .title-row { margin:4px 0 4px; gap:10px; }
+    .one-page .hero-ic { width:36px; height:36px; border-radius:10px; } .one-page .hero-ic svg { width:22px; height:22px; }
+    .one-page h1 { font-size:18pt; } .one-page .sub { font-size:9.5pt; } .one-page .aside { font-size:9pt; margin-top:4px; }
+    .one-page section { padding:8px 0 0; break-inside:auto; } .one-page .sec-head { margin-bottom:4px; gap:8px; }
+    .one-page .chip { width:24px; height:24px; border-radius:7px; } .one-page .chip svg { width:14px; height:14px; }
+    .one-page h2 { font-size:11pt; } .one-page .num { display:none; }
+    .one-page .verdict { padding:9px 14px; gap:14px; margin:4px 0 4px; border-radius:11px; }
+    .one-page .score span { font-size:26pt; } .one-page .big { font-size:11pt; margin-bottom:2px; } .one-page p { margin-bottom:4px; }
+    .one-page ul.rows, .one-page ol.steps, .one-page .tbl, .one-page .entries, .one-page .cards, .one-page .stats, .one-page .callout { margin:2px 0 4px; }
+    .one-page ul.rows li, .one-page ol.steps li { padding:2px 0; } .one-page ol.steps li { padding-left:24px; } .one-page ol.steps li::before { top:3px; font-size:7pt; }
+    .one-page .stats.grid { grid-template-columns:repeat(4, 1fr); gap:0 12px; }
+    .one-page .stat { padding:4px 0; } .one-page .stat .v { font-size:13pt; } .one-page .stats.grid .l { font-size:6.5pt; margin-top:2px; }
+    .one-page .cards.stack, .one-page .cards.grid { display:grid; grid-template-columns:repeat(3, 1fr); gap:0 14px; align-items:start; }
+    .one-page .cards.stack .card { display:block; }
+    .one-page .card { padding:5px 0 6px; } .one-page .card.target { box-shadow:6px 0 0 var(--wash), -6px 0 0 var(--wash); }
+    .one-page .tag { font-size:6.5pt; margin-bottom:3px; } .one-page .card.target .tag { padding:3px 6px 2px; }
+    .one-page .card h3 { font-size:9.5pt; } .one-page .card ul.rows { margin-top:3px; font-size:8.2pt; border-top:1px solid var(--hair); }
+    .one-page .card ul.rows li { padding:2px 0; } .one-page .card ul.rows li:first-child { padding-top:2px; }
+    .one-page .foot { font-size:7.8pt; margin-top:3px; padding-top:3px; } .one-page .callout { padding:5px 0; }
+    .one-page table { font-size:8.2pt; } .one-page th, .one-page td { padding:2px 8px 2px 0; } .one-page th { font-size:6.5pt; }
+    .one-page .sources ul.rows { font-size:7.6pt; } .one-page .sources li { padding:1px 0; }
+    .one-page footer { margin-top:6px; padding-top:4px; font-size:7.2pt; } .one-page code { font-size:7.6pt; padding:0 4px; }
     .one-page .muted { font-size:7pt; }
   }
 </style>

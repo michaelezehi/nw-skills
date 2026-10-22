@@ -1,5 +1,7 @@
 # Report spec
 
+The page template in `scripts/render-report.mjs` is the house template. Every report uses it as it is: never restyle it inside a run. Only the cover is designed per report (`references/cover.md`). Template changes are their own task.
+
 `scripts/render-report.mjs` turns one JSON file into the black-and-white report page. Every text field accepts three inline marks: `**bold**`, `` `code` ``, and a link written `[label](https://url)` or `[label](other-report.html)` for a sibling page. Everything else is escaped.
 
 ## Top level

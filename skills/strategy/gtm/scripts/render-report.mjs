@@ -10,7 +10,7 @@
 // Icons: layered line icons (face, shade, accent, ink groups) read from $NW_ICONS_DIR.
 // Without it, or for a missing name, a plain drawn glyph is used, so the page always renders.
 
-import { readFileSync, writeFileSync, existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { readFileSync, writeFileSync, existsSync, mkdtempSync, rmSync, statSync } from 'node:fs';
 import { join, dirname, resolve, basename, relative } from 'node:path';
 import { tmpdir } from 'node:os';
 import { execFileSync } from 'node:child_process';
@@ -316,6 +316,7 @@ const html = `<!doctype html>
   .card.target .lbl, .card.target .meta, .card.target .foot { color:#bdbdbd; }
   .card.target ul.ticks li::before { border-color:var(--paper); }
   .card.target a { color:var(--paper); }
+  .card.target code { background:#2b2b2b; color:var(--paper); }
   .price { font:600 32px/1.1 "Geist", system-ui, sans-serif; letter-spacing:-.03em; margin:4px 0 2px; }
   .meta { font-size:13px; color:var(--mute); }
   .card ul.ticks { margin-top:12px; font-size:14.5px; }
@@ -348,6 +349,7 @@ const html = `<!doctype html>
 
   @page { size:A4; margin:16mm 14mm 18mm; }
   @page cover { margin:0; }
+  @page onepage { margin:9mm 12mm 8mm; }
   @media print {
     .topbar { display:none; }
     body { font-size:10.5pt; line-height:1.55; }
@@ -369,10 +371,38 @@ const html = `<!doctype html>
     th { font:600 8pt/1.3 "Geist", system-ui, sans-serif; letter-spacing:0; text-transform:none; color:var(--ink); }
     a { text-decoration:none; }
     footer { padding-bottom:0; }
+    /* one-page layout: a dense single sheet, sections may share a page */
+    .one-page { font-size:8.6pt; line-height:1.42; }
+    .one-page .wrap { page:onepage; }
+    .one-page .part-head { padding:0 0 6px; }
+    .one-page .title-row { margin:4px 0 4px; gap:10px; }
+    .one-page .hero-ic { width:40px; height:40px; } .one-page .hero-ic svg { width:24px; height:24px; }
+    .one-page h1 { font-size:20pt; }
+    .one-page .sub { font-size:9.5pt; } .one-page .aside { font-size:9pt; margin-top:4px; }
+    .one-page section { padding:7px 0 0; break-inside:auto; }
+    .one-page .sec-head { margin-bottom:5px; gap:8px; }
+    .one-page .chip { width:26px; height:26px; border-radius:9px; } .one-page .chip svg { width:15px; height:15px; }
+    .one-page h2 { font-size:11.5pt; } .one-page .num { display:none; }
+    .one-page .verdict { padding:9px 14px; gap:14px; margin:4px 0 4px; border-radius:12px; }
+    .one-page .score span { font-size:28pt; } .one-page .big { font-size:11pt; margin-bottom:2px; }
+    .one-page p, .one-page ul.ticks, .one-page ol.steps { margin-bottom:5px; }
+    .one-page ul.ticks li { margin-bottom:2px; padding-left:20px; }
+    .one-page ol.steps { gap:3px; } .one-page ol.steps li { padding-left:28px; } .one-page ol.steps li::before { width:19px; height:19px; font-size:8pt; }
+    .one-page .stats { grid-template-columns:repeat(4, 1fr); gap:6px; margin:3px 0 5px; }
+    .one-page .stat { padding:6px 9px; border-radius:11px; } .one-page .stat .v { font-size:13pt; } .one-page .stat .l { font-size:6.5pt; }
+    .one-page .cards { grid-template-columns:repeat(3, 1fr); gap:6px; margin:3px 0 5px; }
+    .one-page .card { padding:8px 10px; border-radius:12px; } .one-page .card h3 { font-size:9.5pt; } .one-page .card ul.ticks { margin-top:4px; font-size:8.4pt; }
+    .one-page .foot { font-size:7.8pt; padding-top:5px; }
+    .one-page .tbl, .one-page .callout { margin:3px 0 5px; border-radius:12px; } .one-page .callout { padding:7px 12px; }
+    .one-page table { font-size:8.2pt; } .one-page th, .one-page td { padding:3px 7px; }
+    .one-page .sources ul { font-size:7.6pt; } .one-page .sources li { margin-bottom:1px; }
+    .one-page footer { margin-top:3px; padding-top:4px; font-size:7.2pt; }
+    .one-page code { font-size:7.6pt; padding:0 4px; }
+    .one-page .muted { font-size:7pt; }
   }
 </style>
 </head>
-<body>
+<body${spec.layout === 'one-page' ? ' class="one-page"' : ''}>
 ${topbar}
 <div class="wrap">
   ${cover}
@@ -419,15 +449,31 @@ if (pdfPath) {
     `--print-to-pdf=${resolve(pdfPath)}`,
     pathToFileURL(resolve(outPath)).href,
   ];
-  // Headless Chrome occasionally fails to launch; one retry clears it.
+  // Chrome often writes the PDF and then exits non-zero when its teardown watchdog fires,
+  // so success is judged by the file, not the exit code. One retry covers a failed launch.
+  const target = resolve(pdfPath);
+  rmSync(target, { force: true });
+  const printed = () => existsSync(target) && statSync(target).size > 0;
   try {
-    try {
-      execFileSync(chrome, chromeArgs, { stdio: 'ignore', timeout: 90_000 });
-    } catch {
-      execFileSync(chrome, chromeArgs, { stdio: 'ignore', timeout: 90_000 });
+    for (let attempt = 0; attempt < 2 && !printed(); attempt++) {
+      try {
+        execFileSync(chrome, chromeArgs, { stdio: 'ignore', timeout: 90_000 });
+      } catch {
+        // checked below
+      }
     }
   } finally {
+    // A crash-dump helper can outlive the watchdog; end anything still using this profile.
+    try {
+      execFileSync('pkill', ['-f', profile], { stdio: 'ignore' });
+    } catch {
+      // nothing left running
+    }
     rmSync(profile, { recursive: true, force: true });
+  }
+  if (!printed()) {
+    console.error('render-report: Chrome did not write the PDF. The HTML is ready; open it and use Download PDF.');
+    process.exit(3);
   }
   console.log(pdfPath);
 }

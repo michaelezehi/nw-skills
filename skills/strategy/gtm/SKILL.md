@@ -10,11 +10,12 @@ Input: $ARGUMENTS
 
 ## Route
 
-Read the first word of the input (also accept "GTM: pricing" and "gtm:pricing"). Match it to a sub-command, then read that reference file and follow it exactly. Read `references/conventions.md` before any sub-command.
+Read the first word of the input (also accept "GTM: pricing" and "gtm:pricing"). The `gtm:<sub-command>` commands call this skill the same way. Match it to a sub-command, then read that reference file and follow it exactly. Read `references/conventions.md` before any sub-command.
 
 | Sub-command | Also matches | What it does | Reference |
 |---|---|---|---|
-| `on` | all, full, review | The whole review of a repo: facts, the core runs in waves, an index, one PDF with a designed cover | `references/on.md` |
+| `all` | everything | Every sub-command on the current repo, in waves, into one PDF (same as `on` with `--all`; adds `feature` when the input names an addition) | `references/on.md` |
+| `on` | full, review | The core review of a repo: facts, validate, brief, competitors, mvp, pricing, plan, fundraise, deck, an index, one PDF with a designed cover | `references/on.md` |
 | `validate` | idea, validate-idea | 7-dimension scorecard, fatal questions, 3 cheap experiments, build/pivot/kill verdict | `references/validate.md` |
 | `feature` | addition, new-feature, add | Validate something new being added to an existing product: five questions, scorecard, the cheapest test, build/test/park/kill | `references/feature.md` |
 | `brief` | product-brief | Problem, audience, value proposition, 5 to 7 features, 90-day metrics, risks | `references/brief.md` |

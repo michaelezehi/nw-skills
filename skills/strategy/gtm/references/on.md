@@ -4,6 +4,8 @@ The full review in one command: read a repo, seed the facts, run the core sub-co
 
 Usage: `/gtm on [repo]`, where `[repo]` is a path, a folder name under your usual projects folder, or empty for the current project. Add `--all` to include personas, interviews and metrics.
 
+`/gtm all [feature]` (and `/gtm:all`) is `on` for the current project with `--all`. When the input names an addition, also run `feature` on it in wave 2 and include it in the bundle.
+
 ## 1. Resolve the project
 
 - Find the repo. Its `<gtm>` folder follows `references/conventions.md` (inside that repo, not the current directory).
@@ -26,6 +28,7 @@ Each sub-command runs as its own sub-agent (`model: "opus"`) so they work in par
 | 2 | mvp, pricing, plan, fundraise | brief and competitors |
 | 3 | deck | everything in wave 2 |
 | with `--all` | personas, interviews (wave 2), metrics (wave 3) | as listed |
+| `all` with an addition named | feature (wave 2) | brief and competitors |
 
 Skip a sub-command whose `.md` is under 7 days old unless the user asks for a fresh run; reuse it as an input instead.
 

@@ -91,7 +91,7 @@ Several skills point at `~/.claude/skills/unlazy/scripts/gate-check.mjs` and `~/
 
 | Skill | What it does | Origin |
 |---|---|---|
-| [`gtm`](skills/strategy/gtm/SKILL.md) | Go-to-market toolkit for any project: `/gtm` lists twelve sub-commands (validate, feature, brief, competitors, personas, interviews, mvp, pricing, plan, metrics, fundraise, deck); each run reads what the project knows, sources every outside claim and hands back a black-and-white PDF with a designed cover; `/gtm on <repo>` runs the whole review into one PDF. | Modified from [emotixco/claude-skills-founder](https://github.com/emotixco/claude-skills-founder) |
+| [`gtm`](skills/strategy/gtm/SKILL.md) | Go-to-market toolkit for any project: `/gtm` lists twelve sub-commands (validate, feature, brief, competitors, personas, interviews, mvp, pricing, plan, metrics, fundraise, deck); each run reads what the project knows, sources every outside claim and hands back a black-and-white PDF with a designed cover; `/gtm on <repo>` runs the whole review into one PDF, and `/gtm:all` or `/gtm:pricing` (one command per sub-command) run from any repo. | Modified from [emotixco/claude-skills-founder](https://github.com/emotixco/claude-skills-founder) |
 
 ## Commands
 

@@ -1,5 +1,7 @@
 import { execFile, execFileSync } from 'node:child_process';
 import { classify } from './classify.ts';
+import { agentPids, claudeLastActive, pickAgents, withAgents } from './agents.ts';
+import type { AgentContext } from './agents.ts';
 import type { DeckStore } from './store.ts';
 import type { Hog, HogScope, KillResult } from './types.ts';
 
@@ -130,6 +132,8 @@ export interface HogContext {
   max?: number;
   /** Service id to its Next dev cache in MB, for each cache over the ceiling. */
   caches?: Record<string, number>;
+  /** Pids left out of the scan: the agent sessions, which get their own rows. */
+  skip?: ReadonlySet<number>;
 }
 
 export const HOG_MIN_MEM_MB = 500;
@@ -189,7 +193,7 @@ export function pickHogs(rows: PsRow[], ctx: HogContext): Hog[] {
   const singles: Hog[] = [];
   const apps = new Map<string, PsRow[]>();
   for (const row of rows) {
-    if (row.pid <= 1 || orphaned.has(row.pid)) continue;
+    if (row.pid <= 1 || orphaned.has(row.pid) || ctx.skip?.has(row.pid)) continue;
     const command = row.command ?? '';
     const memMb = Math.round(row.rss / 1024);
     const cpu = Math.round(row.cpu * 10) / 10;
@@ -278,10 +282,11 @@ export function sameHogs(a: readonly Hog[], b: readonly Hog[]): boolean {
   if (a.length !== b.length) return false;
   return a.every((h, i) => {
     const o = b[i]!;
-    return h.pid === o.pid && h.scope === o.scope && h.orphan === o.orphan && h.count === o.count && h.name === o.name && Math.round(h.memMb / 100) === Math.round(o.memMb / 100) && sameCache(h.cacheMb, o.cacheMb);
+    return h.pid === o.pid && h.scope === o.scope && h.orphan === o.orphan && h.count === o.count && h.name === o.name && Math.round(h.memMb / 100) === Math.round(o.memMb / 100) && sameCache(h.cacheMb, o.cacheMb) && h.stale === o.stale && minutes(h.idleSec) === minutes(o.idleSec);
   });
 }
 
+const minutes = (sec: number | undefined): number | undefined => (sec === undefined ? undefined : Math.floor(sec / 60));
 const sameCache = (a: number | undefined, b: number | undefined): boolean => (a === undefined ? b === undefined : b !== undefined && Math.round(a / 100) === Math.round(b / 100));
 
 /** One `ps` call, no shell. Resolves to an empty table when ps fails. */
@@ -444,6 +449,14 @@ export async function currentTree(root: number, listed: readonly number[]): Prom
   return listed.filter((pid) => present.has(pid));
 }
 
+/** The hogs and the AI sessions from one scan with command lines. */
+function scanHogs(rows: PsRow[], root: string, roots: Record<string, number>, options: SamplerOptions): Hog[] {
+  const keep = new Set([process.pid, ...Object.values(roots)]);
+  const agents = pickAgents(rows, { keep, now: Date.now(), idleAfterSec: options.agentIdleSec, lastActive: options.lastActive ?? claudeLastActive });
+  const hogs = pickHogs(rows, { root, roots, self: process.pid, caches: options.caches?.(), skip: agentPids(agents) });
+  return withAgents(hogs, agents, HOG_MIN_MEM_MB, HOG_MIN_CPU);
+}
+
 export interface Sampler {
   stop(): void;
 }
@@ -460,6 +473,10 @@ export interface SamplerOptions {
   scan?: (withCommands: boolean) => Promise<PsRow[]>;
   /** The Next dev caches over the ceiling, by service id, in MB. */
   caches?: () => Record<string, number>;
+  /** Seconds an AI session sits idle before it is stale. Default AGENT_IDLE_SEC. */
+  agentIdleSec?: number;
+  /** Test seam: a session's last activity, epoch ms. Default reads Claude transcripts. */
+  lastActive?: AgentContext['lastActive'];
 }
 
 /**
@@ -486,7 +503,7 @@ export function startSampler(store: DeckStore, roots: () => Record<string, numbe
       const rows = await scan(withHogs);
       if (!stopped && rows.length > 0) {
         const state = store.getState();
-        state.setUsage(sumTrees(rows, current), withHogs ? pickHogs(rows, { root: state.meta.root, roots: current, self: process.pid, caches: options.caches?.() }) : undefined);
+        state.setUsage(sumTrees(rows, current), withHogs ? scanHogs(rows, state.meta.root, current, options) : undefined);
       }
     } finally {
       busy = false;

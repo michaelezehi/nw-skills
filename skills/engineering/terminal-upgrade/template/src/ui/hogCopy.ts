@@ -1,6 +1,6 @@
 /** Words for the memory hogs: the one-line hint per row and the notices after a stop. */
 import type { Hog, KillResult } from '../types.ts';
-import { formatMb } from './format.ts';
+import { formatAge, formatMb } from './format.ts';
 
 const BROWSERS = /Brave|Chrome|Chromium|Safari|Firefox|^Arc$|Edge|Opera|Vivaldi|Orion|^Zen/;
 const EDITORS = /Visual Studio Code|^Code$|Cursor|^Zed$|Xcode|WebStorm|IntelliJ|Windsurf/;
@@ -10,6 +10,7 @@ const TEST_RUNNERS = new Set(['vitest', 'jest', 'playwright']);
 /** What to do about it, in one plain line: the full wording first, then shorter ones for narrow rows. */
 export function hogHints(hog: Hog): string[] {
   if (hog.self) return ['devdeck itself'];
+  if (hog.scope === 'agent') return agentHints(hog);
   if (hog.orphan) {
     return [`left behind by an earlier ${TEST_RUNNERS.has(hog.name) ? 'test run' : 'run'}, stop it`, 'left behind, stop it', 'stop it'];
   }
@@ -22,8 +23,18 @@ export function hogHints(hog: Hog): string[] {
   if (hog.scope === 'platform') return ['started outside devdeck, stop it if unused', 'stop it if unused'];
   if (BROWSERS.test(hog.name)) return [`browser tabs, close some in ${hog.name.replace(/ Browser$/, '')}`, 'close some tabs', 'close tabs'];
   if (EDITORS.test(hog.name)) return ['editor windows, close some', 'close some windows', 'close windows'];
-  if (hog.name === 'claude') return ['a Claude Code session, end it if idle', 'end it if idle'];
   return [`quit ${hog.name} if you are not using it`, 'quit it if unused'];
+}
+
+/** An agent session: how long it has been idle, and whether to stop it. */
+function agentHints(hog: Hog): string[] {
+  const who = hog.title ? `${hog.title}, ` : '';
+  if (hog.stale) {
+    const idle = hog.idleSec !== undefined ? `idle ${formatAge(hog.idleSec)}` : `quiet, started ${formatAge(hog.ageSec)} ago`;
+    return [`${who}${idle}, stop it`, `${idle}, stop it`, 'stop it'];
+  }
+  if (hog.idleSec !== undefined) return [`${who}last active ${formatAge(hog.idleSec)} ago`, `active ${formatAge(hog.idleSec)} ago`, 'in use'];
+  return [`${who}an agent session in use`, 'in use'];
 }
 
 /** A compiler in a service whose Next dev cache is over the ceiling: its row offers Clear cache. */
@@ -70,6 +81,15 @@ export function orphansNotice(orphans: readonly Hog[], results: readonly KillRes
   const noun = (n: number) => (n === 1 ? 'orphan' : 'orphans');
   if (done.length === orphans.length) return { ok: true, text: `Stopped ${done.length} ${noun(done.length)}, ${formatMb(freed)} back` };
   return { ok: false, text: `Stopped ${done.length} of ${orphans.length} ${noun(orphans.length)}` };
+}
+
+/** The notice after stopping every stale agent session. */
+export function idleNotice(sessions: readonly Hog[], results: readonly KillResult[]): { ok: boolean; text: string } {
+  const done = sessions.filter((_, i) => results[i] === 'stopped' || results[i] === 'gone');
+  const freed = done.reduce((sum, h) => sum + h.memMb, 0);
+  const noun = (n: number) => (n === 1 ? 'idle session' : 'idle sessions');
+  if (done.length === sessions.length) return { ok: true, text: `Stopped ${done.length} ${noun(done.length)}, ${formatMb(freed)} back` };
+  return { ok: false, text: `Stopped ${done.length} of ${sessions.length} ${noun(sessions.length)}` };
 }
 
 /** `4.1 GB held by 5 processes`. */

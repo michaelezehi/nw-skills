@@ -8,13 +8,13 @@ import { Box, Text } from 'ink';
 import type { Hog } from '../types.ts';
 import { Panel, Row, panelInner } from './Panel.tsx';
 import { labelOn, useTone } from './theme.ts';
-import { cellWidth, formatMb } from './format.ts';
+import { cellWidth, formatAge, formatMb } from './format.ts';
 import { confirmLines, hogHint, hogLabel, hogTotal } from './hogCopy.ts';
-import { formatAge, formatCpu, ORPHAN_BADGE } from './hogPlan.ts';
+import { formatCpu, IDLE_BADGE, ORPHAN_BADGE } from './hogPlan.ts';
 import { scopeColor } from './HogPanel.tsx';
 
 const INDENT = '    ';
-const SCOPES = ['run', 'platform', 'system'] as const;
+const SCOPES = ['run', 'platform', 'system', 'agent'] as const;
 /** `● run   ● platform   ● system   `. */
 const LEGEND_W = SCOPES.reduce((sum, s) => sum + 2 + s.length + 3, 0);
 
@@ -60,13 +60,14 @@ interface Block {
 /** The facts after the name, dropped from the end while the line is too wide. */
 function headParts(hog: Hog, inner: number): string[] {
   const parts = [hog.scope, `pid ${hog.pid}`, formatMb(hog.memMb), formatCpu(hog.cpu), formatAge(hog.ageSec)];
-  const fixed = 2 + cellWidth(hogLabel(hog)) + (hog.orphan ? 2 + cellWidth(ORPHAN_BADGE) : 0);
+  if (hog.idleSec !== undefined) parts.push(`idle ${formatAge(hog.idleSec)}`);
+  const fixed = 2 + cellWidth(hogLabel(hog)) + (hog.orphan || hog.stale ? 2 + cellWidth(ORPHAN_BADGE) : 0);
   const width = (list: string[]) => fixed + list.reduce((sum, p) => sum + 2 + cellWidth(p), 0);
   while (parts.length > 0 && width(parts) > inner) parts.pop();
   return parts;
 }
 
-export function HogView({ hogs, width, rows, selectedPid, armedPid, armedOrphans = false }: { hogs: readonly Hog[]; width: number; rows: number; selectedPid?: number; armedPid?: number; armedOrphans?: boolean }) {
+export function HogView({ hogs, width, rows, selectedPid, armedPid, armedOrphans = false, armedIdle = false }: { hogs: readonly Hog[]; width: number; rows: number; selectedPid?: number; armedPid?: number; armedOrphans?: boolean; armedIdle?: boolean }) {
   const tone = useTone();
   const inner = panelInner(width);
   const body = Math.max(0, rows - 2);
@@ -92,7 +93,14 @@ export function HogView({ hogs, width, rows, selectedPid, armedPid, armedOrphans
     used += heightOf(block);
   }
   const orphans = hogs.filter((h) => h.orphan).length;
-  const legend = armedOrphans && orphans > 0 ? `press S again to stop ${orphans} ${orphans === 1 ? 'orphan' : 'orphans'}` : hogTotal(hogs);
+  const idle = hogs.filter((h) => h.stale).length;
+  const legend =
+    armedOrphans && orphans > 0
+      ? `press S again to stop ${orphans} ${orphans === 1 ? 'orphan' : 'orphans'}`
+      : armedIdle && idle > 0
+        ? `press A again to stop ${idle} idle ${idle === 1 ? 'session' : 'sessions'}`
+        : hogTotal(hogs);
+  const armedAll = (armedOrphans && orphans > 0) || (armedIdle && idle > 0);
 
   return (
     <Panel title="MEMORY HOGS" right="esc close" width={width} rows={rows} focused>
@@ -103,7 +111,7 @@ export function HogView({ hogs, width, rows, selectedPid, armedPid, armedOrphans
             <Text color={tone.muted}>{scope}   </Text>
           </Text>
         ))}
-        {hogs.length > 0 && LEGEND_W + cellWidth(legend) <= inner ? <Text color={armedOrphans ? tone.error : tone.text}>{legend}</Text> : null}
+        {hogs.length > 0 && LEGEND_W + cellWidth(legend) <= inner ? <Text color={armedAll ? tone.error : tone.text}>{legend}</Text> : null}
       </Row>
       {hogs.length === 0 ? (
         <Row color={tone.muted}>Nothing over 500 MB or 80% cpu right now.</Row>
@@ -124,6 +132,13 @@ export function HogView({ hogs, width, rows, selectedPid, armedPid, armedOrphans
                     <Text>{'  '}</Text>
                     <Text backgroundColor={tone.error} color={labelOn(tone.error)} bold>
                       {ORPHAN_BADGE}
+                    </Text>
+                  </>
+                ) : hog.stale ? (
+                  <>
+                    <Text>{'  '}</Text>
+                    <Text backgroundColor={tone.activity} color={labelOn(tone.activity)} bold>
+                      {IDLE_BADGE}
                     </Text>
                   </>
                 ) : null}

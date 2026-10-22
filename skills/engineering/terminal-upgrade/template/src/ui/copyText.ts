@@ -19,11 +19,22 @@ export function errorPayload(error: DevError): CopyPayload {
   return { text, what: `${error.service} error`, lines: text.split('\n').length };
 }
 
-/** Every open error, oldest first, separated by a blank line. */
-export function allErrorsPayload(errors: readonly DevError[]): CopyPayload | undefined {
+/** Where the errors come from: the deck's title and repo root, for the header line. */
+export interface CopyContext {
+  title?: string;
+  root: string;
+}
+
+/**
+ * Every open error, ready to paste into a coding agent: a header naming the deck, root and
+ * count, then each error oldest first, numbered, with its whole body, a blank line between.
+ */
+export function allErrorsPayload(errors: readonly DevError[], context: CopyContext): CopyPayload | undefined {
   if (errors.length === 0) return undefined;
-  const text = errors.map(errorText).join('\n\n');
-  return { text, what: `${errors.length} error${errors.length === 1 ? '' : 's'}`, lines: text.split('\n').length };
+  const noun = errors.length === 1 ? 'error' : 'errors';
+  const header = ['Devdeck', context.title, context.root, `${errors.length} open ${noun}`].filter(Boolean).join(' · ');
+  const text = [header, ...errors.map((error, i) => `${i + 1}. ${errorText(error)}`)].join('\n\n');
+  return { text, what: `${errors.length} ${noun}`, lines: text.split('\n').length };
 }
 
 /** The log lines on screen for `service`. */

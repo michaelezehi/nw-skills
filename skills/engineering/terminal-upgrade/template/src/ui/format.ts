@@ -145,3 +145,15 @@ export function shortFile(file: string): string {
   const parts = file.split('/');
   return parts.length > 2 ? parts.slice(-2).join('/') : file;
 }
+
+/** `2d 9h`, `3h 05m`, `12m`, `40s`. */
+export function formatAge(sec: number): string {
+  const s = Math.max(0, Math.floor(sec));
+  const d = Math.floor(s / 86400);
+  const h = Math.floor((s % 86400) / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  if (d > 0) return `${d}d ${h}h`;
+  if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
+  if (m > 0) return `${m}m`;
+  return `${s}s`;
+}

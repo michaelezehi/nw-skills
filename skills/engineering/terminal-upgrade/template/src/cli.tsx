@@ -194,7 +194,8 @@ async function main(): Promise<void> {
   }
 
   supervisor.start();
-  sampler = startSampler(store, () => supervisor.pids(), { caches: () => caches?.over() ?? {} });
+  const idleHours = config.cleanup?.agentIdleHours;
+  sampler = startSampler(store, () => supervisor.pids(), { caches: () => caches?.over() ?? {}, ...(idleHours ? { agentIdleSec: idleHours * 3600 } : {}) });
   const tail = run ? undefined : feedService(config);
   if (tail) feed = startConvexFeed(store, root, { serviceId: tail.id, dir: tail.dir, packageManager });
   if (run) return;

@@ -159,7 +159,12 @@ export function selectHog(state: UiState, pid: number): UiState {
   return { ...state, hogPid: pid, focus: state.view === 'deck' ? 'hogs' : state.focus };
 }
 
-const selectService = (state: UiState, ctx: UiContext, step: number): UiState => ({
+/** Open the error view on error `id`, as a click on the tray or the footer does. */
+export function openError(state: UiState, id: number): UiState {
+  return open({ ...state, focus: 'errors' }, 'error', { errorId: id });
+}
+
+const selectService =(state: UiState, ctx: UiContext, step: number): UiState => ({
   ...state,
   focus: 'services',
   serviceIndex: clamp(state.serviceIndex + step, ctx.services),
@@ -254,7 +259,7 @@ export function reduceUi(state: UiState, action: UiAction, ctx: UiContext): UiSt
 }
 
 /** Map a key press to an action. Returns undefined for keys the deck ignores. */
-export type KeyAction = UiAction | 'quit' | 'restart' | 'open' | 'copy' | 'copyAll' | 'stop' | 'stopOrphans';
+export type KeyAction = UiAction | 'quit' | 'restart' | 'open' | 'copy' | 'copyAll' | 'stop' | 'stopOrphans' | 'stopIdle';
 
 export function actionForKey(input: string, key: { upArrow?: boolean; downArrow?: boolean; leftArrow?: boolean; rightArrow?: boolean; return?: boolean; escape?: boolean; backspace?: boolean; delete?: boolean; tab?: boolean; shift?: boolean; pageUp?: boolean; pageDown?: boolean }): KeyAction | undefined {
   if (key.tab) return key.shift ? 'focusPrev' : 'focusNext';
@@ -312,6 +317,8 @@ export function actionForKey(input: string, key: { upArrow?: boolean; downArrow?
       return 'stop';
     case 'S':
       return 'stopOrphans';
+    case 'A':
+      return 'stopIdle';
     case 'j':
       return 'down';
     case 'k':

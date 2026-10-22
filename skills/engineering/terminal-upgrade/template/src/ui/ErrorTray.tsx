@@ -1,16 +1,15 @@
 /**
  * Errors never dump into the view. The tray lists one line per error; the selected
- * error opens as a card with the full block: `file:line:col` in amber, `    at` frames
- * dimmed, node_modules frames folded into "N more frames".
+ * error opens full screen (ErrorView.tsx), with node_modules frames folded here into
+ * "N more frames".
  */
 import { memo } from 'react';
 import { Box, Text } from 'ink';
 import type { DevError } from '../types.ts';
-import { Panel, Row, panelInner } from './Panel.tsx';
+import { Row } from './Panel.tsx';
 import { useTone } from './theme.ts';
-import { formatClock, padEnd, padStart, truncateEnd, cellWidth, shortFile } from './format.ts';
+import { formatClock, padEnd, padStart, truncateEnd, cellWidth } from './format.ts';
 import { glyph } from './sprites.ts';
-import { FILE_REF } from './links.ts';
 
 export interface TrayProps {
   errors: readonly DevError[];
@@ -20,12 +19,17 @@ export interface TrayProps {
   selectedIndex: number;
 }
 
+/** The first newest-first error the tray shows, so the selection stays in view. */
+export function trayStart(count: number, rows: number, selectedIndex: number): number {
+  return Math.max(0, Math.min(selectedIndex - rows + 1, count - rows));
+}
+
 /** Collapsed lines, one per error, newest first. */
 export const ErrorTray = memo(function ErrorTray({ errors, rows, columns, focused, selectedIndex }: TrayProps) {
   const tone = useTone();
   if (rows <= 0) return null;
   const list = [...errors].reverse();
-  const start = Math.max(0, Math.min(selectedIndex - rows + 1, list.length - rows));
+  const start = trayStart(list.length, rows, selectedIndex);
   const shown = list.slice(start, start + rows);
   const timeWidth = 5;
   const serviceWidth = 7;
@@ -48,18 +52,6 @@ export const ErrorTray = memo(function ErrorTray({ errors, rows, columns, focuse
     </Box>
   );
 });
-
-export interface ErrorCardProps {
-  error: DevError;
-  width: number;
-  rows: number;
-  /** First body line shown; arrows scroll it. */
-  offset: number;
-  /** Receives the furthest offset this card can scroll, so the reducer can clamp to it. */
-  scrollMax?: { current: number };
-  /** Wraps every `file:line:col` reference in `text` in a terminal hyperlink; identity when omitted. */
-  link?: (text: string) => string;
-}
 
 const FRAME = /^\s+at\s/;
 
@@ -93,64 +85,36 @@ export function foldFrames(body: readonly string[]): CardLine[] {
   return out;
 }
 
-/** Split a line into plain and file-reference segments so references can be amber. */
-export function highlightRefs(text: string): Array<{ ref: boolean; text: string }> {
-  const parts: Array<{ ref: boolean; text: string }> = [];
-  let last = 0;
-  for (const match of text.matchAll(FILE_REF)) {
-    const index = match.index ?? 0;
-    if (index > last) parts.push({ ref: false, text: text.slice(last, index) });
-    parts.push({ ref: true, text: match[0] });
-    last = index + match[0].length;
-  }
-  if (last < text.length) parts.push({ ref: false, text: text.slice(last) });
-  return parts;
+export const COPY_ALL_CHIP = '[ ⧉ Copy all ]';
+const CHIP_GAP = '  ';
+const ARROW = '  ›  ';
+
+export interface SummaryPlan {
+  head: string;
+  /** The Copy all chip's cells from the summary's left edge, when it fits. */
+  chip?: { x0: number; x1: number };
+  /** The newest error, when it reads whole after the chip. */
+  detail?: string;
 }
 
-export function ErrorCard({ error, width, rows, offset, scrollMax, link }: ErrorCardProps) {
-  const tone = useTone();
-  const inner = panelInner(width);
-  const visible = Math.max(0, rows - 2);
-  const lines = foldFrames(error.body);
-  const maxOffset = Math.max(0, lines.length - visible);
-  if (scrollMax) scrollMax.current = maxOffset;
-  const from = Math.min(offset, maxOffset);
-  const shown = lines.slice(from, from + visible);
-  const more = lines.length - from - shown.length;
-  const right = error.file ? shortFile(error.file) : more > 0 ? `${more} more lines` : undefined;
-  return (
-    <Panel title={`ERROR · ${error.service.toUpperCase()}`} right={right} rightColor={tone.activity} width={width} rows={rows} focused>
-      {shown.map((line, i) => {
-        if (line.kind === 'fold') {
-          return (
-            <Row key={i} color={tone.muted}>
-              {`      … ${line.text}`}
-            </Row>
-          );
-        }
-        if (line.kind === 'frame') {
-          return (
-            <Row key={i} color={tone.muted}>
-              {link ? link(truncateEnd(line.text, inner)) : truncateEnd(line.text, inner)}
-            </Row>
-          );
-        }
-        const clipped = truncateEnd(line.text, inner);
-        return (
-          <Row key={i}>
-            {highlightRefs(clipped).map((part, j) => (
-              <Text key={j} color={part.ref ? tone.activity : tone.text} bold={part.ref}>
-                {part.ref && link ? link(part.text) : part.text}
-              </Text>
-            ))}
-          </Row>
-        );
-      })}
-    </Panel>
-  );
+const summaryHead = (count: number): string => ` ◆ ${count} error${count === 1 ? '' : 's'}`;
+
+/** One past the Copy all chip's last cell when `count` errors are open: the summary width it needs. */
+export const chipEnd = (count: number): number => cellWidth(summaryHead(count)) + cellWidth(CHIP_GAP) + cellWidth(COPY_ALL_CHIP);
+
+/** The summary's pieces for `width` cells: the count, then the chip, then the newest error. A narrow summary drops the error first, then the chip. */
+export function planSummary(errors: readonly DevError[], width: number): SummaryPlan {
+  const latest = errors[errors.length - 1]!;
+  const head = summaryHead(errors.length);
+  const x1 = chipEnd(errors.length);
+  const x0 = x1 - cellWidth(COPY_ALL_CHIP);
+  if (x1 > width) return { head };
+  const detail = `${latest.service}: ${latest.title}`;
+  // The newest error's title reads whole or not at all.
+  return x1 + cellWidth(ARROW) + cellWidth(detail) <= width ? { head, chip: { x0, x1 }, detail } : { head, chip: { x0, x1 } };
 }
 
-/** The footer's left half: a count in red, or a small yellow mark when all is clear. */
+/** The footer's left half: a count in red and the Copy all chip, or a small yellow mark when all is clear. */
 export function ErrorSummary({ errors, width }: { errors: readonly DevError[]; width: number }) {
   const tone = useTone();
   if (errors.length === 0) {
@@ -161,19 +125,22 @@ export function ErrorSummary({ errors, width }: { errors: readonly DevError[]; w
       </Text>
     );
   }
-  const latest = errors[errors.length - 1]!;
-  const head = ` ◆ ${errors.length} error${errors.length === 1 ? '' : 's'}`;
-  const arrow = '  ›  ';
-  const detail = `${latest.service}: ${latest.title}`;
-  // The newest error's title reads whole or not at all.
-  const showDetail = cellWidth(head) + cellWidth(arrow) + cellWidth(detail) <= width;
+  const plan = planSummary(errors, width);
   return (
     <Text wrap="truncate">
-      <Text color={tone.error}>{head}</Text>
-      {showDetail ? (
+      <Text color={tone.error}>{plan.head}</Text>
+      {plan.chip ? (
         <>
-          <Text color={tone.error}>{arrow}</Text>
-          <Text color={tone.text}>{detail}</Text>
+          <Text>{CHIP_GAP}</Text>
+          <Text color={tone.accent} bold>
+            {COPY_ALL_CHIP}
+          </Text>
+        </>
+      ) : null}
+      {plan.detail ? (
+        <>
+          <Text color={tone.error}>{ARROW}</Text>
+          <Text color={tone.text}>{plan.detail}</Text>
         </>
       ) : null}
     </Text>

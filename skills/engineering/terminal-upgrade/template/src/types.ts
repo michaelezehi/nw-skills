@@ -55,6 +55,8 @@ export interface CleanupConfig {
   caches?: CleanupMode;
   /** Past this many GB a Next dev cache is cleared and Convex local storage is reported. Default 8. */
   cacheCeilingGb?: number;
+  /** Hours an AI session sits idle before the hog panel offers to stop it. Default 12. */
+  agentIdleHours?: number;
 }
 
 /** The default export of devdeck.config.ts, which sits in the devdeck package dir. */
@@ -197,9 +199,10 @@ export interface DeckMeta {
 /**
  * Where a memory hog lives. `run`: inside a devdeck service tree, or devdeck itself.
  * `platform`: a dev tool or anything naming the repo root, outside the run (leftovers,
- * orphans). `system`: everything else, such as browsers and editors.
+ * orphans). `system`: everything else, such as browsers and editors. `agent`: an AI coding
+ * session (Claude Code, Codex, Cursor's agent), summed over its tree.
  */
-export type HogScope = 'run' | 'platform' | 'system';
+export type HogScope = 'run' | 'platform' | 'system' | 'agent';
 
 /** One process (or one macOS app's processes, summed) holding a lot of memory or cpu. */
 export interface Hog {
@@ -228,6 +231,12 @@ export interface Hog {
   count?: number;
   /** Devdeck's own process. */
   self?: boolean;
+  /** An agent session's seconds since its transcript last changed; absent when unknown. */
+  idleSec?: number;
+  /** An agent session idle past the limit: the panel always shows it. */
+  stale?: boolean;
+  /** An agent session's name, from `-n`: `ch: acme`. */
+  title?: string;
 }
 
 /** What killPid did: stopped it, it was already gone, not allowed, or it outlived SIGKILL. */

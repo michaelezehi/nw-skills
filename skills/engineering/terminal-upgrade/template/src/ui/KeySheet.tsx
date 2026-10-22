@@ -13,12 +13,12 @@ export const KEYS: Array<[string, string]> = [
   ['↑ ↓', 'select a row, or scroll the logs'],
   ['tab / shift-tab', 'move focus between panels'],
   ['enter', 'open the error, the logs, or fold a panel'],
-  ['e', 'jump to the errors'],
+  ['e', 'open the full error, e again closes'],
   ['y', 'copy error or logs'],
   ['Y', 'copy every error'],
   ['r', 'restart the focused service or hog'],
   ['m / M', 'every memory hog / hide or show them'],
-  ['s twice / S twice', 'stop the hog / every orphan'],
+  ['s / S / A twice', 'stop the hog / orphans / idle agents'],
   ['o', 'open its URL in the browser'],
   ['f', 'filter calls: all, Q, M, A, errors'],
   ['p', 'pause the feed'],
@@ -33,7 +33,7 @@ export const KEYS: Array<[string, string]> = [
 /** What the Mac terminal itself does over the deck. The deck takes clicks, so selecting text needs option. */
 export const TERMINAL_KEYS: Array<[string, string]> = [
   ['option-drag', 'select text, then cmd-c copies it'],
-  ['click', 'Stop, Restart, Clear cache and Stop all orphans'],
+  ['click', 'an error, Copy error, Copy all, Stop, Restart, Clear cache, orphans, idle sessions'],
   ['cmd-click :3000', 'open that server in the browser'],
   ['cmd-click a path', 'open the file in your editor'],
   ['cmd-+ / cmd--', 'bigger or smaller text; the deck refits'],

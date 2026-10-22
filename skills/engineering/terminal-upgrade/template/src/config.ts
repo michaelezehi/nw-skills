@@ -70,6 +70,8 @@ export function checkCleanup(raw: unknown): string | undefined {
   }
   const gb = raw.cacheCeilingGb;
   if (gb !== undefined && (typeof gb !== 'number' || !Number.isFinite(gb) || gb <= 0)) return 'cleanup.cacheCeilingGb must be a positive number';
+  const hours = raw.agentIdleHours;
+  if (hours !== undefined && (typeof hours !== 'number' || !Number.isFinite(hours) || hours <= 0)) return 'cleanup.agentIdleHours must be a positive number';
   return undefined;
 }
 

@@ -2,14 +2,15 @@
  * The two-step stop for memory hogs, shared by the keys and the mouse. The first `s` or
  * click on Stop arms that hog and the button turns into `[ Stop? ]`; a second one within
  * ARM_MS calls controls.killPid and raises a notice with the result. `S` and the
- * panel's Stop all orphans button do the same for every orphan at once. Anything else
+ * panel's Stop all orphans button do the same for every orphan at once, and `A` and the
+ * Stop idle sessions button for every AI session idle past the limit. Anything else
  * the user does disarms it.
  */
 import { useRef, useState } from 'react';
 import type { DeckControls, Hog, KillResult } from '../types.ts';
 import type { NoticeData } from './Notice.tsx';
 import { useWakeAt } from './useFrame.ts';
-import { killNotice, orphansNotice } from './hogCopy.ts';
+import { idleNotice, killNotice, orphansNotice } from './hogCopy.ts';
 import type { Armed } from './hogPlan.ts';
 
 /** How long a first press waits for its second. */
@@ -22,6 +23,7 @@ export interface HogActions {
   armed?: Armed;
   stop(hog: Hog | undefined): void;
   stopOrphans(): void;
+  stopIdle(): void;
   disarm(): void;
 }
 
@@ -69,9 +71,20 @@ export function useHogs(hogs: readonly Hog[], controls: DeckControls, showNotice
     setPending({ armed: { target: 'orphans' }, at: Date.now() });
   };
 
+  const stopIdle = () => {
+    const idle = hogs.filter((h) => h.stale);
+    if (idle.length === 0) return;
+    if (armedNow()?.target === 'idle') {
+      setPending(undefined);
+      void Promise.all(idle.map((h) => controls.killPid(h.pid, h.pids).catch((): KillResult => 'denied'))).then((results) => report(idleNotice(idle, results)));
+      return;
+    }
+    setPending({ armed: { target: 'idle' }, at: Date.now() });
+  };
+
   const disarm = () => {
     if (latest.current) setPending(undefined);
   };
 
-  return { armed: live, stop, stopOrphans, disarm };
+  return { armed: live, stop, stopOrphans, stopIdle, disarm };
 }

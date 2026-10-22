@@ -17,24 +17,26 @@ import { copyText } from '../clipboard.ts';
 import { EXIT_SIGINT } from '../config.ts';
 import { HOT_MS, ThemeProvider, withHues } from './theme.ts';
 import { computeLayout } from './layout.ts';
-import { formatSpan } from './format.ts';
+import { formatClockSeconds, formatSpan } from './format.ts';
 import { computePlainLayout } from './plainLayout.ts';
 import { settledNow, useFrame, useHeldNow, useWakeAt } from './useFrame.ts';
 import { useSpinning } from './spin.ts';
 import { useLocalNotice, useNotice } from './useNotice.ts';
 import { filterCalls } from './ConvexCalls.tsx';
-import { ErrorCard } from './ErrorTray.tsx';
+import { trayStart } from './ErrorTray.tsx';
+import { ErrorView } from './ErrorView.tsx';
+import { errorViewRegions, planErrorView } from './errorView.ts';
 import { Notice } from './Notice.tsx';
 import { KeySheet } from './KeySheet.tsx';
 import { Palette } from './Palette.tsx';
 import { LogPane } from './LogPane.tsx';
-import { Footer } from './Footer.tsx';
+import { Footer, footerHints, footerRegions, summaryWidth } from './Footer.tsx';
 import { PlainView } from './PlainView.tsx';
 import { VerboseView } from './VerboseView.tsx';
 import { usePalette } from './usePalette.ts';
 import { linkRefs } from './links.ts';
 import { allErrorsPayload, copiedNotice, errorPayload, logPayload, COPY_FAILED, type CopyPayload } from './copyText.ts';
-import { actionForKey, indexOfId, initialUi, reduceUi, selectHog, type Focus, type UiAction, type UiContext, type UiState } from './deckState.ts';
+import { actionForKey, indexOfId, initialUi, openError, reduceUi, selectHog, type Focus, type UiAction, type UiContext, type UiState } from './deckState.ts';
 import { HogPanel, HogStrip } from './HogPanel.tsx';
 import { HogView } from './HogView.tsx';
 import { clearNotice } from './hogCopy.ts';
@@ -99,7 +101,7 @@ function* hotAts(apps: readonly ServiceState[], events: readonly { kind: string;
   for (const e of events) if (e.kind === 'reload') yield e.at;
 }
 
-type DeckInput = { action: UiAction; ctx: UiContext } | { hog: number };
+type DeckInput = { action: UiAction; ctx: UiContext } | { hog: number } | { error: number };
 
 function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckStore; controls: DeckControls; theme: Theme; serviceDirs: Record<string, string>; startUi?: Partial<UiState> }) {
   // Data slices only, compared shallowly; the per-second uptime ticks inside the title.
@@ -125,7 +127,7 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
   const watchers = useMemo(() => all.filter((s) => s.kind === 'watch'), [all]);
 
   const [ui, dispatch] = useReducer(
-    (current: typeof initialUi, input: DeckInput) => ('hog' in input ? selectHog(current, input.hog) : reduceUi(current, input.action, input.ctx)),
+    (current: typeof initialUi, input: DeckInput) => ('hog' in input ? selectHog(current, input.hog) : 'error' in input ? openError(current, input.error) : reduceUi(current, input.action, input.ctx)),
     initialUi,
     (base) => ({ ...base, ...startUi }),
   );
@@ -181,7 +183,7 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
     events: eventIds,
     errors: errorIds,
     hogs: hogIds,
-    page: Math.max(1, viewRows - 2),
+    page: Math.max(1, (ui.view === 'error' ? rows - 1 : viewRows) - 8),
     // The open view and the log pane write their limits while rendering; read again at the key press.
     scrollMax: 0,
     logScrollMax: 0,
@@ -224,13 +226,16 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
 
   /** What `y` copies: the open error, the log window, or the selected tray error. */
   const copyPayload = (all: boolean): CopyPayload | undefined => {
-    if (all) return allErrorsPayload(errors);
+    if (all) return allErrorsPayload(errors, state.meta);
     if (ui.view === 'error' && selectedError) return errorPayload(selectedError);
     if (ui.view === 'deck' && ui.activity === 'logs' && viewRows > 1 && selectedService) return logPayload(selectedService.id, logWindow.current);
     if (ui.view === 'deck' && selectedError) return errorPayload(selectedError);
     return undefined;
   };
+  // Which copy the last notice is for, so only that button reads Copied.
+  const copiedAll = useRef(false);
   const copy = (all: boolean) => {
+    copiedAll.current = all;
     const payload = copyPayload(all);
     if (!payload) return showNotice({ kind: 'failed', service: '', text: COPY_FAILED });
     void copyText(payload.text).then((result) => {
@@ -253,7 +258,13 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
   };
   const onHit = (hit: HogHit | undefined) => {
     if (hit?.kind === 'prompt') return prompter.click(hit.index);
-    if (hit?.kind !== 'stop' && hit?.kind !== 'orphans') hogActions.disarm();
+    if (hit?.kind === 'copy') return copy(false);
+    if (hit?.kind === 'copyAll') return copy(true);
+    if (hit?.kind === 'error') {
+      const id = hit.id ?? errorIds[0];
+      return id !== undefined && dispatch({ error: id });
+    }
+    if (hit?.kind !== 'stop' && hit?.kind !== 'orphans' && hit?.kind !== 'idle') hogActions.disarm();
     if (!hit) return;
     const hog = 'pid' in hit ? hogs.find((h) => h.pid === hit.pid) : undefined;
     if ('pid' in hit) dispatch({ hog: hit.pid });
@@ -261,6 +272,7 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
     if (hit.kind === 'restart') return restartHog(hog);
     if (hit.kind === 'clear') return clearHog(hog);
     if (hit.kind === 'orphans') return hogActions.stopOrphans();
+    if (hit.kind === 'idle') return hogActions.stopIdle();
     if (hit.kind === 'open') dispatch({ action: 'hogs', ctx });
   };
 
@@ -290,11 +302,12 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
     if (scriptPalette.handleKey(input, key)) return;
     if (!paletteOpen && ui.view !== 'keys' && ui.view !== 'scripts' && prompter.handleKey(input, key)) return;
     const action = actionForKey(input, key);
-    if (action !== 'stop' && action !== 'stopOrphans') hogActions.disarm();
+    if (action !== 'stop' && action !== 'stopOrphans' && action !== 'stopIdle') hogActions.disarm();
     if (!action) return;
     if (action === 'quit') return controls.quit();
     if (action === 'stop') return hogActions.stop(hogTarget);
     if (action === 'stopOrphans') return (hogPanelShown || ui.view === 'hogs') && hogActions.stopOrphans();
+    if (action === 'stopIdle') return (hogPanelShown || ui.view === 'hogs') && hogActions.stopIdle();
     if (action === 'restart' && hogTarget) return restartHog(hogTarget);
     if (action === 'restart') return selectedService && controls.restart(selectedService.id);
     if (action === 'open') return selectedService && controls.open(selectedService.id);
@@ -323,10 +336,7 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
     if (ui.view === 'scripts') return <ScriptList entries={scriptPalette.entries} query={scriptPalette.query} index={scriptPalette.index} width={columns} rows={innerRows} />;
     if (ui.view === 'hogs') {
       const armed = hogActions.armed;
-      return <HogView hogs={hogs} width={columns} rows={innerRows} selectedPid={selectedHog?.pid} armedPid={armed && armed.target !== 'orphans' ? armed.target : undefined} armedOrphans={armed?.target === 'orphans'} />;
-    }
-    if (ui.view === 'error' && selectedError) {
-      return <ErrorCard error={selectedError} width={columns} rows={innerRows} offset={ui.scroll} scrollMax={scrollMax} link={(text) => linkFor(selectedError.service, text)} />;
+      return <HogView hogs={hogs} width={columns} rows={innerRows} selectedPid={selectedHog?.pid} armedPid={typeof armed?.target === 'number' ? armed.target : undefined} armedOrphans={armed?.target === 'orphans'} armedIdle={armed?.target === 'idle'} />;
     }
     // The logs take the feed's rows; the feed is back one `l` or an escape later.
     if (ui.activity === 'logs' && selectedService) {
@@ -367,6 +377,32 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
     regions.current = [...promptRegions(promptPlan, regionTop + viewRows - promptPlan.rows, columns), ...regions.current];
   }
 
+  // The open error takes the whole screen above the footer, so nothing squeezes it.
+  const errorPlan =
+    ui.view === 'error' && selectedError
+      ? planErrorView(
+          selectedError,
+          [selectedError.service, formatClockSeconds(selectedError.at), selectedError.file, errors.length > 1 ? `${errorIndex + 1} of ${errors.length}` : undefined].filter(Boolean).join('  ·  '),
+          columns,
+          Math.max(1, rows - 1),
+          ui.scroll,
+          errors.length,
+        )
+      : undefined;
+  const hints = prompter.hints ?? footerHints(ui.mode, ui.activity, columns, ui.view, runDeck ? 0 : hogs.length, ui.hogsHidden, state.meta.mode !== undefined, errors.length);
+  const footer = footerRegions(errors, summaryWidth(columns, hints), rows - 1);
+  if (errorPlan) {
+    scrollMax.current = errorPlan.maxOffset;
+    // The footer's Copy all chip still copies; its summary does not reopen an error over this one.
+    regions.current = [...errorViewRegions(errorPlan, 0), ...footer.filter((r) => r.hit.kind === 'copyAll')];
+  } else if (errors.length > 0) {
+    const tray = plain ? plainLayout.tray : layout.tray;
+    const trayTop = rows - 1 - tray;
+    const start = trayStart(errorIds.length, tray, errorIndex);
+    for (let i = 0; i < tray && start + i < errorIds.length; i++) regions.current.push({ y: trayTop + i, x0: 0, x1: columns, hit: { kind: 'error', id: errorIds[start + i] } });
+    regions.current.push(...footer);
+  }
+
   const shared = { meta: state.meta, hogBlock, apps, watchers, events, calls, errors, callCount: state.callCount, callErrorCount: state.callErrorCount, totalMemMb, totalCpu, errorIndex, frame, spinning, now, hotNow, spanNow, view, runCard };
 
   return (
@@ -375,6 +411,8 @@ function Deck({ store, controls, theme, serviceDirs, startUi }: { store: DeckSto
         {ui.view === 'keys' ? (
           // Help takes the whole screen above the footer, so no layout ever squeezes it out.
           <KeySheet width={columns} rows={Math.max(1, rows - 1)} />
+        ) : errorPlan && selectedError ? (
+          <ErrorView plan={errorPlan} service={selectedError.service} width={columns} rows={Math.max(1, rows - 1)} total={errors.length} copied={notice?.kind === 'copied'} copiedAll={copiedAll.current} link={(text) => linkFor(selectedError.service, text)} />
         ) : plain ? (
           <PlainView {...shared} layout={plainLayout} selectedIndex={serviceIndex} focused={focus === 'services'} errorsFocused={focus === 'errors'} />
         ) : (

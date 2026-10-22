@@ -10,27 +10,28 @@ import { Box, Text } from 'ink';
 import type { Hog, HogScope } from '../types.ts';
 import { box, capsule, capsuleBar } from './glyphs.ts';
 import { labelOn, useTone, type Tone } from './theme.ts';
-import { cellWidth, formatMb, padEnd, padStart } from './format.ts';
+import { cellWidth, formatAge, formatMb, padEnd, padStart } from './format.ts';
 import {
   BAR_W,
   CLEAR_LABEL,
+  IDLE_BADGE,
   ORPHAN_BADGE,
   RESTART_LABEL,
   STRIP_KEY,
   STRIP_LEAD,
   STRIP_SEP,
   STRIP_WORD,
-  formatAge,
   formatCpu,
   planHogStrip,
   type HogPanelPlan,
   type HogRowPlan,
 } from './hogPlan.ts';
 
-/** One colour per scope: the run in the accent, platform in the activity colour, system in a third hue. */
+/** One colour per scope: the run in the accent, platform in the activity colour, system and agent sessions in their own hues. */
 export function scopeColor(tone: Tone, scope: HogScope): string {
   if (scope === 'run') return tone.accent;
   if (scope === 'platform') return tone.activity;
+  if (scope === 'agent') return tone.hues?.[3] ?? tone.text;
   return tone.hues?.[1] ?? tone.text;
 }
 
@@ -47,7 +48,7 @@ export const HogPanel = memo(function HogPanel({ plan, width, rows, focused, sel
   if (rows < 1) return null;
   const maxMemMb = plan.rows.reduce((max, r) => Math.max(max, r.hog.memMb), 0);
   const [label, ...rest] = plan.rule.title.split(' · ');
-  const armedOrphans = plan.rule.right.endsWith('? ]');
+  const armed = plan.rule.right.endsWith('? ]');
   return (
     <Box flexDirection="column" width={width} height={rows} overflow="hidden">
       <Text wrap="truncate">
@@ -55,12 +56,12 @@ export const HogPanel = memo(function HogPanel({ plan, width, rows, focused, sel
         <Text color={focused ? tone.accent : tone.activity} bold>
           {label}
         </Text>
-        {rest.length > 0 ? <Text color={armedOrphans ? tone.error : tone.muted}>{` · ${rest.join(' · ')}`}</Text> : null}
+        {rest.length > 0 ? <Text color={armed ? tone.error : tone.muted}>{` · ${rest.join(' · ')}`}</Text> : null}
         <Text color={tone.line}> {box.h.repeat(plan.rule.fill)}</Text>
         {plan.rule.right ? (
           <>
             <Text color={tone.line}> </Text>
-            {armedOrphans ? (
+            {armed ? (
               <Text backgroundColor={tone.error} color={labelOn(tone.error)} bold>
                 {plan.rule.right}
               </Text>
@@ -110,6 +111,10 @@ function HogLine({ row, plan, maxMemMb, selected }: { row: HogRowPlan; plan: Hog
           {hog.orphan ? (
             <Text backgroundColor={tone.error} color={labelOn(tone.error)} bold>
               {ORPHAN_BADGE}
+            </Text>
+          ) : hog.stale ? (
+            <Text backgroundColor={tone.activity} color={labelOn(tone.activity)} bold>
+              {IDLE_BADGE}
             </Text>
           ) : (
             <Text>{' '.repeat(cellWidth(ORPHAN_BADGE))}</Text>
@@ -164,7 +169,7 @@ export const HogStrip = memo(function HogStrip({ hogs, width }: { hogs: readonly
   const plan = planHogStrip(hogs, width);
   const used =
     (plan.lead ? cellWidth(STRIP_LEAD) : 0) +
-    plan.items.reduce((sum, item, i) => sum + (i > 0 ? STRIP_SEP.length : 0) + cellWidth(item.name) + (item.hog.orphan ? 7 : 0) + 1 + cellWidth(item.mem), 0);
+    plan.items.reduce((sum, item, i) => sum + (i > 0 ? STRIP_SEP.length : 0) + cellWidth(item.name) + (item.hog.orphan ? 7 : item.hog.stale ? 5 : 0) + 1 + cellWidth(item.mem), 0);
   const tail = cellWidth(STRIP_KEY + STRIP_WORD);
   const gap = plan.key ? Math.max(0, width - used - tail) : 0;
   return (
@@ -175,7 +180,7 @@ export const HogStrip = memo(function HogStrip({ hogs, width }: { hogs: readonly
           <Text key={item.hog.pid}>
             {i > 0 ? <Text color={tone.line}>{STRIP_SEP}</Text> : null}
             <Text color={scopeColor(tone, item.hog.scope)}>{item.name}</Text>
-            {item.hog.orphan ? <Text color={tone.error} bold>{' orphan'}</Text> : null}
+            {item.hog.orphan ? <Text color={tone.error} bold>{' orphan'}</Text> : item.hog.stale ? <Text color={tone.activity} bold>{' idle'}</Text> : null}
             <Text color={tone.text}> {item.mem}</Text>
           </Text>
         ))}

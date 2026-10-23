@@ -1,0 +1,17 @@
+{
+  "title": "Copy verdict",
+  "eyebrow": "<Product> · copy sweep · <date>",
+  "lede": "Three independent panels judged every wording change blind. What two of them agreed on is now in the code.",
+  "tldr": [
+    "One line per outcome, in plain words. Numbers come from FINAL.json: use {{total}}, {{unanimous}}, {{split}}, {{round2}}, {{oldKept}}, {{own}}, {{auto}}, {{judged}}."
+  ],
+  "groups": { "q-relational.json": "Relational questions", "ui-dashboard.json": "Dashboard" },
+  "commitsSince": "<sha before the run>",
+  "pages": [
+    { "key": "fixes", "label": "Fixes found", "html": "<h2>Bugs found on the way</h2><ul><li>...</li></ul>" },
+    { "key": "audio", "label": "Audio", "html": "<h2>...</h2>" },
+    { "key": "reset", "label": "Data reset", "html": "<h2>...</h2>" },
+    { "key": "panels", "label": "The panels", "html": "<h2>Who judged and on what evidence</h2>" },
+    { "key": "next", "label": "What is left", "html": "<h2>Not done, and why</h2>" }
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "proposals": "proposals",
+  "panels": ["P1", "P2", "P3"],
+  "sets": [
+    { "name": "q", "label": "Questionnaires", "match": "^q-", "chunk": 170 },
+    { "name": "ui", "label": "App and website", "match": "^ui-", "chunk": 450, "autoHouseRule": true, "skipTests": true, "surface": "screen text" }
+  ],
+  "mustKeep": [
+    { "match": "^q-operational", "surface": "answer option", "keywords": ["significantly", "moderately"] }
+  ],
+  "houseRuleNormalise": [["co-founder", "cofounder"]],
+  "callsSet": "q",
+  "calls": [
+    {
+      "id": "section-names",
+      "title": "Section names",
+      "context": "Names of the four parts, shown as headings and read aloud. Changing them renames identifiers too, which is safe before launch.",
+      "versions": ["Old A · Old B · Old C · Old D", "New A · New B · New C · New D"]
+    },
+    {
+      "id": "preset",
+      "title": "Narrator voice",
+      "context": "The narrator voice setting for reading questions and intros aloud.",
+      "versions": ["current: speed 1.0, stability 0.55, style 0.18", "calm: speed 0.92, stability 0.50, style 0.25", "warm: speed 0.95, stability 0.40, style 0.35", "steady: speed 0.96, stability 0.45, style 0.30"]
+    }
+  ]
+}

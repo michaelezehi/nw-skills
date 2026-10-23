@@ -82,6 +82,7 @@ Several skills point at `~/.claude/skills/unlazy/scripts/gate-check.mjs` and `~/
 
 | Skill | What it does | Origin |
 |---|---|---|
+| [`copy-panel-rewrite`](skills/writing/copy-panel-rewrite/SKILL.md) | Rewrite every string in a product in plain language, then let three blind, research-backed judge panels decide each change (2 of 3 wins, ranking round for splits), apply the verdicts in code and publish a tabbed report. | Original |
 | [`humanizer`](skills/writing/humanizer/SKILL.md) | Rewrite AI-sounding text so it reads like the writer without changing what it says. | Modified from [blader/humanizer](https://github.com/blader/humanizer) |
 | [`rnd`](skills/writing/rnd/SKILL.md) | Create a shareable internal R&D page from a team brief, a votable consensus spec with a participant intro gate (--consensus), a screen-by-screen product build deck... | Original |
 | [`unslop`](skills/writing/unslop/SKILL.md) | Cut AI tells from any writing. | Original |

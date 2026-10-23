@@ -14,7 +14,9 @@ Usage: `/gtm on [repo]`, where `[repo]` is a path, a folder name under your usua
 
 ## 2. Seed `facts.md`
 
-Write `<gtm>/facts.md` (append if it exists): one fact per line, `YYYY-MM-DD · seed · <fact>`, only facts those sources state. Cover: what the product does, who it is for, team, stage, live prices and price ideas, channels, sister products, product terms and banned words. Write "not recorded, use placeholders" for revenue, paying customers, usage, raise, runway and country when nothing states them. Never estimate into this file.
+Write `<gtm>/facts.md` (append if it exists): one fact per line, `YYYY-MM-DD · seed · <fact>`, only facts those sources state. Cover: what the product does, who it is for, team, stage, live prices and price ideas, channels, sister products, product terms and banned words. Write "not recorded, use placeholders" for revenue, paying customers, usage, raise, runway and country when nothing states them and the live read below cannot reach them. Never estimate into this file.
+
+Then read the live backend per `references/live-data.md` and append its `live` block, so every run starts from measured users, paying customers and usage instead of placeholders. Pass the live counts into every brief.
 
 Ask the user only if the product cannot be identified at all.
 

@@ -13,7 +13,7 @@ Sub-commands share context through one folder in the current project, written `<
 
 Inside it:
 
-- `facts.md` holds facts the user stated: stage, metrics, team, prices, the raise, dates. One fact per line, with the date it was recorded and the sub-command that recorded it.
+- `facts.md` holds facts the user stated (stage, metrics, team, prices, the raise, dates) and numbers measured from the live backend per `references/live-data.md`. One fact per line, with the date it was recorded and the sub-command (or `live`) that recorded it.
 - Every other `.md` file is the latest output of one sub-command, named after the upstream skill: `pricing-strategy.md`, `pitch-deck.md`, and so on.
 - Every `.md` output has a matching `.html` report beside it.
 
@@ -32,7 +32,7 @@ When you finish:
 
 ## 2. Missing input
 
-Before you ask anything, read the files under "Reads" and the project's `CLAUDE.md`, and look at the code when the question is about the project itself (prices in config, plan names, what is built). Asking for something already saved or in the repo is the mistake this folder exists to prevent.
+Before you ask anything, read the files under "Reads" and the project's `CLAUDE.md`, and look at the code when the question is about the project itself (prices in config, plan names, what is built). Asking for something already saved or in the repo is the mistake this folder exists to prevent. For users, customers, usage and revenue, try the live backend per `references/live-data.md` first.
 
 If the input is empty and nothing answers the "Needs" line, ask for those items in one message and stop. Say what you did find, so the user knows you looked.
 
@@ -48,7 +48,7 @@ Competitor names, prices, funding rounds, market sizes, benchmarks and dates are
 
 ## 4. Facts about the user's company
 
-Never invent the company's metrics, customers, quotes, testimonials, logos or team. When the output needs one and you don't have it, write a bracketed placeholder that says what goes there, for example `[Quote from a beta user about hours saved per week]`.
+Never invent the company's metrics, customers, quotes, testimonials, logos or team. Numbers measured from the live backend and recorded in `facts.md` as `live` are not invented; use them and cite `facts.md (live)`. When the output needs one and you don't have it, write a bracketed placeholder that says what goes there, for example `[Quote from a beta user about hours saved per week]`.
 
 ## 5. Writing
 

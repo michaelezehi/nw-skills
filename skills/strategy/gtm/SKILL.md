@@ -40,7 +40,7 @@ Then show what `<gtm>/` already holds in this project (per `references/conventio
 ## Every run
 
 1. Resolve `<gtm>` for the current project and read `facts.md` plus the files the sub-command reads.
-2. Look at the project itself before asking anything: `CLAUDE.md`, pricing config, plan names, landing copy.
+2. Look at the project itself before asking anything: `CLAUDE.md`, pricing config, plan names, landing copy. When the run needs company numbers, read them from the live backend per `references/live-data.md` before falling back to placeholders.
 3. Follow the sub-command reference. Search the web for every outside claim.
 4. Save `<gtm>/<skill-name>.md`, append new user-stated facts to `facts.md`.
 5. Write the report JSON per `references/report-spec.md`, have Fable 5.1 design the cover per `references/cover.md`, render HTML and PDF with `scripts/render-report.mjs`, open the PDF.

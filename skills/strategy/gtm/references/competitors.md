@@ -20,7 +20,9 @@ Read `references/conventions.md` and follow it.
 
 ## Instructions
 
-Search the web before you write anything. Then build the matrix:
+Search the web before you write anything. Then build the matrix.
+
+Open the output with a section "What they charge, what we charge", laid out per "Prices are drawn, not written" in `references/report-spec.md`: the answer table, then one price chart per offer with each competitor's total on the buyer's unit, our price today and the price we suggest. The reader should see what we propose to charge before any landscape table.
 
 ### 1. Market landscape
 

@@ -174,6 +174,33 @@ function cards(b) {
     .join('')}</div>`;
 }
 
+// A price comparison drawn as bars on one scale. kind "them" is a competitor (grey),
+// "now" is our price today (outline), "suggest" is the price we recommend (solid).
+// A `low` value draws a range: the bar runs from low to value.
+function bars(b) {
+  const items = b.items || [];
+  const max = Math.max(1, ...items.map((x) => Number(x.value) || 0));
+  const pct = (v) => ((Math.max(0, Number(v) || 0) / max) * 100).toFixed(2);
+  const KIND = { them: 'Them', now: 'Us today', suggest: 'We suggest' };
+  const rowsHtml = items
+    .map((x) => {
+      const kind = KIND[x.kind] ? x.kind : 'them';
+      const left = x.low !== undefined ? pct(x.low) : '0';
+      const width = (Number(pct(x.value)) - Number(left)).toFixed(2);
+      return `<div class="bar-row ${kind}">
+        <div class="bar-label"><span class="bar-kind">${KIND[kind]}</span>${inline(x.label)}</div>
+        <div class="bar-track"><span class="bar-fill" style="left:${left}%;width:${width}%"></span></div>
+        <div class="bar-val">${esc(x.display ?? String(x.value))}</div>
+        ${x.note ? `<div class="bar-note">${inline(x.note)}</div>` : ''}
+      </div>`;
+    })
+    .join('');
+  return `<figure class="bars">
+    ${b.title ? `<figcaption><span class="bar-title">${inline(b.title)}</span>${b.unit ? `<span class="lbl">${esc(b.unit)}</span>` : ''}</figcaption>` : ''}
+    ${rowsHtml}
+  </figure>`;
+}
+
 const BLOCKS = {
   p: (b) => `<p>${inline(b.text)}</p>`,
   list: (b) => rows(b.items),
@@ -195,6 +222,7 @@ const BLOCKS = {
   },
   table,
   cards,
+  bars,
 };
 
 function block(b) {
@@ -416,6 +444,22 @@ const html = `<!doctype html>
   .cards.grid .card ul.rows li:first-child { padding-top:5px; }
   .card ul.rows li:last-child { border-bottom:0; }
   .foot { margin-top:8px; padding-top:8px; border-top:1px solid var(--hair); font-size:12.5px; color:var(--mute); }
+
+  .bars { margin:4px 0 24px; border-top:1px solid var(--ink); break-inside:avoid; }
+  .bars figcaption { display:flex; justify-content:space-between; align-items:baseline; gap:16px; padding:10px 0 4px; }
+  .bar-title { font-weight:600; font-size:14.5px; }
+  .bars figcaption .lbl { margin:0; white-space:nowrap; }
+  .bar-row { display:grid; grid-template-columns:40% 1fr 108px; column-gap:14px; align-items:center; padding:7px 0; border-bottom:1px solid var(--hair); }
+  .bar-label { font-size:13.5px; line-height:1.35; min-width:0; }
+  .bar-kind { display:block; font:400 9.5px/1.4 var(--mono); letter-spacing:.1em; text-transform:uppercase; color:var(--mute); white-space:nowrap; }
+  .bar-track { position:relative; height:14px; border-radius:999px; background:var(--wash); }
+  .bar-fill { position:absolute; top:0; bottom:0; border-radius:999px; min-width:6px; background:#b9b9b6; }
+  .bar-row.now .bar-fill { background:var(--paper); box-shadow:inset 0 0 0 1.5px var(--ink); }
+  .bar-row.suggest .bar-fill { background:var(--ink); }
+  .bar-row.suggest .bar-label, .bar-row.suggest .bar-val { font-weight:600; }
+  .bar-row.suggest .bar-kind { color:var(--ink); }
+  .bar-val { font:500 13.5px/1.3 var(--sans); white-space:nowrap; text-align:right; }
+  .bar-note { grid-column:1 / -1; font-size:12px; color:var(--mute); margin-top:2px; }
 
   .sources ul.rows { max-width:none; font-size:13px; }
   .sources li { display:flex; justify-content:space-between; gap:16px; padding:6px 0; }

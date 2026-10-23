@@ -26,7 +26,7 @@ In 2-3 sentences, give your gut reaction. Is this a real problem worth solving, 
 
 ### 2. The five fatal questions
 
-Answer each honestly:
+Answer each honestly. Lay the answers out per "Prices are drawn, not written" in `references/report-spec.md`: Q1's prices as the answer table plus one price chart per offer (what buyers pay today against our price now and the price we suggest), and Q1 to Q5 as one `Question | Short answer | What it means for us` table. Sources go at the end of the run, not inside the answers.
 
 **Q1: Who is the customer, and would they pay for this today?**
 - Name the specific person (job title, company stage, situation)

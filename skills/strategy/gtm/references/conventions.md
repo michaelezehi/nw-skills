@@ -65,7 +65,7 @@ Follow `~/.claude/skills/unslop/SKILL.md`. The short version:
 
 Every run ends with a black-and-white report, as an HTML page and a PDF to share, opening on a cover designed by Fable 5.1.
 
-1. Write `<gtm>/<skill-name>.report.json` following `references/report-spec.md`. Carry the analysis over faithfully: the verdict, the tables, the tiers, the sources. Do not add claims that are not in the `.md`.
+1. Write `<gtm>/<skill-name>.report.json` following `references/report-spec.md`. Carry the analysis over faithfully: the verdict, the tables, the tiers, the sources. Do not add claims that are not in the `.md`. Every price comparison follows "Prices are drawn, not written" in that file: an answer table plus `bars` charts, never paragraphs of prices.
 2. Dispatch the cover agent per `references/cover.md` (`model: "fable"`), and set `"cover"` in the JSON to its file.
 3. Render:
    ```bash

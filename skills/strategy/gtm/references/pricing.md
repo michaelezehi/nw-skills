@@ -55,6 +55,7 @@ For each tier:
 3-5 competitors' current prices, each with a link to the pricing page and the date checked:
 - Competitor name, price, what's included
 - Where the founder's product should sit relative to each (above, below, between) and why
+- Draw it per "Prices are drawn, not written" in `references/report-spec.md`: one price chart per tier or offer, with the recommended price as the `suggest` bar
 
 ### 4. Unit economics check
 

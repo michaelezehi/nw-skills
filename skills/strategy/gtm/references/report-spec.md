@@ -49,6 +49,19 @@ The page template in `scripts/render-report.mjs` is the house template. Every re
 | `stats` | `items[{value,label}]` | 2 to 6 headline numbers |
 | `table` | `head[]`, `rows[[]]`, `highlight[]` (row indexes) | Scorecards, matrices, comparisons |
 | `cards` | `items[{tag,title,price,meta,points[],foot,target}]` | Tiers, personas, options. `target: true` inverts one card |
+| `bars` | `title`, `unit`, `items[{label,value,display,kind,low,note}]` | Any price comparison. One scale per chart; `value` is a number in `unit`, `display` is the printed price. `kind`: `them` (competitor, grey), `now` (our price today, outline), `suggest` (the price we recommend, solid black). `low` draws a range. Order: competitors high to low, then `now`, then `suggest` last |
+
+## Prices are drawn, not written
+
+A reader must see what we charge against what buyers pay today without reading a paragraph. Wherever a section compares prices (competitors, fatal questions, pricing context, a feature's cost):
+
+1. Open with a short answer `table`: `Offer | They pay today | We charge now | We suggest`, one row per offer. Highlight the offer the run is about.
+2. Then one `bars` chart per offer, on a unit the buyer thinks in: "a year for a 5-recruiter agency", "one person a month", "a year for a company that makes 6 hires". Work the competitor totals out (price x users x 12) so every bar is the same unit.
+3. Any remaining questions go in a `table` of `Question | Short answer | What it means for us`, not in paragraphs.
+4. Links move to `sources`; a `note` under the chart names which figures are third-party or estimates.
+
+Keep table cells short, about 30 characters. The renderer turns a table whose cells run past 60 to 90 characters into stacked prose entries, which is the wall of words this rule exists to stop.
+
 
 ## Icons
 

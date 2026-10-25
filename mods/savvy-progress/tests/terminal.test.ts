@@ -61,7 +61,8 @@ describe('terminal', () => {
     expect((await panel.find({ key: 'crab-a-Build the landing page' }))?.type).toBe('Raster')
     expect((await panel.find({ key: 'line-a-Build the landing page' }))?.type).toBe('Raster')
     expect(await panel.find({ key: 'crab-plan-4' })).toBeDefined()
-    expect(await panel.find({ type: 'Text', text: /^Cost$/ })).toBeDefined()
+    expect(await panel.find({ type: 'Text', text: /^Active$/ })).toBeDefined()
+    expect(await panel.find({ type: 'Text', text: /^Session$/ })).toBeDefined()
   })
 
   test('a pane too narrow to place lists its running agents under the bar', async ($, on) => {

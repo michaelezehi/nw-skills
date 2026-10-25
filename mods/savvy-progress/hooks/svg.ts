@@ -8,7 +8,7 @@ import type { Fill } from './sprites'
 import type { Look } from './terminal'
 
 type Planned = PlannedTask & { n: number }
-type Totals = { cost: number; tokens: number; time: number }
+type Totals = { active: number; session: number; tokens: number; time: number }
 
 // Deterministic noise so the dither does not shimmer between redraws.
 const noise = (x: number, y: number): number => {
@@ -197,7 +197,7 @@ const svg = (W: number, H: number, body: string): string =>
 export const headerSvg = (W: number, title: string, t: Totals, look: Look): string => {
   const s = look.s
   const gap = 6
-  const tw = (W - gap * 2) / 3
+  const tw = (W - gap * 3) / 4
   const top = title ? 28 : 0
   const tile = (i: number, k: string | undefined, v: string) =>
     `<rect class="tile" x="${i * (tw + gap)}" y="${top}" width="${tw}" height="40" rx="8"/>
@@ -207,7 +207,7 @@ export const headerSvg = (W: number, title: string, t: Totals, look: Look): stri
     W,
     headerHeight(title),
     `${title ? `<text class="t" x="0" y="15" font-family="${FONT}" font-size="14" font-weight="600">${xml(fitText(title, 14, W))}</text>` : ''}
-${tile(0, s.cost, '≈' + look.fmtCost(t.cost))}${tile(1, s.tokens, look.fmtTokens(t.tokens))}${tile(2, s.time, look.fmtTime(t.time))}`,
+${tile(0, s.active, '≈' + look.fmtCost(t.active))}${tile(1, s.session, look.fmtCost(t.session))}${tile(2, s.tokens, look.fmtTokens(t.tokens))}${tile(3, s.time, look.fmtTime(t.time))}`,
   )
 }
 
@@ -282,6 +282,6 @@ export const compactSvg = (W: number, list: AgentRun[], planned: Planned[], t: T
     W,
     32,
     `${body}${more ? `<text class="s" x="${x}" y="21" font-family="${FONT}" font-size="12">+${more}</text>` : ''}
-<text class="s" x="${W}" y="21" text-anchor="end" font-family="${FONT}" font-size="12" font-variant-numeric="tabular-nums">≈${look.fmtCost(t.cost)} · ${look.fmtTokens(t.tokens)} · ${look.fmtTime(t.time)}</text>`,
+<text class="s" x="${W}" y="21" text-anchor="end" font-family="${FONT}" font-size="12" font-variant-numeric="tabular-nums">≈${look.fmtCost(t.active)} / ${look.fmtCost(t.session)} · ${look.fmtTokens(t.tokens)} · ${look.fmtTime(t.time)}</text>`,
   )
 }

@@ -8,6 +8,7 @@ import { frameOf, partyFrame, startMotion } from './motion'
 import type { Motion } from './motion'
 import { digestRows } from './summary'
 import { H, agentSvg, compactSvg, headerHeight, headerSvg, plannedSvg, rowSvg } from './svg'
+import { costOf, windowOf } from './pricing'
 import { paneRows, terminalBand, terminalPane } from './terminal'
 import type { Look } from './terminal'
 
@@ -46,7 +47,8 @@ type Lang = 'en' | 'ru'
 const STRINGS = {
   en: {
     pane: 'Agents',
-    cost: 'Cost',
+    active: 'Active',
+    session: 'Session',
     tokens: 'Tokens',
     time: 'Time',
     collapse: 'Collapse',
@@ -75,7 +77,8 @@ const STRINGS = {
   },
   ru: {
     pane: 'Агенты',
-    cost: 'Стоимость',
+    active: 'Активные',
+    session: 'Сессия',
     tokens: 'Токены',
     time: 'Время',
     collapse: 'Свернуть',
@@ -196,39 +199,6 @@ const TIER_MODEL: Record<string, string> = {
   light: 'Opus · low',
 }
 
-// USD per million tokens: input, output, cache read, cache write (5-minute TTL).
-// The engine reports tokens, not money, so the panel's cost is an estimate.
-const PRICES: [RegExp, [number, number, number, number]][] = [
-  [/fable|mythos/, [10, 50, 0.25, 12.5]],
-  [/opus-5-5/, [4, 20, 0.2, 5]],
-  [/opus/, [5, 25, 0.5, 6.25]],
-  [/sonnet/, [2, 10, 0.2, 2.5]],
-  [/haiku/, [1, 5, 0.1, 1.25]],
-]
-
-type Usage = {
-  input_tokens: number
-  output_tokens: number
-  cache_read_input_tokens: number
-  cache_creation_input_tokens: number
-}
-
-const priceOf = (model: string): [number, number, number, number] =>
-  PRICES.find(([re]) => re.test(model.toLowerCase()))?.[1] ?? [4, 20, 0.2, 5]
-
-const costOf = (model: string, u: Usage): number => {
-  const [i, o, r, w] = priceOf(model)
-  return (
-    ((u.input_tokens || 0) * i +
-      (u.output_tokens || 0) * o +
-      (u.cache_read_input_tokens || 0) * r +
-      (u.cache_creation_input_tokens || 0) * w) /
-    1e6
-  )
-}
-
-const windowOf = (model: string): number => (/haiku/i.test(model) ? 200_000 : 1_000_000)
-
 // `savvy-careful`, or `savvy-flow:savvy-careful` when the agents ship in a plugin.
 const tierOf = (type: string): string => {
   const bare = type.replace(/^[^:]*:/, '')
@@ -268,12 +238,24 @@ const plannedOf = (f: Flow | null, list: AgentRun[]): Planned[] => {
   return (f.tasks ?? []).map((t, i) => ({ ...t, n: i + 1 })).filter(t => !started.has(norm(t.title)))
 }
 
-const totals = (list: AgentRun[], at: number) => {
-  const cost = list.reduce((s, a) => s + a.costUsd, 0)
+// `active` is what the running agents have cost so far; `session` is the whole
+// session as /cost totals it, main thread included, or the agents' sum when the
+// host keeps no ledger.
+const totals = (list: AgentRun[], at: number, sessionUsd: number | undefined) => {
+  const active = list.filter(a => a.status === 'running').reduce((s, a) => s + a.costUsd, 0)
+  const session = sessionUsd ?? list.reduce((s, a) => s + a.costUsd, 0)
   const tokens = list.reduce((s, a) => s + a.tokens, 0)
   const start = Math.min(...list.map(a => a.startedAt))
   const end = Math.max(...list.map(a => a.endedAt ?? Math.max(at, a.startedAt)))
-  return { cost, tokens, time: list.length ? end - start : 0 }
+  return { active, session, tokens, time: list.length ? end - start : 0 }
+}
+
+async function sessionCost($: EngineInterface): Promise<number | undefined> {
+  try {
+    return (await $.session.usage()).cost?.usd
+  } catch {
+    return undefined
+  }
 }
 
 const costumeOf = (type: string): string => (type === 'Explore' ? 'explore' : tierOf(type))
@@ -543,7 +525,13 @@ export const register: Register = (on, options) => {
     const result = yield* next(e)
     const agentId = e.agentId
     const usage = result.usage
-    if (!agentId || !usage) return result
+    if (!usage) return result
+    if (!agentId) {
+      // A main-thread request moves only the session total: redraw for it.
+      const at = await $.clock.now()
+      await update($, now, () => at)
+      return result
+    }
 
     const model = usage.model || e.model
     await update($, agents, list =>
@@ -627,7 +615,7 @@ export const register: Register = (on, options) => {
     const running = list.filter(a => a.status === 'running').reverse()
     const finished = list.filter(a => a.status !== 'running').reverse()
     const planned = plannedOf(f, list)
-    const t = totals(list, at)
+    const t = totals(list, at, await sessionCost($))
     // The pane's title says "Agents"; inside, only the flow's own name.
     const title = f && !f.isFinished ? f.title : ''
 
@@ -648,7 +636,7 @@ export const register: Register = (on, options) => {
       />
     )
     const isEmpty = list.length === 0 && planned.length === 0
-    const summary = `≈${fmtCost(t.cost)}, ${fmtTokens(t.tokens)} ${s.tokensWord}, ${fmtTime(t.time)}`
+    const summary = `${s.active} ≈${fmtCost(t.active)}, ${s.session} ${fmtCost(t.session)}, ${fmtTokens(t.tokens)} ${s.tokensWord}, ${fmtTime(t.time)}`
 
     if (e.surface === 'desktop' && 'Svg' in ui) {
       const { Svg } = ui
@@ -757,7 +745,7 @@ export const register: Register = (on, options) => {
           {toggleCompact}
         </Box>
         <Text dimColor>
-          ≈{fmtCost(t.cost)} · {fmtTokens(t.tokens)} {s.tokensWord} · {fmtTime(t.time)}
+          {s.active} ≈{fmtCost(t.active)} · {s.session} {fmtCost(t.session)} · {fmtTokens(t.tokens)} {s.tokensWord} · {fmtTime(t.time)}
         </Text>
         {p.isCompact ? (
           <Text wrap="truncate-end">

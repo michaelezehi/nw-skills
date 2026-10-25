@@ -15,7 +15,7 @@ A Claude Code mod: a progress bar above the prompt and a live panel of subagents
 - `mcp__savvy-progress__progress`: the orchestrator reports the plan, phase and accepted tasks.
 - `mcp__savvy-progress__step`: a worker reports its own steps (`done`, `total`, `note`). A worker that does not report shows its context fill in grey instead. With its last step it can send `summary` and `followUp`; without them the open card is cut from its final report.
 
-Cost is a rough estimate from token counts and a built-in per-model price table (`PRICES` in `hooks/register.tsx`), not a bill.
+The header shows Active, what the running agents have cost so far, and Session, the whole session as `/cost` totals it (main thread included, from `$.session.usage()`). Each agent's own cost is an estimate from its token counts and the per-model list prices in `hooks/pricing.ts`, at the 5-minute cache-write rate.
 
 ## Settings
 

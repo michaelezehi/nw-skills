@@ -400,7 +400,7 @@ export type PaneProps = {
   running: AgentRun[]
   finished: AgentRun[]
   planned: Planned[]
-  totals: { cost: number; tokens: number; time: number }
+  totals: { active: number; session: number; tokens: number; time: number }
   at: number
   frame: number
   columns: number
@@ -512,7 +512,8 @@ export function terminalPane(ui: Ui, p: PaneProps): JSX.Element {
     <Box flexDirection="column">
       {p.title !== '' && <Text bold>{p.title}</Text>}
       <Box flexDirection="row" gap={1}>
-        {tile(ui, 'cost', s.cost ?? 'Cost', `≈${look.fmtCost(p.totals.cost)}`)}
+        {tile(ui, 'active', s.active ?? 'Active', `≈${look.fmtCost(p.totals.active)}`)}
+        {tile(ui, 'session', s.session ?? 'Session', look.fmtCost(p.totals.session))}
         {tile(ui, 'tokens', s.tokens ?? 'Tokens', look.fmtTokens(p.totals.tokens))}
         {tile(ui, 'time', s.time ?? 'Time', look.fmtTime(p.totals.time))}
       </Box>

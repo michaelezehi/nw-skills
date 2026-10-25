@@ -60,8 +60,26 @@ halfway to ask.
 5. Sub-agents never ask for logins. The driver runs step zero before
    dispatching them and tells each one which platforms are ready.
 
+### Logins from your own browser (Brave)
+
+AgentReach copies one site's login from any browser that runs the OpenCLI
+extension (chromewebstore.google.com/detail/opencli/ildkmabpimmkaediidaifkhjpohdnifk).
+It reads only that site's cookies and never changes the source browser.
+With OpenCLI installed in Brave and Brave signed in to X, LinkedIn and
+Instagram, step zero needs no login window:
+
+```bash
+agent-reach browser profiles                  # Brave shows up as a non-dedicated profile
+agent-reach browser use <id>                  # pin Brave as the source
+agent-reach login <channel> --import-existing # copy that site's login, no window
+```
+
+Run `--import-existing` for each platform the preflight lists, then run the
+preflight again. Only when that copies nothing does the login window route
+below apply.
+
 The windows belong to AgentReach's own browser (`~/.agent-reach/browser`),
-not your everyday Chrome. A login there is saved and reused, so later runs
+not your everyday browser. A login there is saved and reused, so later runs
 pass the preflight with no ask. The user logs in themselves; never type a
 password or handle a cookie for them.
 
@@ -96,8 +114,9 @@ are not in the transcript unless spoken. Say so when it matters.
   downloads the audio and transcribes it locally with `whisper-cli` and
   `~/.agent-reach/models/ggml-small.bin`, language auto-detected.
   `WHISPER_MODEL=<path>` overrides the model.
-- Retries once with the user's Chrome cookies when a site wants a login
-  (Instagram often does). No cookies are printed or stored.
+- Retries once with the logins of the user's own browser when a site wants
+  one (Instagram often does): Brave when it is installed, else Chrome;
+  `AGENT_REACH_BROWSER=chrome` overrides. No cookies are printed or stored.
 - Timing: a short YouTube video with subtitles took 34 s; a 90 s reel through
   Whisper took about a minute.
 - Works on every site yt-dlp supports: YouTube, Shorts, Instagram, TikTok, X,

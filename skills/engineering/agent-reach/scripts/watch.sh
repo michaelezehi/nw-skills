@@ -6,12 +6,14 @@
 set -euo pipefail
 URL="${1:?usage: watch.sh URL [OUT_DIR]}"
 OUT="${2:-${TMPDIR:-/tmp}/agent-reach/$(date +%s)}"
+# Browser whose logins yt-dlp borrows when a site wants one: Brave if installed.
+BROWSER="${AGENT_REACH_BROWSER:-$([[ -d "/Applications/Brave Browser.app" ]] && echo brave || echo chrome)}"
 MODEL="${WHISPER_MODEL:-$HOME/.agent-reach/models/ggml-small.bin}"
 mkdir -p "$OUT"
 
 ytdlp() {
   yt-dlp -q --no-warnings "$@" "$URL" 2>"$OUT/err.txt" ||
-    yt-dlp -q --no-warnings --cookies-from-browser chrome "$@" "$URL" 2>>"$OUT/err.txt"
+    yt-dlp -q --no-warnings --cookies-from-browser "$BROWSER" "$@" "$URL" 2>>"$OUT/err.txt"
 }
 
 ytdlp --dump-single-json > "$OUT/meta.json" || { cat "$OUT/err.txt" >&2; exit 1; }

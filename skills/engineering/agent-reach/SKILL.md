@@ -27,6 +27,46 @@ installed locally (see Upkeep for a fresh machine):
 `~/.agents/skills/agent-reach/` (`references/capabilities.md`, `sessions.md`,
 `maintenance.md`). Read those when a channel needs login or breaks.
 
+## Step zero: ask for the accounts first
+
+Before any run that gathers data from X, LinkedIn, Instagram or Facebook
+(research, lead or competitor scans, a list of links, a skill that fans out
+agents), ask for every login the run needs once, up front, so it never stops
+halfway to ask.
+
+1. List the platforms the run will touch: the links given plus the platforms
+   the task names.
+2. Run the preflight (3 to 7 s per platform, in parallel):
+
+   ```bash
+   python3 ~/.claude/skills/agent-reach/scripts/preflight.py <platforms or urls>
+   python3 ~/.claude/skills/agent-reach/scripts/preflight.py --all   # every login platform
+   ```
+
+   It prints `ready` or `needs login` per platform and exits 0 (all ready),
+   2 (logins needed) or 1 (a platform is broken).
+3. Exit 2: run it again with `--open`, which opens one AgentReach login window
+   per platform. Then end the turn with one callout built from the `ASK:` line:
+
+   `> [!ACTION] Log into your X, LinkedIn and Instagram in the AgentReach browser windows, then tell me when you're done.`
+
+   Gather nothing behind a login until the user answers. Public parts of the
+   run (YouTube, web pages, GitHub) may start meanwhile.
+4. The user says done: run the preflight again. Platforms still not ready get
+   one more ask; after that, carry on without them and say which ones are
+   missing and what that leaves out.
+5. Sub-agents never ask for logins. The driver runs step zero before
+   dispatching them and tells each one which platforms are ready.
+
+The windows belong to AgentReach's own browser (`~/.agent-reach/browser`),
+not your everyday Chrome. A login there is saved and reused, so later runs
+pass the preflight with no ask. The user logs in themselves; never type a
+password or handle a cookie for them.
+
+YouTube, GitHub, Reddit, web pages and public videos through `watch.sh` need
+no login, and the preflight says so. `watch.sh` reuses your everyday Chrome
+cookies on its own when a video wants a login.
+
 ## Rule: never stop at "I can't see it"
 
 When a link is given and WebFetch fails, returns a login page, or has no body:
@@ -85,7 +125,7 @@ follow `error.hint`.
 | web | search, read | no |
 | youtube | read, search, subtitle | no (`transcribe` needs a Groq key; use `watch.sh` instead) |
 | github | search, read | no |
-| reddit | search, read, subreddit | no |
+| reddit | search, read, subreddit | no (left un-added: its browser route returned UPSTREAM_BROKEN on 25 Oct, the public route works) |
 | twitter | search, profile, tweets, thread | `agent-reach login twitter` for full search |
 | instagram | search, profile, posts | `agent-reach login instagram` |
 | facebook | search, profile | `agent-reach login facebook` |

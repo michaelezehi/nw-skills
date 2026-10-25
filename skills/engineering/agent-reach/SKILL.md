@@ -45,10 +45,12 @@ halfway to ask.
 
    It prints `ready` or `needs login` per platform and exits 0 (all ready),
    2 (logins needed) or 1 (a platform is broken).
-3. Exit 2: run it again with `--open`, which opens one AgentReach login window
-   per platform. Then end the turn with one callout built from the `ASK:` line:
+3. Exit 2: run it again with `--open`. AgentReach allows one login window at a
+   time, and all platforms share its one browser, so it opens a single window
+   on the first platform and prints a login link for each. Then end the turn
+   with one callout built from the `ASK:` line, links in the body:
 
-   `> [!ACTION] Log into your X, LinkedIn and Instagram in the AgentReach browser windows, then tell me when you're done.`
+   `> [!ACTION] Log into your X, LinkedIn and Instagram in the AgentReach browser window (one new tab per site), then tell me when you're done.`
 
    Gather nothing behind a login until the user answers. Public parts of the
    run (YouTube, web pages, GitHub) may start meanwhile.

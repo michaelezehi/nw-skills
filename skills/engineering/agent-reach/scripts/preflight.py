@@ -7,8 +7,8 @@
 
 Runs `agent-reach check` on each platform (3 to 7 s each, in parallel) and
 prints which are ready and which need the user to log in. With --open it also
-opens the AgentReach login window for every platform that needs one, so the
-user logs in to all of them in one go.
+opens the one AgentReach login window, and the user signs in to every
+platform that needs it there, one tab per site.
 
 Exit code: 0 all ready, 2 some need a login, 1 something else failed.
 """
@@ -24,6 +24,10 @@ AGENT_REACH = os.path.expanduser("~/.local/bin/agent-reach")
 LOGIN_CHANNELS = ["twitter", "linkedin", "instagram", "facebook"]
 LABELS = {"twitter": "X", "linkedin": "LinkedIn", "instagram": "Instagram",
           "facebook": "Facebook"}
+LOGIN_URLS = {"twitter": "https://x.com/login",
+              "linkedin": "https://www.linkedin.com/login",
+              "instagram": "https://www.instagram.com/accounts/login/",
+              "facebook": "https://www.facebook.com/login"}
 ALIASES = {
     "x": "twitter", "twitter": "twitter", "x.com": "twitter", "twitter.com": "twitter",
     "linkedin": "linkedin", "linkedin.com": "linkedin", "lnkd.in": "linkedin",
@@ -102,21 +106,28 @@ def main(argv):
         mark = {"ready": "ready", "login": "needs login"}.get(state, "problem")
         print(f"{LABELS[ch]:<10} {mark:<12} {detail.splitlines()[0] if detail else ''}".rstrip())
 
+    # AgentReach allows one login window at a time, and every platform shares
+    # its one browser profile, so one window takes every login: the first
+    # platform's page opens, the rest go in new tabs of that window.
+    window = False
     if need and opening:
-        for ch in need:
-            res = run("login", ch, timeout=180)
-            if not res.get("ok"):
-                print(f"could not open the {LABELS[ch]} login window: "
-                      f"{(res.get('error') or {}).get('message', '')}")
-        print("\nOpened login windows for: " + ", ".join(LABELS[c] for c in need))
+        res = run("login", need[0], timeout=180)
+        busy = (res.get("error") or {}).get("code") == "BUSY"
+        window = bool(res.get("ok")) or busy
+        if not window:
+            print(f"could not open the login window: {(res.get('error') or {}).get('message', '')}")
 
     if need:
         names = [LABELS[c] for c in need]
         joined = names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
-        print(f"\nASK: Log into your {joined} in the AgentReach browser window"
-              f"{'s' if len(names) > 1 else ''}, then tell me when you're done.")
-        if not opening:
-            print("Open the windows with: " + " && ".join(f"agent-reach login {c}" for c in need))
+        if window:
+            print(f"\nAgentReach login window is open on {names[0]}.")
+        print(f"\nASK: Log into your {joined} in the AgentReach browser window "
+              f"(one new tab per site), then tell me when you're done.")
+        for ch in need:
+            print(f"  {LABELS[ch]}: {LOGIN_URLS[ch]}")
+        if not window:
+            print(f"Open the window with: agent-reach login {need[0]}")
         return 2
     return 1 if any(s == "error" for s, _ in states.values()) else 0
 

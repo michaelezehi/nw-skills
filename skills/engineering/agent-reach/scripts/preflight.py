@@ -64,7 +64,8 @@ def run(*args, timeout=120):
 def check(ch):
     """Return (state, detail): ready, login, not_added or error."""
     try:
-        d = run("check", ch)
+        # Four checks queue behind one cold browser start; 120 s was too short.
+        d = run("check", ch, timeout=300)
     except subprocess.TimeoutExpired:
         return "error", "check timed out"
     results = d.get("results") or []

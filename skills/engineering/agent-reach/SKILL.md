@@ -164,7 +164,7 @@ Measured on 25 Oct 2026: `read` on YouTube and GitHub returned full text;
 | `NEED_LOGIN` | Keep what you have. Tell the user to run `! agent-reach login <channel>` and log in themselves |
 | `NEED_SETUP` | Run the hinted `agent-reach add <channel>`. A key goes in via `agent-reach configure <key>`, which the user runs |
 | `RATE_LIMITED`, `PLATFORM_BLOCKED`, `BUSY` | Stop. Don't switch backends or retry in a loop |
-| `UPSTREAM_BROKEN` | Ask before running `agent-reach update` once |
+| `UPSTREAM_BROKEN` | Tell the user which platform is down. Update only on purpose (see Upkeep) |
 | `BAD_INPUT` | Check `agent-reach channels` |
 
 ## Red lines
@@ -181,9 +181,16 @@ Measured on 25 Oct 2026: `read` on YouTube and GitHub returned full text;
 
 - `brew upgrade yt-dlp` when a site starts failing; sites change often and an
   8-month-old yt-dlp failed on Instagram until it was updated.
-- `agent-reach update` updates the CLI (ask first).
+- Pin Agent Reach to a version you have audited and install it from a local
+  copy, so it cannot update itself; `agent-reach update` pulls whatever
+  GitHub's latest release is. Point its browser at an installed Google Chrome
+  that updates itself: the free CloakBrowser build lags Chrome by months.
+  Run `agent-reach browser stop` when a session is done, because its CDP port
+  and daemon on localhost have no auth.
+- The preflight takes about 2 minutes when its browser starts cold, and a
+  few seconds once it is running.
 - Missing pieces on a new machine: `brew install yt-dlp ffmpeg whisper-cpp`,
-  `uv tool install https://github.com/Panniantong/Agent-Reach/releases/latest/download/agent-reach.zip && agent-reach setup`,
+  `uv tool install --force <your pinned copy> && agent-reach setup` (from the GitHub release, never PyPI),
   and the model:
   `curl -L -o ~/.agent-reach/models/ggml-small.bin https://huggingface.co/ggerganov/whisper.cpp/resolve/main/ggml-small.bin`.
   Never install `agent-reach` from PyPI: that package is a different project.

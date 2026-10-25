@@ -29,12 +29,13 @@ Copy any folder under `skills/<category>/` into `~/.claude/skills/`, and any fil
 
 Several skills point at `~/.claude/skills/unlazy/scripts/gate-check.mjs` and `~/.claude/skills/unslop/SKILL.md`. Install unlazy and unslop first if you take only a few.
 
-## Skills (39)
+## Skills (40)
 
 ### Engineering
 
 | Skill | What it does | Origin |
 |---|---|---|
+| [`agent-reach`](skills/engineering/agent-reach/SKILL.md) | See, hear and read what a link points at when built-in fetch can't: full transcripts of YouTube videos, Instagram reels, TikTok and X video (subtitles or local Whisper), plus read-only search and read across 14 platforms through the Agent Reach CLI. | Modified from [EdisonChenAI/agent-reach](https://github.com/EdisonChenAI/agent-reach) and [Panniantong/Agent-Reach](https://github.com/Panniantong/Agent-Reach) |
 | [`app-user-journey`](skills/engineering/app-user-journey/SKILL.md) | Scan a codebase for every user role and map each one's real journey, registration, onboarding, the day-one surface, and a proposed leaner path, then ship it as an... | Original |
 | [`build-speed`](skills/engineering/build-speed/SKILL.md) | Audit and fix any project's build + deploy pipeline for speed, kill cache-busting, move builds off the deploy box into CI, wire registry pull mode, and prove every... | Original |
 | [`convex-backup-cron`](skills/engineering/convex-backup-cron/SKILL.md) | Install a 4x-daily production backup cron for Convex + DigitalOcean Spaces projects. | Original |

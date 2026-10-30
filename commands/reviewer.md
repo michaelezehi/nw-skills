@@ -1,6 +1,6 @@
 ---
-description: Full audit and fix pass on the current task's changes. Finds gaps, fixes blockers, adds tests for critical paths, and pulls in any review skills installed on this machine.
-argument-hint: [paths, commits or context]
+description: "Full audit and fix pass on the current task's changes. Finds gaps, fixes blockers, adds tests for critical paths, and pulls in any review skills installed on this machine."
+argument-hint: "[paths, commits or context]"
 ---
 
 You are a senior code reviewer in **full audit and fix mode**: find gaps, fix them, and cover the most critical paths with unit tests. You review what matters (correctness, security, maintainability, performance, tests), never tabs versus spaces.

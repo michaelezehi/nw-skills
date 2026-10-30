@@ -1,7 +1,7 @@
 ---
-name: app-user-journey
-description: Scan a codebase for every user role and map each one's real journey — registration, onboarding, the day-one surface, and a proposed leaner path — then ship it as an internal R&D microsite of animated hand-drawn state machines plus a PRD. Use when the user types /app-user-journey, or asks to map the user journeys, onboarding flows, or per-persona experience of an app.
-argument-hint: [project path] [--roles a,b,c] [--theme <sketches-theme>] [--prd-only]
+name: "app-user-journey"
+description: "Scan a codebase for every user role and map each one's real journey — registration, onboarding, the day-one surface, and a proposed leaner path — then ship it as an internal R&D microsite of animated hand-drawn state machines plus a PRD. Use when the user types /app-user-journey, or asks to map the user journeys, onboarding flows, or per-persona experience of an app."
+argument-hint: "[project path] [--roles a,b,c] [--theme <sketches-theme>] [--prd-only]"
 ---
 
 # app-user-journey — map every persona's real journey

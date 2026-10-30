@@ -1,7 +1,7 @@
 ---
-name: prd-ch
-description: Create a PRD fast and well — sized to the feature (S/M/L), parallel investigation via Explore agents, one write per file, no plan-mode round-trip. Writes INVESTIGATION.md, FILES.md, PRD.md (+ PRD.html with --html) and ACCOUNTABILITY.md.
-argument-hint: [feature] [--size S|M|L] [--html] [--teams|--worktree]
+name: "prd-ch"
+description: "Create a PRD fast and well — sized to the feature (S/M/L), parallel investigation via Explore agents, one write per file, no plan-mode round-trip. Writes INVESTIGATION.md, FILES.md, PRD.md (+ PRD.html with --html) and ACCOUNTABILITY.md."
+argument-hint: "[feature] [--size S|M|L] [--html] [--teams|--worktree]"
 ---
 # PRD Creation
 

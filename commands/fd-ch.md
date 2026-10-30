@@ -1,7 +1,7 @@
 ---
-name: fd-ch
-description: Frontend design with handoff continuity — runs the merged frontend-design skill (Emil motion + anti-slop + Impeccable craft floor) with reconnaissance, a quality gate, and an accountability record.
-argument-hint: [design task] [--image /path/to/ref.png]
+name: "fd-ch"
+description: "Frontend design with handoff continuity — runs the merged frontend-design skill (Emil motion + anti-slop + Impeccable craft floor) with reconnaissance, a quality gate, and an accountability record."
+argument-hint: "[design task] [--image /path/to/ref.png]"
 ---
 # Frontend Design + Handoff Mode
 

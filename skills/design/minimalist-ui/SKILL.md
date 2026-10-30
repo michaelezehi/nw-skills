@@ -1,6 +1,6 @@
 ---
-name: minimalist-ui
-description: OPT-IN STYLE PRESET — use ONLY when the user explicitly asks for a minimalist / Notion-like / warm-monochrome editorial look, or names this skill. Never apply to an existing app that already has design tokens. Clean editorial interfaces: warm monochrome palette, typographic contrast, flat bento grids, muted pastels, no gradients or heavy shadows.
+name: "minimalist-ui"
+description: "OPT-IN STYLE PRESET — use ONLY when the user explicitly asks for a minimalist / Notion-like / warm-monochrome editorial look, or names this skill. Never apply to an existing app that already has design tokens. Clean editorial interfaces: warm monochrome palette, typographic contrast, flat bento grids, muted pastels, no gradients or heavy shadows."
 disable-model-invocation: true
 ---
 

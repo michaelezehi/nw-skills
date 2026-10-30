@@ -1,6 +1,6 @@
 ---
-name: design-taste-frontend
-description: Anti-slop frontend rules for LANDING PAGES, PORTFOLIOS, and MARKETING REDESIGNS: reads the brief, infers direction, ships interfaces that do not look templated, with a strict mechanical pre-flight (§14). Use when building or redesigning a marketing/landing/portfolio surface, or when frontend-design routes here. For product/app UI use frontend-design + impeccable instead.
+name: "design-taste-frontend"
+description: "Anti-slop frontend rules for LANDING PAGES, PORTFOLIOS, and MARKETING REDESIGNS: reads the brief, infers direction, ships interfaces that do not look templated, with a strict mechanical pre-flight (§14). Use when building or redesigning a marketing/landing/portfolio surface, or when frontend-design routes here. For product/app UI use frontend-design + impeccable instead."
 ---
 
 # tasteskill: Anti-Slop Frontend Skill

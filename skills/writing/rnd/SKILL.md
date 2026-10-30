@@ -1,7 +1,7 @@
 ---
-name: rnd
-description: Create a shareable internal R&D page from a team brief — a votable consensus spec with a participant intro gate (--consensus), a screen-by-screen product build deck (--product), or an interactive demo carousel (--demo). On a React/Next host the output is REAL ROUTES inside the public-facing app (app/rnd/…), not static HTML; every wireframe is drawn with the Sketches skill; consensus votes are shared live via Convex. A PRD document with no flag defaults to --demo. Use when the user wants an R&D page, living spec, consensus or sign-off page, build deck, or interactive design demo, or hands over a PRD to visualise.
-argument-hint: [--consensus | --product | --demo] <brief path | topic | participants>
+name: "rnd"
+description: "Create a shareable internal R&D page from a team brief — a votable consensus spec with a participant intro gate (--consensus), a screen-by-screen product build deck (--product), or an interactive demo carousel (--demo). On a React/Next host the output is REAL ROUTES inside the public-facing app (app/rnd/…), not static HTML; every wireframe is drawn with the Sketches skill; consensus votes are shared live via Convex. A PRD document with no flag defaults to --demo. Use when the user wants an R&D page, living spec, consensus or sign-off page, build deck, or interactive design demo, or hands over a PRD to visualise."
+argument-hint: "[--consensus | --product | --demo] <brief path | topic | participants>"
 ---
 # rnd — R&D pages from team briefs
 

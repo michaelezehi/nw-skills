@@ -1,6 +1,6 @@
 ---
-name: image-to-code
-description: Alias for imagegen-frontend-web (image-first web flow: generate section images, then code them). Use when the user says image-to-code.
+name: "image-to-code"
+description: "Alias for imagegen-frontend-web (image-first web flow: generate section images, then code them). Use when the user says image-to-code."
 ---
 
 # image-to-code

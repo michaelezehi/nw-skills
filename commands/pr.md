@@ -1,7 +1,7 @@
 ---
-name: pr
-description: Review PR comments from AI agents and code reviewers, fix issues, and reply to every actionable comment
-argument-hint: [PR number or URL]
+name: "pr"
+description: "Review PR comments from AI agents and code reviewers, fix issues, and reply to every actionable comment"
+argument-hint: "[PR number or URL]"
 ---
 
 # PR Review & Fix Mode

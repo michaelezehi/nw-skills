@@ -9,6 +9,7 @@ import type { Motion } from './motion'
 import { digestRows } from './summary'
 import { H, agentSvg, compactSvg, headerHeight, headerSvg, plannedSvg, rowSvg } from './svg'
 import { costOf, windowOf } from './pricing'
+import { filesUnder, keepFilesShut, noteFiles } from './files'
 import { paneRows, terminalBand, terminalPane } from './terminal'
 import type { Look } from './terminal'
 
@@ -602,7 +603,15 @@ export const register: Register = (on, options) => {
     return result
   })
 
-  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
+  on('tool.call', async ($, e, next) => {
+    const result = await next(e)
+    void noteFiles($, e, result)
+    return result
+  })
+
+  on('ui.open', async ($, e, next) => ((await keepFilesShut($, next.origin.plugin, e.focus, PANE)) ? undefined : next(e)))
+
+  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => filesUnder($, e, await (async () => {
     const s = tr()
     const ui = $.ui.resolve(e)
     const { Box, Text, Button } = ui
@@ -787,7 +796,7 @@ export const register: Register = (on, options) => {
         )}
       </Box>
     )
-  })
+  })()))
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const f = await read($, flow)

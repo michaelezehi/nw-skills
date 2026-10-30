@@ -53,6 +53,24 @@ export type Panel = {
   expanded: string[]
 }
 
+/** One file read, written or git action, as the strip under the agents lists it. */
+export type FileTouch = {
+  id: number
+  kind: 'read' | 'write' | 'git' | 'failed'
+  text: string
+  at: number
+}
+
+export type FilesStrip = {
+  log: FileTouch[]
+  lastAt: number
+  /** Kept open and taller until pressed again. */
+  more: boolean
+  /** The last touch when the person hid the strip; a newer one opens it again. */
+  dismissedId: number
+  tick: number
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'savvy-progress': {
@@ -60,6 +78,7 @@ declare module 'claude-code' {
       agents: AgentRun[]
       panel: Panel
       now: number
+      files: FilesStrip
     }
   }
 }

@@ -1,7 +1,7 @@
 ---
-name: project-optimisation
-description: Find and fix why a JS/TS monorepo is slow, from the dev machine to what users download. Measures first (dev server RSS, orphaned processes, dev caches, local backend storage, first-load JS per route), fans out one investigator per cause, fixes in parallel with owned paths, re-measures with the same script, then ships through staging. Built on a Next.js + Turbopack + Convex + pnpm/turbo monorepo; the checks carry to any similar stack. Use when the user says /project-optimisation, "the app hogs memory", "dev is slow", "next-server is using GBs", "make it faster", "optimise the project", or "why is the bundle so big".
-argument-hint: [scope: dev | prod | convex | all] (no args = all)
+name: "project-optimisation"
+description: "Find and fix why a JS/TS monorepo is slow, from the dev machine to what users download. Measures first (dev server RSS, orphaned processes, dev caches, local backend storage, first-load JS per route), fans out one investigator per cause, fixes in parallel with owned paths, re-measures with the same script, then ships through staging. Built on a Next.js + Turbopack + Convex + pnpm/turbo monorepo; the checks carry to any similar stack. Use when the user says /project-optimisation, \"the app hogs memory\", \"dev is slow\", \"next-server is using GBs\", \"make it faster\", \"optimise the project\", or \"why is the bundle so big\"."
+argument-hint: "[scope: dev | prod | convex | all] (no args = all)"
 ---
 
 # project-optimisation

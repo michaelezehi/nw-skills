@@ -1,7 +1,7 @@
 ---
-name: research
-description: Deep research on any topic — produces RESEARCH.md with verified findings, source hierarchy, and confidence levels
-argument-hint: [topic or question]
+name: "research"
+description: "Deep research on any topic — produces RESEARCH.md with verified findings, source hierarchy, and confidence levels"
+argument-hint: "[topic or question]"
 ---
 # Deep Research Mode
 

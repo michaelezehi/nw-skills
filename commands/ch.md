@@ -1,7 +1,7 @@
 ---
-name: ch
-description: Enable handoff continuity mode for this session
-argument-hint: [task]
+name: "ch"
+description: "Enable handoff continuity mode for this session"
+argument-hint: "[task]"
 ---
 
 # Handoff Continuity Mode

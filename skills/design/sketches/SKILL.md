@@ -1,7 +1,7 @@
 ---
-name: sketches
-description: Hand-drawn SVG sketch/doodle system with a growing, brand-themeable repertoire. Use when the user says "Sketches" (e.g. "Sketches for this page", "add sketches here", "sketch these items") or wants doodle icons/wireframe illustrations on a deck, page, or report. Reuses an existing sketch when one fits, draws a new one in the house style when none does, and always adds new ones back to the repertoire.
-argument-hint: [theme] item1, item2, ... | get <name> | find <words>
+name: "sketches"
+description: "Hand-drawn SVG sketch/doodle system with a growing, brand-themeable repertoire. Use when the user says \"Sketches\" (e.g. \"Sketches for this page\", \"add sketches here\", \"sketch these items\") or wants doodle icons/wireframe illustrations on a deck, page, or report. Reuses an existing sketch when one fits, draws a new one in the house style when none does, and always adds new ones back to the repertoire."
+argument-hint: "[theme] item1, item2, ... | get <name> | find <words>"
 ---
 
 # Sketches

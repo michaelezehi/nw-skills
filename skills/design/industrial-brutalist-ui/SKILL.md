@@ -1,6 +1,6 @@
 ---
-name: industrial-brutalist-ui
-description: OPT-IN STYLE PRESET — use ONLY when the user explicitly asks for brutalist / industrial / Swiss-print / terminal aesthetics, or names this skill. Never apply to an existing app that already has design tokens. Raw mechanical interfaces: rigid grids, extreme type-scale contrast, utilitarian color, analog degradation effects.
+name: "industrial-brutalist-ui"
+description: "OPT-IN STYLE PRESET — use ONLY when the user explicitly asks for brutalist / industrial / Swiss-print / terminal aesthetics, or names this skill. Never apply to an existing app that already has design tokens. Raw mechanical interfaces: rigid grids, extreme type-scale contrast, utilitarian color, analog degradation effects."
 disable-model-invocation: true
 ---
 

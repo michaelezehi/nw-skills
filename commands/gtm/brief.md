@@ -1,5 +1,5 @@
 ---
-description: Writes the product brief: problem, audience, value proposition, 5 to 7 features, 90-day metrics and risks and hands back a PDF report
+description: "Writes the product brief: problem, audience, value proposition, 5 to 7 features, 90-day metrics and risks and hands back a PDF report"
 argument-hint: "[the product and who it is for]"
 ---
 

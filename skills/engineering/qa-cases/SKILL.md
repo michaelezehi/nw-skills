@@ -1,7 +1,7 @@
 ---
-name: qa-cases
-description: Generate a shareable QA test case .md document for the current project. Investigates the codebase (and any provided screenshots) to map every user-facing surface, then writes one test plan grouped by user journey. Default output is high-level and grouped by page; pass `-v` for a verbose, atomic Given/When/Then plan. Use when the user asks for a QA test plan, test cases for QA, or a regression checklist.
-argument-hint: [focus] [-v]
+name: "qa-cases"
+description: "Generate a shareable QA test case .md document for the current project. Investigates the codebase (and any provided screenshots) to map every user-facing surface, then writes one test plan grouped by user journey. Default output is high-level and grouped by page; pass `-v` for a verbose, atomic Given/When/Then plan. Use when the user asks for a QA test plan, test cases for QA, or a regression checklist."
+argument-hint: "[focus] [-v]"
 ---
 # /qa-cases — Generate a QA test case document
 

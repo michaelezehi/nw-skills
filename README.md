@@ -118,7 +118,7 @@ claude plugin install savvy-progress@nw-skills
 
 | Mod | What it does | Origin |
 |---|---|---|
-| [`savvy-progress`](mods/savvy-progress/README.md) | Progress bar above the prompt and an agents panel (`/agents-info`) with each subagent's model, context, cost and time. Draws in 24-bit colour in any truecolor terminal (Warp, iTerm2, Ghostty, WezTerm, kitty) as well as on the desktop. | Modified from [johnnyvizz/claude-kit](https://github.com/johnnyvizz/claude-kit) |
+| [`savvy-progress`](mods/savvy-progress/README.md) | Progress bar above the prompt and an agents panel (`/agents-info`) with each subagent's model, context, cost and time, and a strip of recent file activity that closes itself. Draws in 24-bit colour in any truecolor terminal (Warp, iTerm2, Ghostty, WezTerm, kitty) as well as on the desktop. | Modified from [johnnyvizz/claude-kit](https://github.com/johnnyvizz/claude-kit) |
 | [`agent-bar`](mods/agent-bar/hooks/register.tsx) | Turns the savvy-progress bar on for every task: todos, tasks and subagent launches become its rows. Steps aside when a skill reports its own plan. Needs `savvy-progress`. | Original |
 | [`guard-rails`](mods/guard-rails/hooks/register.tsx) | Denies git commands that sweep other agents' work (`git add -A`, `commit -a`, stash, reset, clean, restore, checkout) and dashes in commit or PR text. | Original |
 | [`session-pane`](mods/session-pane/hooks/register.tsx) | `/session-pane` opens a pane with the files changed this session as a tree and the latest 50 tool calls. | Original |

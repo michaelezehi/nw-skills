@@ -1,13 +1,13 @@
 ---
 name: qa-cases
-description: Generate a shareable QA test case .md document for the current project. Investigates the codebase (and any provided screenshots) to map every user-facing surface, then writes one test plan grouped by user journey. Default output is high-level and grouped by page; pass `-v` for a verbose, atomic Given/When/Then plan. Use when the user asks for a QA test plan, test cases for QA, or a regression checklist.
+description: Generate a shareable QA test case .md document for the current project. Investigates the codebase (and any provided screenshots) to map every user-facing surface, then writes one test plan per app variant (web, mobile, each separately deployed app), grouped by user journey. Default output is high-level and grouped by page; pass `-v` for a verbose, atomic Given/When/Then plan. Use when the user asks for a QA test plan, test cases for QA, or a regression checklist.
 argument-hint: [focus] [-v]
 ---
 # /qa-cases — Generate a QA test case document
 
 **Progress panel:** on by default. Before planning, follow `~/.claude/references/progress-panel.md`: load the savvy-progress tools if not loaded, then report this run's steps and sub-agents to the bar. If a bar is already running, carry on with it: add your rows, no second bar, no duplicate rows.
 
-Use when the user asks for a QA test plan, test cases for handoff to QA, a regression checklist, or screenshots-to-tests. Output is **one** shareable `QA-TEST-CASES.md` file.
+Use when the user asks for a QA test plan, test cases for handoff to QA, a regression checklist, or screenshots-to-tests. Output is **one shareable file per app variant** (see **Split by app variant**). A project with a single variant gets one `QA-TEST-CASES.md`.
 
 ## Modes
 
@@ -17,6 +17,18 @@ There are two output modes. Detect at the start and stay consistent throughout t
 - **Verbose — atomic (`-v`).** One ticket per area with numbered Given/When/Then test cases — one assertion per case. Written for a tester who works through it case by case, so every assertion is spelled out.
 
 If the user explicitly asks for detailed/granular/atomic test cases without typing `-v`, treat that as verbose mode. If the user says "high-level", "group it", "keep it concise", or doesn't specify, use default mode.
+
+## Split by app variant
+
+A tester opens one app at a time. A plan that mixes apps leaves them unsure which one a check belongs to, so the output is broken down by variant, always, without being asked.
+
+- **A variant** is an app that is built, deployed or installed on its own: for example the ATS web app, the HR web app, the HR mobile app. In a monorepo, start from `apps/*` and the deploy targets. A native mobile app is always its own variant, separate from the web app it talks to. A phone browser on a responsive web page is not a variant; it stays in the web file's device matrix.
+- **Small satellites** (a browser extension, the marketing site, a white-label host) go in the file of the team that tests them. Name them in that file's Scope line.
+- **One file per variant:** `QA-<VARIANT>.md` (for example `QA-ATS.md`, `QA-HR.md`, `QA-HR-MOBILE.md`), all in the same output folder. Only one variant: `QA-TEST-CASES.md`.
+- **One variant per ticket.** A journey that crosses apps (a prompt on web and a push on mobile, a delete on mobile checked on web) becomes one ticket per variant. Each one says where the other side is tested, for example "The web side is QA-HR-FORCED in the HR document."
+- **Ticket IDs carry the variant** (`QA-ATS-…`, `QA-HR-…`, `QA-MOB-…`), so an ID never repeats across files.
+- **Each file stands alone:** its own Scope line naming the app and pointing to the sibling files, its own before-you-start (only the builds, data jobs and settings that variant needs), accounts, ticket index, out of scope and bug template. The mobile bug template asks for the device, OS and app build, not a browser.
+- **Mobile needs a build note:** say which build (at or after which commit) QA must install, because native changes only arrive with a fresh build.
 
 ## When to use
 
@@ -48,7 +60,7 @@ Run:
 mkdir -p "_r&d/qa/<slug>/$(date +%m-%d)/$(date +%H-%M)"
 ```
 
-Where `<slug>` is a kebab-case summary of the focus (or `full-app` if none). The final file is `_r&d/qa/<slug>/<MM-DD>/<HH-MM>/QA-TEST-CASES.md`.
+Where `<slug>` is a kebab-case summary of the focus (or `full-app` if none). The files are `_r&d/qa/<slug>/<MM-DD>/<HH-MM>/QA-<VARIANT>.md`, one per app variant, or a single `QA-TEST-CASES.md` when the project has only one.
 
 If the project has no `_r&d/` directory, fall back to `docs/qa/`.
 
@@ -92,7 +104,7 @@ Pick the template that matches the mode (see **Output structure** below).
 
 Defaults that apply to both modes:
 
-- **One ticket per user journey or area.** Web and mobile tested together unless behaviour diverges — call out divergences inline.
+- **One ticket per user journey or area, within one variant.** Desktop and phone browsers on the same web app are tested together unless behaviour diverges; call out divergences inline. A native app is a separate variant and file.
 - **Pre-conditions, pass criteria, priority** on every ticket. Assign priority by risk (impact × likelihood): auth, payments, and data-loss journeys, plus areas adjacent to recent changes, rank highest.
 - **Default device matrix and test data accounts** defined once at the top, reused throughout.
 - **Path reference table** at the top — pathnames only, no domain.
@@ -110,6 +122,7 @@ Before reporting done, verify:
 - No "AI" or banned project-specific terms in the document itself.
 - All URLs are pathnames only — no domain references.
 - The depth matches the mode: default reads as journeys, `-v` as one assertion per case.
+- There is one file per app variant, no ticket covers two variants, and each file's Scope line names only its own app.
 
 ## Output structure — default (high-level)
 
@@ -293,7 +306,7 @@ If `CLAUDE.md` defines banned terms or canonical strings, cover them in the plan
 
 ## Reporting back
 
-When done, output one sentence: where the file was written, how many tickets it contains, and the mode.
+When done, output the folder, then one line per file: its name, its app variant and its ticket count, plus the mode.
 
 Examples:
 > Written to `_r&d/qa/role-registrations/05-12/18-09/QA-TEST-CASES.md` — 9 tickets, high-level mode. Re-run with `-v` for the detailed version.

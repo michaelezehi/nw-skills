@@ -124,6 +124,17 @@ Before reporting done, verify:
 - The depth matches the mode: default reads as journeys, `-v` as one assertion per case.
 - There is one file per app variant, no ticket covers two variants, and each file's Scope line names only its own app.
 
+### 7. Open the folder
+
+Once every file is written and the final pass is clean, open the output folder so the user can drag the files straight into their QA tool or a chat:
+
+```bash
+open "_r&d/qa/<slug>/<MM-DD>/<HH-MM>"    # macOS
+xdg-open "_r&d/qa/<slug>/<MM-DD>/<HH-MM>" # Linux
+```
+
+Do this every run, without being asked. If the open command is missing or fails, say so in the report and give the absolute folder path.
+
 ## Output structure — default (high-level)
 
 Use this skeleton. Replace placeholders. Drop sections that don't apply.
@@ -303,17 +314,6 @@ If `CLAUDE.md` defines banned terms or canonical strings, cover them in the plan
 - **Concrete data** in examples — never `<some value>` placeholders unless the user must fill them.
 - **Pathnames only** — never the domain. The plan must run on QA staging and production unchanged.
 - **No "AI"** in any user-facing copy mentioned. Use "smart" or "intelligent" when describing features.
-
-### 7. Open the folder
-
-Once every file is written and the final pass is clean, open the output folder so the user can drag the files straight into their QA tool or a chat:
-
-```bash
-open "_r&d/qa/<slug>/<MM-DD>/<HH-MM>"    # macOS
-xdg-open "_r&d/qa/<slug>/<MM-DD>/<HH-MM>" # Linux
-```
-
-Do this every run, without being asked. If the open command is missing or fails, say so in the report and give the absolute folder path.
 
 ## Reporting back
 

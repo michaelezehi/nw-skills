@@ -304,9 +304,20 @@ If `CLAUDE.md` defines banned terms or canonical strings, cover them in the plan
 - **Pathnames only** — never the domain. The plan must run on QA staging and production unchanged.
 - **No "AI"** in any user-facing copy mentioned. Use "smart" or "intelligent" when describing features.
 
+### 7. Open the folder
+
+Once every file is written and the final pass is clean, open the output folder so the user can drag the files straight into their QA tool or a chat:
+
+```bash
+open "_r&d/qa/<slug>/<MM-DD>/<HH-MM>"    # macOS
+xdg-open "_r&d/qa/<slug>/<MM-DD>/<HH-MM>" # Linux
+```
+
+Do this every run, without being asked. If the open command is missing or fails, say so in the report and give the absolute folder path.
+
 ## Reporting back
 
-When done, output the folder, then one line per file: its name, its app variant and its ticket count, plus the mode.
+When done, say the folder was opened, then output the folder, then one line per file: its name, its app variant and its ticket count, plus the mode.
 
 Examples:
 > Written to `_r&d/qa/role-registrations/05-12/18-09/QA-TEST-CASES.md` — 9 tickets, high-level mode. Re-run with `-v` for the detailed version.

@@ -37,6 +37,21 @@ every part are in [references/snippets.md](references/snippets.md).
    and push from there.
 4. Never run the ship, a deploy, a build on the server, or anything over SSH
    that writes. Read-only SSH checks are allowed when the host alias works.
+5. Answer three questions before choosing parts. They decided the outcome in
+   most of the 15 repos this was rolled out to.
+   - **Is there an image in the ship path at all?** A ship that pulls code and
+     reloads a process manager has nothing for this pattern to speed up.
+   - **Does the ship deploy a commit or the laptop's working tree?** A ship
+     that copies the working tree can deploy uncommitted edits. A CI image
+     holds only the commit, so a dirty tree must always build on the server.
+   - **Where does the server build get its build-time config?** List every
+     public variable the app code reads, then find where each comes from on
+     the server. If any comes from a file git does not track (a hand-made
+     `.env` in the build folder) or from a secret kept only on the server
+     (a Server Actions encryption key), a CI image would be built without
+     it and no URL label would notice. Then parts 3 to 5 stay out until that
+     config is tracked, or the ship must refuse the pull whenever such a file
+     exists.
 
 ## Part 1: no cache-busting
 
@@ -45,6 +60,14 @@ Delete any timestamp or random value fed to a build `ARG` above the compile
 heavy `COPY --from=builder` lines. Remove the dangling `--build-arg` from the
 compose file and the deploy script as well. Keep `--no-cache` as a documented
 escape hatch.
+
+Look for the quieter forms too: a `build --no-cache` in the deploy script, a
+file the ship rewrites on every run sitting inside the build context (a
+deployed-SHA marker), and a flag left behind with no value after an earlier
+clean-up, which makes Docker read the next argument as a service name. Before
+moving a commit-SHA arg out of the build stage, check whether the build reads
+it (`generateBuildId`, a deployment id). If it does, leave it or accept that
+the id becomes a per-build random value.
 
 ## Part 2: build only what changed
 
@@ -77,6 +100,17 @@ Applies when the repo is on GitHub and deploys from the default branch.
 - The registry path is lowercase, computed in a shell step.
 - Every commit ends with a tag for every service: unchanged services get a
   registry-side retag of `latest`, and a missing `latest` means build.
+- "Unchanged" is measured against the commit `latest` was built from, read
+  from an `org.opencontainers.image.revision` label, and decided by the
+  ship's own change map. Never against the previous push with a separate path
+  filter: a cancelled or failed build leaves `latest` one build behind, and
+  the next push that does not touch the service copies that stale image onto
+  a new SHA, which a pull-first ship then deploys. No readable label means
+  build. Runs queue, they do not cancel each other.
+- CI and the ship use one change map. A second filter drifts: one repo's CI
+  had skipped 20 of the last 84 builds its own ship map called for.
+- The workflow that builds images is not gated behind lint or tests that are
+  already red, or no image is ever pushed. Check the last runs first.
 - A `force_build` dispatch input exists, because editing a CI variable
   touches no file.
 - A step frees runner disk before checkout. Large images run a hosted runner
@@ -108,6 +142,15 @@ that the build is already off the waiting path.
   own env. A mismatch falls back to the build under `--prefer-pull` and stops
   under `--pull`.
 - The check loops over the services actually being deployed.
+- The ship also builds on the server, without trying the registry, when the
+  working tree has uncommitted changes to image inputs (for a ship that
+  copies the working tree) and when an env file the framework loads sits in
+  the build context but is not tracked by git. Name the file in the warning,
+  never print its contents.
+- A pulled image is tagged with the local name the compose file and the
+  rollback step already use, so nothing downstream changes.
+- Pulled SHA-tagged images are never dangling. Add them to whatever clean-up
+  the script already does, with the same age window.
 
 ## Part 5: no registry token on the server
 

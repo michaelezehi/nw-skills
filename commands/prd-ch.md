@@ -79,14 +79,21 @@ re-read what they read**; you cite their paths.
 exists.** In the same launch, dispatch one more agent (`model: "opus"`, not
 Explore, because it searches the web) to run the `/gtm feature` sub-command
 on the feature: it follows `~/.claude/skills/gtm/references/feature.md` and
-`references/conventions.md` (skip their HTML and facts steps), uses the
-project's `<gtm>` folder and any earlier `/gtm` runs there, and owns only
-`<gtm>/feature-<slug>.md`. Its input is the feature as the user described it.
+`references/conventions.md` (skip the HTML report; keep the facts step), uses
+the project's `<gtm>` folder as `conventions.md` resolves it (`_r&d/gtm/` when
+the project has `_r&d/`) and any earlier `/gtm` runs there, and owns only
+`<gtm>/feature-<slug>.md` and its own lines in `<gtm>/facts.md`. Its input is
+the feature as the user described it, plus one line from you: whether our own
+team uses this surface live, and anything the user said about how they work
+in it. The validator then fills the reference's `Own use` section from
+production counts and repo workarounds, and scores on them.
 It returns the score out of 35, the verdict (build it, test first, park it,
 kill it), every point of pushback, and the cheapest test it proposes. Skip it
 only for a brand-new product with nothing live, or when the user passes
 `--no-validate`. The point is to see the pushback before the PRD commits to
-building: do not soften it, and do not let it block the PRD either.
+building: do not soften it, and do not let it block the PRD either. Not
+softening cuts both ways: measured own use is evidence, and a brief that
+leaves it out gets a wrong park.
 
 Progress panel (`~/.claude/references/progress-panel.md`): before the launch,
 report `title` (the slug), one `tasks` row per reader at tier `medium`, titled

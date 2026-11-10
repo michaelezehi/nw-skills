@@ -15,10 +15,24 @@ Input: $ARGUMENTS
 Read `references/conventions.md` and follow it.
 
 - Reads: `<gtm>/facts.md`, `<gtm>/validate-idea.md`, `<gtm>/product-brief.md`, `<gtm>/competitor-matrix.md`, `<gtm>/pricing-strategy.md`, `<gtm>/mvp-scope.md`, and any earlier `<gtm>/feature-*.md`
-- Needs: the product, the addition, and who the addition is for
+- Needs: the product, the addition, who the addition is for, and usage of the surface it joins by our own team
 - Saves to: `<gtm>/feature-<slug>.md`
 
 Look at the codebase before you call the addition new. Grep for it, check the routes and the PRDs folder. If part of it is built or planned, say what exists and score only the gap.
+
+## Own use first
+
+Before scoring, decide whether this is an own-use addition: our own team works in this product live, and the addition changes something the team does there. Many products here are built for ourselves first, and customers get the benefit. A team that runs its own sales, hiring or QA in the product is a real user, and its repeated use is evidence. Treating it as "founder ask, no customer on record" is the mistake this section exists to stop.
+
+It is own use only when you can show it. Look for, in this order:
+
+1. Use measured on production, read per `references/live-data.md`: how often the team does the job the addition touches (rows written, runs, sends, visits in the last 30 days), and by how many people.
+2. A workaround that exists today: a script in the repo, a spreadsheet, a second tool, a manual step named in a PRD, a handoff note or `CLAUDE.md`.
+3. What the user said in the input about how the team works. A stated fact goes in `facts.md`.
+
+Write what you found in two or three lines under a heading `Own use`, with the counts and where each came from. If you found nothing under 1 or 2, say so: the addition is then scored as an ordinary one, and the cheapest test is to do the job by hand for a week and count it.
+
+An idea nobody on the team does today is not own use, even when the founder asks for it.
 
 ## Instructions
 
@@ -30,9 +44,9 @@ Three to five sentences: what the addition is, what it is meant to change, and y
 
 Answer each in a short paragraph or a few bullets.
 
-1. **Who is it for?** Current users, a new segment of the same buyer, or a new buyer? If it is a new buyer, say so loudly: that is a second product.
+1. **Who is it for?** Our own team, current users, a new segment of the same buyer, or a new buyer? If our team is the first user, say which customers have the same job. If it is a new buyer, say so loudly: that is a second product.
 2. **What job does it do?** What the product does not do today, and what these people use now instead (with sources for outside alternatives).
-3. **Which number does it move?** Pick one: acquisition, activation, conversion to paid, retention, or price. Estimate the size of the move and show the arithmetic. "Engagement" is not a number.
+3. **Which number does it move?** Pick one: acquisition, activation, conversion to paid, retention, or price. For an own-use addition you may pick the team's operating number instead: hours a week, cost per run, meetings booked, replies, errors caught. Estimate the size of the move and show the arithmetic from the measured use. "Engagement" is not a number.
 4. **What does it cost?** Build effort, running cost per use (model calls, search, storage), support load, and the focus it takes from the core. Mark every cost you could not confirm as an estimate.
 5. **Does it fit or dilute?** Positioning, brand voice, the product's own terms and banned words, and whether it gives away something a paid tier sells.
 
@@ -52,6 +66,16 @@ Score each dimension 1 to 5 for this addition to this product:
 | **Total** | **/35** | |
 
 28 to 35: build it. 21 to 27: test first. 14 to 20: park it. Under 14: kill it.
+
+How own use scores, when the `Own use` section holds measured use or a real workaround:
+
+- **Evidence of need:** 3 for a workaround with no counts, 4 for use measured on production by two or more people or weekly by one. 5 needs an outside customer asking as well. Without own use, a founder's ask alone stays at 2.
+- **Fit with the current buyer:** the team is a current user. Score down only when no customer shares the job.
+- **Impact on the chosen number:** score the move in the operating number against the measured baseline. Never score it down because customer revenue is zero or a seat has no price. That is the company's stage, and the rule below says to score the addition.
+- **Differentiation:** for an own-use addition, ask whether it beats what the team does now (the workaround, or the outside tool and its price for our volume). A competitor selling the same thing is a cost comparison under question 4, and it is a reason to buy only when buying is cheaper for the team's real use.
+- **Timing:** a job the team does every week is timely.
+
+Cost and risk score the same for every addition. Own use never lifts them.
 
 ### 4. Test before building
 
@@ -74,7 +98,10 @@ One of: **Build it**, **Test first**, **Park it**, **Kill it**. Explain in one p
 
 ## Rules
 
-- Score the addition, not the company. If the core product has a bigger problem, name it in one line and move on.
+- Score the addition, not the company. If the core product has a bigger problem, name it in one line and move on. Few paying customers, no price on a seat and no traffic are the company's stage: they do not lower an addition's score on their own.
+- Own use raises a score only on evidence in the `Own use` section. No counts and no workaround means no lift. Say which rows it changed and by how much, so the reader sees the score with and without it.
+- "Unmeasured" is not a score. Before a row gets 2 or lower for a missing number (no usage data, no baseline, nobody asked), try to read that number: production counts per `references/live-data.md`, the repo, git history, earlier `/gtm` files. Score down on what you found, and write the count. If the number cannot be read, say what you tried, score the row 3, and make reading it the first test.
+- Park is a finding, never the default. A park or kill verdict names the rows that caused it, and the one piece of evidence that would move it to test first or build.
 - Every claim about competitors or alternatives has a link. Every cost or uplift you estimate says "Estimate:" and shows the arithmetic.
 - If the addition contradicts an earlier `/gtm` run (for example mvp-scope froze new features), say so and take a position.
 - Keep total output under 1500 words.

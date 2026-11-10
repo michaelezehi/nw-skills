@@ -32,6 +32,7 @@ Use production. Never the local or dev deployment: it holds test data. If nothin
 - Activation: accounts that did the core action at least once (created a survey, a project, a deal), and the completion rate of that action.
 - Recency: the last core action, and accounts active in the last 30 and 90 days.
 - Logged usage cost, if the project records it.
+- Own use, when our own team works in the product: find the team's accounts or workspace (the project `CLAUDE.md`, the owner and admin rows), then count what they did in the last 30 and 90 days on the surface in question, and how many of them did it. Record these as `live · own use · <fact>`. `/gtm feature` scores on them.
 - Revenue only from the billing system. If it was not queried, write "not queried" and say how to confirm it.
 
 Check stored counters (`surveyCount` on a user row, for example) against the real rows. They go stale.

@@ -1,13 +1,13 @@
 ---
 name: qa-cases
-description: Generate a shareable QA test case .md document for the current project. Investigates the codebase (and any provided screenshots) to map every user-facing surface, then writes one folder per app variant (web app, mobile app, browser extension, each separately deployed app) holding one file per feature, `qa-cases-<feature>.md`, grouped by user journey. Default output is high-level and grouped by page; pass `-v` for a verbose, atomic Given/When/Then plan. Use when the user asks for a QA test plan, test cases for QA, or a regression checklist.
+description: Generate a shareable QA test case .md document for the current project. Investigates the codebase (and any provided screenshots) to map every user-facing surface, then writes one folder per app variant (web app, mobile app, browser extension, each separately deployed app) holding one file per feature, `<feature>.md`, grouped by user journey. Default output is high-level and grouped by page; pass `-v` for a verbose, atomic Given/When/Then plan. Use when the user asks for a QA test plan, test cases for QA, or a regression checklist.
 argument-hint: [focus] [-v]
 ---
 # /qa-cases — Generate a QA test case document
 
 **Progress panel:** on by default. Before planning, follow `~/.claude/references/progress-panel.md`: load the savvy-progress tools if not loaded, then report this run's steps and sub-agents to the bar. If a bar is already running, carry on with it: add your rows, no second bar, no duplicate rows.
 
-Use when the user asks for a QA test plan, test cases for handoff to QA, a regression checklist, or screenshots-to-tests. Output is **one folder per app variant, one file per feature** (see **Split by app variant**), so QA can upload or hand out each feature on its own.
+Use when the user asks for a QA test plan, test cases for handoff to QA, a regression checklist, or screenshots-to-tests. Output is **one folder per app variant, one file per feature** (see **Split by app variant**), so QA can hand out each feature on its own. With the Optics MCP server connected, each file is also created as a test suite in the project (step 7).
 
 ## Modes
 
@@ -25,8 +25,8 @@ A tester opens one app at a time, and a QA lead hands out one feature at a time.
 - **A variant** is an app that is built, deployed or installed on its own: for example the ATS web app, the HR web app, the HR mobile app. In a monorepo, start from `apps/*` and the deploy targets. A native mobile app is always its own variant, separate from the web app it talks to. A phone browser on a responsive web page is not a variant; it stays in the web file's device matrix.
 - **A browser extension is its own variant** with its own folder, because it is installed and released on its own. Other small satellites (the marketing site, a white-label host) go in the folder of the app they belong to.
 - **One folder per variant**, named in kebab case after the app: `ats/`, `hr/`, `hr-mobile/`, `extension/`. Always make the folders, even when there is only one variant.
-- **One file per feature inside it:** `qa-cases-<feature>.md`, where `<feature>` is the kebab-case title of what it tests, for example `ats/qa-cases-meeting-recording.md`, `hr/qa-cases-ramp-plans.md`. A feature is one thing a release note would name (a new page, a flow, a setting). Small related additions to one area go in one file rather than a file each. The file's H1 is the readable title: `# QA test cases: <App>, <feature title>`.
-- **A feature that spans apps** gets one file in each app's folder, with the same `<feature>` name, so `ats/qa-cases-meeting-recording.md` and `extension/qa-cases-meeting-recording.md` sit side by side.
+- **One file per feature inside it:** `<feature>.md`, where `<feature>` is the kebab-case title of what it tests, for example `ats/meeting-recording.md`, `hr/ramp-plans.md`. A feature is one thing a release note would name (a new page, a flow, a setting). Small related additions to one area go in one file rather than a file each. The file's H1 is the app, a colon, then the feature title, and nothing else: `# ATS: Meeting recording`, `# HR: Ramp plans`, `# HR mobile: Ramp plans`, `# Extension: Meeting recording`. It becomes the test suite's name in the QA tool, so it carries no "QA test cases" or "qa-cases" prefix. The same rule holds for every name the run produces: files, the README index rows and the report.
+- **A feature that spans apps** gets one file in each app's folder, with the same `<feature>` name, so `ats/meeting-recording.md` and `extension/meeting-recording.md` sit side by side.
 - **An index per run:** `README.md` at the top of the run folder lists every folder and file with its ticket count and P0 count, so a QA lead sees the whole cycle at once.
 - **One variant per ticket.** A journey that crosses apps (a prompt on web and a push on mobile, a delete on mobile checked on web) becomes one ticket per variant. Each one says where the other side is tested, for example "The web side is QA-HR-FORCED in the HR document."
 - **Ticket IDs carry the variant and the feature** (`QA-ATS-REC-…`, `QA-HR-RAMP-…`, `QA-EXT-REC-…`), so an ID never repeats across files.
@@ -63,7 +63,7 @@ Run:
 mkdir -p "_r&d/qa/<slug>/$(date +%m-%d)/$(date +%H-%M)"
 ```
 
-Where `<slug>` is a kebab-case summary of the focus (or `full-app` if none). The files are `_r&d/qa/<slug>/<MM-DD>/<HH-MM>/<variant>/qa-cases-<feature>.md`, one folder per app variant and one file per feature, plus `README.md` at the run folder's top. Make each variant folder with `mkdir -p` as you write into it.
+Where `<slug>` is a kebab-case summary of the focus (or `full-app` if none). The files are `_r&d/qa/<slug>/<MM-DD>/<HH-MM>/<variant>/<feature>.md`, one folder per app variant and one file per feature, plus `README.md` at the run folder's top. Make each variant folder with `mkdir -p` as you write into it.
 
 If the project has no `_r&d/` directory, fall back to `docs/qa/`.
 
@@ -125,9 +125,21 @@ Before reporting done, verify:
 - No "AI" or banned project-specific terms in the document itself.
 - All URLs are pathnames only — no domain references.
 - The depth matches the mode: default reads as journeys, `-v` as one assertion per case.
-- There is one folder per app variant and one `qa-cases-<feature>.md` per feature in it, no ticket covers two variants, each file's Scope line names only its own app and feature, and `README.md` lists every file.
+- There is one folder per app variant and one `<feature>.md` per feature in it, no ticket covers two variants, each file's Scope line names only its own app and feature, and `README.md` lists every file.
 
-### 7. Open the folder
+### 7. Send the suites to Optics
+
+Do this every run when the Optics MCP server is connected, without being asked. It is connected when a tool named `import_test_suite` is available (in Claude Code `mcp__optics__import_test_suite`; load it with ToolSearch if it is deferred). If the server is listed but needs sign-in, ask for that once with one `[!ACTION]`, then carry on. If there is no Optics server, skip this step and say so in the report.
+
+1. Settle the project: `whoami` returns the connection's default project. With none, call `list_projects` and use the only one, or ask the user which by name. Never guess.
+2. For each feature file, in README order, call `import_test_suite` with `markdown` set to the file's full text and `fileName` set to its name. One call per file, one suite per file. Leave `name` out: the H1 (`ATS: Meeting recording`) is the suite name.
+3. Keep each returned `identifier` and `url`. A result with `deduplicated: true` means the suite already exists from this run; use it and move on.
+4. A refusal that says no test cases were found means a ticket heading or its `**What to verify:**` list is off the template. Fix the file, then send it again. After two refusals on the same file, stop and report it.
+5. More than 20 files: the server takes 20 writes a minute. On a rate-limit refusal wait the `retryAfterSeconds` it returns, then continue.
+
+Later changes go through the same server: `add_test_cases` appends tickets to a suite, `get_test_suite` returns each check's `checkId`, `set_check_result` records a result, and `create_issue` files the bug a failing check points at.
+
+### 8. Open the folder
 
 Once every file is written and the final pass is clean, open the output folder so the user can drag the files straight into their QA tool or a chat:
 
@@ -143,7 +155,7 @@ Do this every run, without being asked. If the open command is missing or fails,
 Use this skeleton. Replace placeholders. Drop sections that don't apply.
 
 ```markdown
-# <Project> — QA Test Cases: <Scope>
+# <App>: <feature title>
 
 **Version:** 1.0
 **Date:** <YYYY-MM-DD>
@@ -180,7 +192,7 @@ Each ticket covers one user journey at a high level. Test the listed pages in or
 
 ---
 
-## QA-<JOURNEY> — <journey title>
+## QA-<JOURNEY>: <journey title>
 
 **Pages:** `/entry` → `/intermediate` → `/destination`.
 **Priority:** P0 / P1 / P2
@@ -252,7 +264,7 @@ One bug per failure. Don't bundle.
 Use the high-level skeleton above but replace each ticket body with the verbose structure below. Keep the same top-of-doc sections (path table, accounts, ticket index, cross-cutting, bug filing, out of scope).
 
 ```markdown
-## QA-<AREA>-<NN> — <area title>
+## QA-<AREA>-<NN>: <area title>
 
 **Area:** <route(s) and key files>
 **Priority:** P0 / P1 / P2
@@ -320,12 +332,14 @@ If `CLAUDE.md` defines banned terms or canonical strings, cover them in the plan
 
 ## Reporting back
 
-When done, say the folder was opened, then output the run folder, then one line per file: its folder and name, its ticket count and P0 count, plus the mode.
+When done, say the folder was opened, then output the run folder, then one line per file: its folder and name, its ticket count and P0 count, and its Optics suite identifier and link when step 7 ran, plus the mode.
 
 Examples:
 > Written to `_r&d/qa/role-registrations/05-12/18-09/`, high-level mode. Re-run with `-v` for the detailed version.
-> - `web/qa-cases-founder-registration.md`: 5 tickets, 2 P0
-> - `web/qa-cases-investor-registration.md`: 4 tickets, 1 P0
-> - `mobile/qa-cases-founder-registration.md`: 3 tickets, 1 P0
+> - `web/founder-registration.md`: 5 tickets, 2 P0
+> - `web/investor-registration.md`: 4 tickets, 1 P0
+> - `mobile/founder-registration.md`: 3 tickets, 1 P0
+
+> - `ats/meeting-recording.md`: 6 tickets, 2 P0, APP-TC-22 <suite url>
 
 Do not paste the document body back into chat.

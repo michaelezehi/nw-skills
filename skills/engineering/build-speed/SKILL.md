@@ -14,6 +14,9 @@ Supersedes `ship-optimisation` as the entry point: it carries that checklist (se
 |---|---|---|
 | 5-project sweep, CACHEBUST removal | 256s every deploy | 9s on an unchanged-source commit (21 layers CACHED) |
 | 3-app monorepo, build moved to CI | 7m31s deploy (7m13s build) | build leaves the deploy path; CI cold 12m13s / warm ~2m / retag-only 51s |
+| 3-app monorepo, "the cache is not working" | all 3 images rebuilt on a backend-only email wording change, ~8 min on prod and on staging | detector narrowed: same commits select no image, backend push only |
+
+**What the speed-up is made of.** A deploy gets 10x faster by not doing work, not by doing it faster: skip the images whose inputs did not change (§F), then take the remaining build off the path the user waits on (§C). A persistent-builder service sells the same thing a deploy box already has, a warm local layer cache. Say so before anyone pays for one.
 
 ## The one rule
 
@@ -26,6 +29,8 @@ Without a before-number, every "improvement" is a guess.
 1. Get the current timings from the user's own output (deploy summary, CI run durations) or run the deploy once if they've authorised it.
 2. Split the total into **build vs everything else**. The split decides the whole strategy: build-dominated → move it off the box (§C); deploy-dominated → probes and parallelism (§B, §D).
 3. Record cold vs warm separately. One number hides which you measured.
+
+4. **"It is not caching" is usually a wrong diagnosis.** Read the build log before believing it. Find the first step that is not `CACHED`: everything above it cached fine, and that step's `COPY` names the input that changed. If it is a shared package, the cache did its job and the question becomes why that package changed and whether this image needed to care (§F). Check `git log --name-only` since the last deployed SHA against that path.
 
 Capture exit codes directly. `st=$( { time cmd; } | grep real )` captures **grep's** status, not the command's — a bug that has twice produced false "exit=1" reports.
 
@@ -66,6 +71,14 @@ Moving the build to CI doesn't make building faster — it removes it from the p
 - [ ] Compose services carry BOTH `image: <reg>/<svc>:${IMAGE_TAG:-latest}` and `build:` (on-box fallback).
 - [ ] Deploy `--pull` mode: registry-auth precheck **before** spawning background jobs, `compose pull`, same health-gated rolling update. Default the pull tag to the checked-out SHA so the server can never run a different commit than its HEAD.
 - [ ] Precheck loops over **the services actually being deployed**, never a hardcoded one.
+- [ ] **A pull mode that exists is not a pull mode that is used.** Prove all four before counting on it: (1) the image workflow is green on recent pushes (`gh run list --workflow <file>`), (2) the default ship script actually passes the pull flag, (3) the deploy box is logged in to the registry (`grep -c <registry> ~/.docker/config.json` over SSH), (4) the CI variables still name the live backend. One project had all four broken at once and nobody noticed, because the on-box build kept working.
+- [ ] **Hosted runners run out of disk on big images.** `no space left on device` during export, often on the service with the largest `public/`. Add a step before checkout that deletes the preinstalled toolchains (`/usr/share/dotnet`, `/usr/local/lib/android`, `/opt/ghc`, `/opt/hostedtoolcache/CodeQL`).
+- [ ] **Config validators pin the old world.** A check like `https://*.convex.cloud` keeps passing with stale variables after the backend moves hosts, and blocks the correct value. After any backend or auth migration, re-read every CI variable and every pattern that validates one.
+- [ ] **Label the image with its build-time config and check it after the pull.** `NEXT_PUBLIC_*` is inlined, so an image built for another backend starts clean and talks to the wrong one. Add `labels: <ns>.backend-url=<value>` in CI; in the deploy script `docker inspect --format '{{ index .Config.Labels "<ns>.backend-url" }}'` and compare with the server's own env before any container is replaced.
+- [ ] **Prefer-pull, not pull-or-die.** A ship straight after a push beats CI to the registry. The default ship should try the registry and fall back to the on-box build on a missing tag, a missing login or a label mismatch; keep the strict flag for when a miss must stop the deploy. On fallback, restore `IMAGE_TAG` to what the caller gave or the on-box build tags the wrong name.
+- [ ] **CI build args mirror the compose `build.args` exactly**, including the ones that only skip work (a skip-typecheck arg). A missing one makes CI slower or makes the two images differ.
+- [ ] **Know what the registry cache does not carry.** `cache-to: type=registry` exports layers, not `RUN --mount=type=cache` contents, so the framework compile in CI is cold whenever its layer misses, while the deploy box keeps its mount warm. Moving the build to CI removes the wait from the deploy; it does not make the compile faster. Report both numbers.
+- [ ] One environment's images are not another's. CI that bakes prod URLs cannot feed staging; either build a second set or leave staging on-box and say so.
 
 ### D. Config: secrets vs variables
 
@@ -86,7 +99,11 @@ Moving the build to CI doesn't make building faster — it removes it from the p
 - [ ] Backend-only changes skip container work but still push the backend.
 - [ ] **Fail open**: an undiffable SHA outputs ALL services, never none.
 - [ ] `CHANGED_FILES_OVERRIDE` supported so the map is fixture-testable.
-- [ ] Keep the CI path filters and this map in sync; say so in a comment in both.
+- [ ] Keep the CI path filters and this map in sync; say so in a comment in both. The CI filter may be a deliberate **superset** of the deploy map: an extra CI build is waste, a missed deploy build is staleness.
+- [ ] **A shared package is not one input.** A map row like `packages/<shared>/* → every image` is the usual reason a one-line change rebuilds everything. Look inside it for content only the backend consumes: email copy and templates, seed data, server-only helpers. For each sub-tree, grep the web apps for what they import from it, and skip what none of them use. Leave the kit itself and anything a web app renders on the wide row.
+- [ ] **Every narrowing gets a guard test.** The skip is only true while the apps keep not importing that content, so add a test that greps the app sources for the import or call and fails with a message naming the map row to widen.
+- [ ] **Files `.dockerignore` drops select nothing.** Tests (`**/__tests__`, `*.test.*`), docs and stories cannot change an image; if the map counts them, a test-only commit rebuilds it.
+- [ ] **Prove a map change on real history.** Feed `git diff --name-only <range>` for the last few deploys through the old script (`bash <(git show HEAD:<script>)`) and the new one, and put both outputs in the commit message.
 
 ### G. Parallelism and image diet
 
@@ -122,5 +139,7 @@ Moving the build to CI doesn't make building faster — it removes it from the p
 
 - Commit each fix as it verifies; one commit per concern. Check `git status` first and stage by pathspec — these repos often have concurrent sessions, and `git add -A` commits someone else's half-finished work under your message.
 - Don't touch unrelated uncommitted changes.
+- A git-safety hook that blocks a forced push by pattern also fires on an unrelated short `-f` flag later in the same command line, such as a workflow-dispatch input. Run the push in its own command and use the long `--field` form.
+- Read-only SSH checks on the deploy box (registry login, `.env` public values, last deployed SHA, disk) are part of the audit. Nothing that writes, prunes or restarts.
 - Two failed attempts at the same fix = stop and ask. Don't retry a third time.
 - When a measurement contradicts your hypothesis, say so and correct it. A wrong root cause that "worked" will be re-applied by the next reader.

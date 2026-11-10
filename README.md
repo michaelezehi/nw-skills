@@ -39,6 +39,8 @@ Several skills point at `~/.claude/skills/unlazy/scripts/gate-check.mjs` and `~/
 | [`app-user-journey`](skills/engineering/app-user-journey/SKILL.md) | Scan a codebase for every user role and map each one's real journey, registration, onboarding, the day-one surface, and a proposed leaner path, then ship it as an... | Original |
 | [`build-speed`](skills/engineering/build-speed/SKILL.md) | Audit and fix any project's build + deploy pipeline for speed, kill cache-busting, move builds off the deploy box into CI, wire registry pull mode, and prove every... | Original |
 | [`convex-backup-cron`](skills/engineering/convex-backup-cron/SKILL.md) | Install a 4x-daily production backup cron for Convex + DigitalOcean Spaces projects. | Original |
+| [`dbs`](skills/engineering/dbs/SKILL.md) | Alias for deployment-build-speed. | Original |
+| [`deployment-build-speed`](skills/engineering/deployment-build-speed/SKILL.md) | Install the fast-ship pattern in a Docker project: rebuild only the images whose inputs changed, pull CI-built images, fall back to the on-server build, keep no registry token on the server. | Original |
 | [`og`](skills/engineering/og/SKILL.md) | Install a dynamic Open Graph / Twitter social card route into a Next.js project. | Original |
 | [`own-goal`](skills/engineering/own-goal/SKILL.md) | Run a goal or a whole PRD to completion: a verifiable completion condition worked in a loop until met, with an accountability record and a /reviewer gate. | Original |
 | [`project-optimisation`](skills/engineering/project-optimisation/SKILL.md) | Find and fix why a JS/TS monorepo is slow, from dev server memory to first-load JS per route: measure, fan out by cause, fix in parallel, re-measure, ship through staging. | Original |

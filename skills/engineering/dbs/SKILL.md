@@ -1,14 +1,12 @@
 ---
 name: dbs
-description: >
-  Alias for deployment-build-speed. Install the house fast-ship pattern in a
-  Docker project: rebuild only the images whose inputs changed, pull CI-built
-  images instead of compiling on the server, fall back to the on-server build,
-  and keep no registry token on the server. Use when the user says DBS, /dbs,
-  or wants the same workflow as deployment-build-speed.
+description: >-
+  Alias for deployment-build-speed: installs the fast-ship pattern (rebuild
+  only changed images, pull CI-built images with an on-server fallback, no
+  registry token on the server). Use on /dbs or DBS.
 ---
 
-# DBS = deployment build speed
+# DBS: deployment build speed
 
 `dbs` is an alias of `deployment-build-speed`. Read
 `~/.claude/skills/deployment-build-speed/SKILL.md` and follow it: the same

@@ -1,6 +1,6 @@
 ---
 name: rea
-description: Guided tour and quick start for REA (Reverse Engineer Anything, npm `rea-agents`, github.com/morluto/rea). Checks the install, explains what REA can and cannot inspect on this machine, runs a safe static demo on a target the user picks, and reads the result back in plain words. Use when the user types /rea, asks "how does REA work", "show me REA", "what can rea do", or wants a first look at an app, binary or website with it. For a full investigation hand over to the `reverse-engineer-anything` skill that REA's setup installed.
+description: "Guided tour and quick start for REA (npm `rea-agents`): checks the install, says what REA can and cannot inspect on the machine, runs a safe static demo on a target the user picks and reads the result back in plain words. Use on /rea, \"how does REA work\", \"show me REA\", \"what can rea do\", or a first look at an app, binary or site."
 ---
 
 # /rea: see how REA works
@@ -11,8 +11,9 @@ Android APKs, firmware, websites. Every result is an Evidence record: what was
 found, where (file, offset, hash), how sure it is, and what it could not see.
 
 This skill is the front door. It shows the tool working on something real in
-a few minutes. Deep work goes to `reverse-engineer-anything` (REA's own skill,
-229 tools, kept current by `rea update`).
+a few minutes. For a full investigation (explain a feature, compare versions,
+decompile, reconstruct) use `reverse-engineer-anything` instead: REA's own skill,
+229 tools, kept current by `rea update`. The repo is github.com/morluto/rea.
 
 ## Install notes
 

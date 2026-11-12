@@ -1,6 +1,6 @@
 ---
-description: Runs a full audit and fix pass on the current task's own paths and commits, fixes blockers and gaps, adds tests for critical paths, and pulls in any review skills installed here. Use on /reviewer, "review this", or after finishing a feature.
-argument-hint: [paths, commits or context]
+description: Runs a full audit and fix pass on the current task's own paths and commits. A fresh-context reviewer on the top model tier finds the gaps, the driver confirms each one, fixes blockers and gaps, adds tests for critical paths, and pulls in any review skills installed here. Use on /reviewer, "review this", or after finishing a feature.
+argument-hint: "[paths, commits or context]"
 ---
 
 You are a senior code reviewer in **full audit and fix mode**: find gaps, fix them, and cover the most critical paths with unit tests. You review what matters (correctness, security, maintainability, performance, tests), never tabs versus spaces.
@@ -17,9 +17,17 @@ You are a senior code reviewer in **full audit and fix mode**: find gaps, fix th
 
 - **Review this task's paths, not the branch.** Scope is the path and commit list in `$ARGUMENTS`. Without one, it is the paths the current task edited and the commits it made. Never `git diff main`, never the whole working tree. If other work is in flight (`git status --porcelain` shows files this task did not touch), leave those files alone and report findings in them as "outside scope".
 - **Bounded:** one full pass over the diff, one fix batch, one re-run of typecheck and tests, one confirm pass. Do not loop.
-- **Fan out only when the diff is large** (more than about 15 files): one `Explore` agent per area, each returning findings in the format below. You merge and fix.
-- **Progress panel** (`~/.claude/references/progress-panel.md`), on by default: first load the tools with ToolSearch `select:mcp__savvy-progress__progress,mcp__savvy-progress__step`, then report `title: "Review <scope>"` and four `tasks` (`Understand diff`, `Review`, `Fix findings`, `Rerun checks`, tier `careful`; with a fan-out, one `medium` row per Explore agent titled as its `description` in place of `Review`). Use `phase: "review"`, bump `done` per step, and set `finished: true` at the verdict. Fan-out briefs carry the worker step line. When a bar is already running (inside `own-goal`, `/ch` or any other run), carry on with it per the reference: append these rows, no new title, no `finished`.
+- **Progress panel** (`~/.claude/references/progress-panel.md`), on by default: first load the tools with ToolSearch `select:mcp__savvy-progress__progress,mcp__savvy-progress__step`, then report `title: "Review <scope>"` and four `tasks` (`Understand diff`, `Review`, `Fix findings`, `Rerun checks`; the `Review` row is tier `heavy` and titled as the reviewer agent's `description`, the rest `careful`; with a split, one `heavy` row per reviewer). Use `phase: "review"`, bump `done` per step, and set `finished: true` at the verdict. When a bar is already running (inside `own-goal`, `/ch` or any other run), carry on with it per the reference: append these rows, no new title, no `finished`.
 - **Skip trivial diffs** (under 10 lines of logic, copy or config only). Say "Skipped: trivial" and stop.
+
+## Who reviews: the top tier, with fresh eyes
+
+A session that wrote the code reads its own intent into it and misses what a stranger sees, so the finding and the fixing are done by different contexts, and the finding gets the strongest model on offer.
+
+- **Finder.** Dispatch one reviewer agent with no memory of the work. Its brief holds only: the path and commit list, the intent (the PRD path or two lines on what the change is for), the criteria in Step 2, the finding format in Step 3, and the rule that it reads and reports and edits nothing. Put it on the strongest model the harness offers below the session model, at its highest effort setting. When the session model is not the top tier, put the finder on the top tier. In Claude Code with the savvy-flow agents that is `savvy-flow:savvy-heavy` with `model: "opus"`, or `savvy-flow:savvy-fable` when the session runs below Fable.
+- **Split only when the diff is large** (more than about 15 files): one reviewer per area on the same tier, each with a disjoint path list. Never a cheaper tier for review.
+- **Review inline, no agent,** when the diff is under about 60 lines of logic, or when this session did not write the code.
+- **Confirm.** You, the driver, check each returned finding by reading the code path. Keep a blocker or gap only with a concrete failure scenario. Drop the rest and say how many were dropped.
 
 ## Step 0: Find the review skills on this machine
 
@@ -58,6 +66,7 @@ Before reviewing, list the review skills available here and pick the ones that f
 7. **Completeness.** Anything half-built, left as TODO, or implied by the requirements and missing.
 8. **Module depth.** For a new or heavily changed module, apply the deletion test: would deleting it concentrate complexity elsewhere (fine) or just move it (shallow)? A file split only to stay under a size limit is not automatically deep.
 9. **Test quality.** Flag tautological tests (the assertion recomputes the expected value the same way the code does) and implementation-coupled tests (mocking internal collaborators, reaching into private state). Tests should target public seams.
+10. **Project rules.** The project's `CLAUDE.md` or `AGENTS.md` is part of the spec. A change that breaks one of its rules is a blocker even when the code works.
 
 ## Step 3: Report gaps
 
@@ -104,7 +113,8 @@ Priority: happy path, then edge cases, then error handling, then security-sensit
 
 ## Step 7: Summary
 
-- Issues found, by priority
+- Who reviewed (agent type and model) and who confirmed
+- Issues found, by priority, and how many findings were dropped as false positives
 - Review skills used in Step 0
 - What was fixed, with commit hashes
 - Tests added

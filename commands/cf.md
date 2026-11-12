@@ -1,10 +1,10 @@
 ---
-description: Force-continue a context-exhausted session — recovers todos, modified files, and last work from the transcript.
+description: Recovers a context-exhausted session from its transcript (todos, modified files, last work), writes .claude/handoffs/current.md and carries on. Use on /cf, "force continue", or when a session died at its context limit and no handoff was saved.
 ---
 
-# Force Continue — Recover from context-exhausted sessions
+# Force continue: recover a context-exhausted session
 
-You are recovering a dead session. Follow these steps exactly:
+You are recovering a dead session. Follow these steps in order.
 
 ## Step 1: Find candidate sessions
 
@@ -57,6 +57,6 @@ git diff --name-only HEAD 2>/dev/null | head -10 || git status --porcelain 2>/de
 2. Write a new `.claude/handoffs/current.md` with the extracted todos, modified files, and last work context
 3. Keep the handoff under 2KB
 4. Read the handoff file you just created
-5. Continue working from the recovered context — pick up pending tasks immediately
+5. Continue from the recovered context and pick up pending tasks at once
 
 Apply writing-clearly-and-concisely skill to all output.

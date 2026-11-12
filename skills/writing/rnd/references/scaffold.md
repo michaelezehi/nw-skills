@@ -1,11 +1,11 @@
-# Scaffold — the rnd/ surface and the design language
+# Scaffold: the rnd/ surface and the design language
 
 ## Where pages live
 
 1. **React/Next host → real routes** at `app/rnd/...` (or the host's router
    equivalent), built from `templates/react/`. Never static HTML in `public/`
    when the host is a React app. Allow-list `/rnd` in the auth middleware.
-2. No framework: an existing `rnd/` (any depth) — extend it;
+2. No framework: an existing `rnd/` (any depth): extend it;
 3. else a served `docs/` or site root;
 4. else `rnd/` at the project root (opens via `file://` and any static server).
 
@@ -60,18 +60,18 @@ body { margin: 0; background: var(--paper); color: var(--ink);
 ## Typography & component register (match the proven pages)
 
 - **Eyebrow**: 11px, 600, uppercase, `letter-spacing: .18em`, `--faint`.
-- **Headline**: 40–52px, 700, `letter-spacing: -.02em`, line-height 1.1; the
+- **Headline**: 40 to 52px, 700, `letter-spacing: -.02em`, line-height 1.1; the
   second line often 400-weight `--faint` ("…screen by screen.").
-- **Body**: 14–17px, `--body`, line-height 1.6, max-width ~65ch.
-- **Chips**: pill, 10–11px, 600, uppercase tracked; status colours: live =
+- **Body**: 14 to 17px, `--body`, line-height 1.6, max-width ~65ch.
+- **Chips**: pill, 10 to 11px, 600, uppercase tracked; status colours: live =
   soft green, in-progress = soft amber, planned = `--panel`.
-- **Cards/panels**: `1px solid var(--line-2)`, radius 12–16px, white or
+- **Cards/panels**: `1px solid var(--line-2)`, radius 12 to 16px, white or
   `--panel`. Highlight panels use `--hero-soft` bg + hero border.
 - **Buttons**: primary = `--ink` bg / white text; secondary = bordered;
-  hero-accented for the one main CTA. Radius 8–10px, 13px 600.
+  hero-accented for the one main CTA. Radius 8 to 10px, 13px 600.
 - **Header**: sticky, white with hairline bottom border; left = mark + "R&D" +
   project name; right = "Main site" link (and the identity chip on consensus).
-- **Sketches** render in their emitted `<figure class="sk">` — no white card,
+- **Sketches** render in their emitted `<figure class="sk">`: no white card,
   border, shadow, or accent bar around them; size via the figure's width.
 
 ## Universal bans (apply on top of the host's own rules)

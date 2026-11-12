@@ -1,13 +1,13 @@
-# Data models — the three archetypes
+# Data models: the three archetypes
 
 Plain-JS shapes (the page embeds them as a `DATA` object in an inline
-`<script>`). Field names are inherited from the proven founder-x pages — keep
+`<script>`). Field names are inherited from the proven founder-x pages: keep
 them so future pages stay mutually legible.
 
 ## Shared
 
 ```js
-// rnd/index.html — one per artifact
+// rnd/index.html: one per artifact
 ENTRIES = [{ href, title, summary, status /* live|in-progress|planned */, updated }]
 ```
 
@@ -35,7 +35,7 @@ ALIGNED = [{ title, body }]                   // points pre-agreed before voting
 JOURNEY = [{ s, h, p }]                       // optional stage strip
 ```
 
-### Shared state (Convex — see consensus.md for wiring)
+### Shared state (Convex: see consensus.md for wiring)
 
 ```js
 // returned by rnd_spec:get { doc: DOC_ID }
@@ -58,7 +58,7 @@ SCREENS = [{
   intent,                                     // one line: what the screen is for
   context,                                    // short paragraph: today + what changes, plain language
   build: [],                                  // the agreed scope
-  rec,                                        // the technical call — the premise we build on
+  rec,                                        // the technical call: the premise we build on
   open?                                       // the question this call resolves
 }]
 ```
@@ -75,7 +75,7 @@ CUR = {
     id,                                       // unique; also the deep-link hash
     title,                                    // what this moment is
     caption,                                  // one or two plain lines
-    detail: [],                               // 3-5 bullets from the PRD (tasks, acceptance) — the read-more layer
+    detail: [],                               // 3-5 bullets from the PRD (tasks, acceptance): the read-more layer
     svg: ''                                   // rich app-shell mockup (Sketches output)
   }]
 }
@@ -83,7 +83,7 @@ CUR = {
 FLOWS_WITH_DEMO = new Set([...themeIds])      // gates deck → demo links
 ```
 
-## Convex tables (consensus only — verbatim from founder-x `schema.ts`)
+## Convex tables (consensus only: verbatim from founder-x `schema.ts`)
 
 ```ts
 spec_votes: defineTable({
@@ -97,7 +97,7 @@ spec_comments: defineTable({
   text: v.string(), created_at: v.number(),
 }).index('by_doc', ['doc']),
 
-// optional — only when the sign-off → generated-agreement loop is wanted
+// optional: only when the sign-off → generated-agreement loop is wanted
 spec_agreements: defineTable({
   doc: v.string(), page_id: v.string(), version: v.number(),
   status: v.union(v.literal('draft'), v.literal('accepted')),

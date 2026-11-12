@@ -32,7 +32,7 @@
 - [ ] New sketches were `add`ed back to the Sketches repertoire.
 
 ## Consensus
-- [ ] Convex module pushed (`npx convex dev --once` in the host's Convex root —
+- [ ] Convex module pushed (`npx convex dev --once` in the host's Convex root:
       never `npx convex deploy` on founder-x); `rnd_spec:get` returns for the
       new `DOC_ID` via the HTTP API (`curl` it once).
 - [ ] `ALLOWED_PEOPLE` exactly matches PEOPLE ids; length caps in place.

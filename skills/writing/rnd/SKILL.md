@@ -1,16 +1,18 @@
 ---
 name: rnd
-description: Create a shareable internal R&D page from a team brief — a votable consensus spec with a participant intro gate (--consensus), a screen-by-screen product build deck (--product), or an interactive demo carousel (--demo). On a React/Next host the output is REAL ROUTES inside the public-facing app (app/rnd/…), not static HTML; every wireframe is drawn with the Sketches skill; consensus votes are shared live via Convex. A PRD document with no flag defaults to --demo. Use when the user wants an R&D page, living spec, consensus or sign-off page, build deck, or interactive design demo, or hands over a PRD to visualise.
-argument-hint: [--consensus | --product | --demo] <brief path | topic | participants>
+description: Builds a shareable internal R&D page from a team brief, as a votable consensus spec with live Convex votes (--consensus), a screen-by-screen build deck (--product) or a per-theme demo (--demo, the default for a PRD). Real routes in a React or Next host, wireframes from Sketches. Use on /rnd, or for an R&D page, living spec, sign-off page, build deck or design demo.
+argument-hint: "[--consensus | --product | --demo] <brief path | topic | participants>"
 ---
-# rnd — R&D pages from team briefs
+# rnd: R&D pages from team briefs
 
 Turns a team's thinking into a sketched, shareable, internal R&D page.
 Proven on Founders Align: `/rnd/platform-redesign` (consensus),
 `/rnd/production-flow` (product), `/rnd/production-flow/demo` (demo).
-This skill reproduces those three archetypes in **any** project as
+This skill reproduces those three archetypes in any project as
 host-native pages: real routes in a React/Next host, self-contained HTML
 otherwise (rule 2). Pages share by URL.
+
+Not for slide decks (use `deck`) or for writing the PRD itself (use `/prd-ch`).
 
 ## Hard rules
 
@@ -19,7 +21,7 @@ otherwise (rule 2). Pages share by URL.
    `add` anything new back. Strip the `{/* … */}` comments from emitted bodies
    when pasting into plain HTML.
 2. **Pages are host-native.** In a React/Next host, R&D pages are real routes
-   inside the app (`templates/react/` — App Router pages + a client viewer +
+   inside the app (`templates/react/`: App Router pages + a client viewer +
    per-theme data modules), never throwaway HTML in `public/`. Only when the
    host has no web framework: one self-contained `.html` per page (system
    fonts, inline `<style>`/`<script>`/SVG). Either way: no CDNs, no new npm
@@ -33,7 +35,7 @@ otherwise (rule 2). Pages share by URL.
    HTML fallback uses vanilla `fetch` against the Convex HTTP API. Identity
    (who am I) stays per-person in `?as=` + localStorage either way.
    See `references/consensus.md` for the wiring.
-4. **Follow the host project's CLAUDE.md** — terminology, copy bans, colour rules.
+4. **Follow the host project's CLAUDE.md**: terminology, copy bans, colour rules.
    Do not import another project's house rules. Universal bans regardless of
    host: no gradients, no card/border around sketches, no accent bars, never
    the word "AI" in page copy.
@@ -45,8 +47,8 @@ otherwise (rule 2). Pages share by URL.
 ## Workflow
 
 1. **Parse the flag.** `--consensus` | `--product` | `--demo`. No flag:
-   if the input is (or points to) a **PRD-style document** — a PRD.md, a spec
-   with workstreams/screens/requirements — **default to `--demo`** and say so;
+   if the input is (or points to) a **PRD-style document** (a PRD.md, a spec
+   with workstreams/screens/requirements), **default to `--demo`** and say so;
    otherwise ask which artifact. The rest of `$ARGUMENTS` is the input (a brief
    file path, pasted text, a topic, or a participants list).
 2. **Read the host CLAUDE.md** (project root + app-level) for copy/colour rules.
@@ -54,11 +56,11 @@ otherwise (rule 2). Pages share by URL.
    (founder-x = `founders-align`) or register a new one from the project's
    palette with `render.py theme`. The theme's `{HERO}` becomes the page accent.
 4. **Ensure the `rnd/` surface.** Find where static pages live (`public/rnd/`,
-   `rnd/`, `docs/rnd/` — prefer an existing web-served dir; else create `rnd/`
+   `rnd/`, `docs/rnd/`: prefer an existing web-served dir; else create `rnd/`
    at project root). If `rnd/index.html` is missing, create it from
    `templates/rnd-index.html`. If present, **append** the new entry to its
    `ENTRIES` array (href, title, summary, status, updated).
-5. **Build the artifact** — follow the mode reference:
+5. **Build the artifact**: follow the mode reference:
    - `--consensus` → `references/consensus.md`: brief → participants + pages +
      source docs → **confirm the extracted structure with the user** → Convex
      `rnd_spec` module (reuse if the host already has one; else scaffold from
@@ -69,7 +71,7 @@ otherwise (rule 2). Pages share by URL.
      theme** at `rnd/<theme>/demo/` with a side menu, per-scene PRD detail
      panels, and arrows that cross theme pages. Built theme by theme.
    Data models for all three live in `references/anatomy.md`. Page skeletons
-   live in `templates/` — copy one, replace the `DATA` block and tokens.
+   live in `templates/`: copy one, replace the `DATA` block and tokens.
 6. **Draw.** For each page/screen/scene: `render.py find "<concept words>"`,
    reuse on a genuine match, draw + `add` on a miss (house style: one ink line,
    exactly one `{HERO}` element, 5 tokens, no container).

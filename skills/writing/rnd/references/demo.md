@@ -1,4 +1,4 @@
-# Demo mode — PRD/deck → per-theme demo pages with a side menu
+# Demo mode: PRD/deck → per-theme demo pages with a side menu
 
 The design taken into reality: keyboard-driven pages of rich app-shell
 mockups, one **theme** per page, navigated by a left side menu (not top
@@ -6,21 +6,21 @@ tabs). Proven on Renovyn `/rnd/<theme>/demo/` (14 themes, 51 scenes).
 
 ## 1. Themes, flows and scenes
 
-Input: a sibling product deck (its SCREENS) + which flow(s) to build —
+Input: a sibling product deck (its SCREENS) + which flow(s) to build:
 **or a PRD document directly** (the no-flag default when a PRD is given).
 
 - From a PRD: each stream / workstream / user-facing feature becomes a
   **theme**. A multi-stream PRD (or a set of PRDs) produces **one page per
-  theme** at `rnd/<theme-slug>/demo/index.html` — never one giant page named
+  theme** at `rnd/<theme-slug>/demo/index.html`: never one giant page named
   after the PRD. The theme slug is the feature's name (`circle`,
   `become-a-sponsor`), not the document's.
 - When the user has several captured PRDs, cover **all** of them as themes
   unless told otherwise; each theme records its own `prd` source string.
-- A theme breaks into 2–6 ordered **scenes** — the moments a user moves
+- A theme breaks into 2 to 6 ordered **scenes**: the moments a user moves
   through ("you land", "you choose who sees it", "the reveal"). Each scene:
   `id` (deep-link hash), `title`, `caption` (one or two plain lines),
-  `detail` (3–5 bullets lifted from the PRD: task ids, schema, acceptance
-  criteria — this is the "read more" layer), and a rich mockup.
+  `detail` (3 to 5 bullets lifted from the PRD: task ids, schema, acceptance
+  criteria. This is the "read more" layer), and a rich mockup.
 - Confirm the derived theme list (names + scene count each) with the user
   before drawing.
 
@@ -33,11 +33,11 @@ optional small annotation doodle beside the shell telling the scene's story.
 Recurring chrome is drawn once and `add`ed to the repertoire as its own named
 sketch (`<project>-phone-shell`, `<project>-web-shell`) so every scene and
 every later project reuses it. Solid fills of real semantic colours are
-allowed — still no gradients.
+allowed: still no gradients.
 
 ## 3. The page
 
-**React/Next host (the default):** use `templates/react/` — real App Router
+**React/Next host (the default):** use `templates/react/`: real App Router
 routes (`app/rnd/page.tsx` index + `app/rnd/[theme]/demo/page.tsx`), a client
 `DemoViewer`, a CSS module carrying the design tokens, and one generated data
 module per theme under `lib/rnd/themes/`. The URL hash is the single source

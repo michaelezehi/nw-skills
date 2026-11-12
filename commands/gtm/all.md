@@ -1,5 +1,5 @@
 ---
-description: Run every /gtm sub-command on the current repo in waves and hand back one PDF with a designed cover, an index and every report in full
+description: "Runs every /gtm sub-command on the current repo in waves and hands back one PDF with a designed cover, an index and every report in full. Use on /gtm:all, \"/gtm on\" with --all, or when the user wants the whole go-to-market review of a project in one document."
 argument-hint: "[optional: a feature to check as well]"
 ---
 

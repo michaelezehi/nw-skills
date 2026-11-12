@@ -1,5 +1,5 @@
 ---
-description: Scores an idea on 7 dimensions, lists the fatal questions and 3 cheap experiments, and gives a build, pivot or kill verdict and hands back a PDF report
+description: "Scores an idea on 7 dimensions, lists the fatal questions and 3 cheap experiments and gives a build, pivot or kill verdict through the gtm skill, with a PDF report. Use on /gtm:validate, \"gtm validate\", or when the user asks whether an idea holds up."
 argument-hint: "[the idea, who it is for, how it makes money]"
 ---
 

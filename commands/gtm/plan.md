@@ -1,5 +1,5 @@
 ---
-description: Plans pre-launch, launch day and a 90-day growth run on a small budget and hands back a PDF report
+description: "Plans pre-launch, launch day and a 90-day growth run on a small budget through the gtm skill and hands back a PDF report. Use on /gtm:plan, \"gtm plan\", or when the user asks how to launch a product or get its first customers."
 argument-hint: "[the product, the budget, the launch date]"
 ---
 

@@ -1,5 +1,5 @@
 ---
-description: Writes the product brief: problem, audience, value proposition, 5 to 7 features, 90-day metrics and risks and hands back a PDF report
+description: "Writes the product brief (problem, audience, value proposition, 5 to 7 features, 90-day metrics, risks) through the gtm skill and hands back a PDF report. Use on /gtm:brief, \"gtm brief\", or when the user asks for a product brief or one-pager for a project."
 argument-hint: "[the product and who it is for]"
 ---
 

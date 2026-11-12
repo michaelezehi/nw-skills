@@ -1,5 +1,5 @@
 ---
-description: Outlines a 12-slide pitch deck with headline, content, visual and speaker notes for each slide and hands back a PDF report
+description: "Outlines a 12-slide pitch deck with headline, content, visual and speaker notes per slide through the gtm skill, with a PDF report. Use on /gtm:deck, \"gtm deck\", or when the user asks for a pitch deck outline for investors or buyers."
 argument-hint: "[the audience for the deck, e.g. seed investors]"
 ---
 

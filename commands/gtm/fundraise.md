@@ -1,5 +1,5 @@
 ---
-description: Checks raise readiness, round size, investor targets and a 12-week timeline and hands back a PDF report
+description: "Checks raise readiness, round size, investor targets and a 12-week timeline through the gtm skill and hands back a PDF report. Use on /gtm:fundraise, \"gtm fundraise\", or when the user asks whether or how to prepare a raise."
 argument-hint: "[the round you are considering, any amount]"
 ---
 

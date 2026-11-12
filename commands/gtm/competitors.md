@@ -1,5 +1,5 @@
 ---
-description: Finds 5 to 8 sourced competitors and builds a feature matrix, the gaps and a threat ranking and hands back a PDF report
+description: "Finds 5 to 8 sourced competitors and builds a feature matrix, the gaps and a threat ranking through the gtm skill, with a PDF report. Use on /gtm:competitors, \"gtm competitors\", or when the user asks who the competitors are or how a product compares."
 argument-hint: "[the product, its market, any known rivals]"
 ---
 

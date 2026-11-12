@@ -1,5 +1,5 @@
 ---
-description: Picks the 5 numbers that matter at this stage and how to track them and hands back a PDF report
+description: "Picks the 5 numbers that matter at this stage and how to track them through the gtm skill and hands back a PDF report. Use on /gtm:metrics, \"gtm metrics\", or when the user asks which metrics or KPIs to watch for a product."
 argument-hint: "[the product and its stage]"
 ---
 

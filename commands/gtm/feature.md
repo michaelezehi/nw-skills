@@ -1,5 +1,5 @@
 ---
-description: Validates something new being added to an existing product with five questions, a scorecard, the cheapest test and a build, test, park or kill verdict and hands back a PDF report
+description: "Tests whether a new feature or offer earns its place in an existing product: five questions, a scorecard, the cheapest test and a build, test, park or kill verdict, with a PDF report. Use on /gtm:feature, \"gtm feature\", or when the user asks if an addition holds up."
 argument-hint: "[the new feature or offer to check]"
 ---
 

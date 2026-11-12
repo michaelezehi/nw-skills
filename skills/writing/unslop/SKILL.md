@@ -18,8 +18,8 @@ These tighten upstream unslop. They win when they conflict.
 
 1. **Em dashes are prohibited in people-facing text.** Emails, UI copy,
    marketing, legal, support, SMS, PDFs, decks, in-app notices, error messages,
-   and any other string a person reads. The character `—` (U+2014) never ships.
-   Do not substitute an en dash (`–`, U+2013), a hyphen used as a dash
+   and any other string a person reads. The em dash (U+2014) never ships.
+   Do not substitute an en dash (U+2013), a hyphen used as a dash
    (`word - word`), or parentheses as a dash stand-in. Split the sentence or
    use a comma. Hyphens in compound words (`write-once`) and CLI flags
    (`--prod`) stay.
@@ -33,7 +33,7 @@ These tighten upstream unslop. They win when they conflict.
 2. Rewrite. Preserve meaning, match intended tone.
 3. Add soul (see next section).
 4. Self-audit: "What makes this obviously AI generated?" Fix remaining tells.
-5. Search the draft for `—` and `–`. If either appears in people-facing text,
+5. Search the draft for U+2014 and U+2013. If either appears in people-facing text,
    rewrite that sentence.
 
 ## Adding soul

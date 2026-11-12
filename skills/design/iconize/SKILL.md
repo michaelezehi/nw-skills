@@ -1,11 +1,13 @@
 ---
 name: iconize
-description: Extract individual icons from sprite sheets into named, square PNG files organized by category. Point it at a folder containing sprite sheet PNGs and provide icon names.
+description: Extracts each icon from sprite sheet PNGs into a named, square, transparent PNG in category folders, using ImageMagick connected components and Pillow. Use on /iconize or when the user points at a folder of sprite sheets and wants every icon cut out and named.
 argument-hint: <folder> [names] [output] [cols]
 ---
-# Iconize — Sprite Sheet Icon Extractor
+# Iconize: sprite sheet icon extractor
 
 Extract individual icons from sprite sheet PNGs into cleanly cropped, square, transparent PNG files organized by category subdirectories.
+
+Icons meant for shared UI go into your design system's icon package, are released, then installed by each app. Never copy extracted icons straight into an app.
 
 ## Prerequisites
 
@@ -15,13 +17,13 @@ Extract individual icons from sprite sheet PNGs into cleanly cropped, square, tr
 
 ## Extraction Process
 
-### Step 1 — Scan the folder
+### Step 1: Scan the folder
 
 1. Read all `.png` files in the provided `folder` path
 2. For each image, display it visually and get dimensions via `magick identify`
 3. Ask the user to confirm the icon names and grid layout if names weren't provided
 
-### Step 2 — Extract using connected-component analysis
+### Step 2: Extract using connected-component analysis
 
 For each sprite sheet, run this extraction pipeline:
 
@@ -38,7 +40,7 @@ This outputs bounding boxes for each distinct icon region. Parse the output to g
 - Component ID 0 (background)
 - Components with area < 5000 (noise/artifacts)
 
-### Step 3 — Merge split components
+### Step 3: Merge split components
 
 Some icons (e.g. stethoscope with separate earpieces, dotted elements) may split into multiple components. Merge bounding boxes that overlap or are within `merge_distance=50px` of each other:
 
@@ -50,21 +52,21 @@ Some icons (e.g. stethoscope with separate earpieces, dotted elements) may split
 
 If a merge causes two clearly separate icons to combine (resulting box much wider than expected), reduce `merge_distance` to 30px and retry.
 
-### Step 4 — Sort into grid order
+### Step 4: Sort into grid order
 
 1. Sort all bounding boxes by Y coordinate (top to bottom)
 2. Group into rows using `row_tolerance=200px` (boxes within 200px vertical distance = same row)
 3. Sort each row by X coordinate (left to right)
 4. Flatten into a single ordered list
 
-### Step 5 — Validate count
+### Step 5: Validate count
 
 Compare found sprites vs expected names count:
 - **Match:** Proceed to extraction
 - **More found than expected:** Show bounding boxes, ask user which are extras/artifacts
 - **Fewer found than expected:** Try smaller `merge_distance` or warn about merged icons
 
-### Step 6 — Crop and square each icon
+### Step 6: Crop and square each icon
 
 For each bounding box:
 
@@ -88,7 +90,7 @@ square.paste(cropped, (ox, oy))
 square.save(output_path)
 ```
 
-### Step 7 — Visual verification
+### Step 7: Visual verification
 
 After extraction, read and display 3-4 sample icons from different grid positions (first, middle, last, and one random) to verify:
 - No neighbor bleed (parts of adjacent icons visible)
@@ -100,7 +102,7 @@ If any icon has neighbor bleed:
 2. Re-extract those specific icons with tighter bounding boxes (reduce padding or manually adjust coordinates)
 3. Re-verify
 
-### Step 8 — Output summary
+### Step 8: Output summary
 
 Print a table of all extracted icons:
 

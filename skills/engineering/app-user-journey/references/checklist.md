@@ -16,7 +16,7 @@ Nothing ships until every line passes.
 
 ## Diagram (the tripwires from state-machine.md)
 - [ ] Text fits inside its shape, every node, every graph.
-- [ ] No label truncated — joined lines equal the original label.
+- [ ] No label truncated: joined lines equal the original label.
 - [ ] Shapes uniform; type within `[LABEL_MIN, LABEL_BASE]`.
 - [ ] No node overlaps; walks and edges reference real nodes.
 - [ ] Stop counts in the toggle labels are computed, not typed.

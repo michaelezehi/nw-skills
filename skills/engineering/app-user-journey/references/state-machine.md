@@ -2,9 +2,9 @@
 
 Two files, copied as a pair from `templates/`, never forked per page:
 
-- `machine-layout.ts` — pure layout maths. Imports nothing but its own types, so
+- `machine-layout.ts`: pure layout maths. Imports nothing but its own types, so
   it drops into any project unchanged and is unit-testable without rendering.
-- `JourneyMachine.tsx` — the client renderer. Reads the layout, draws sketch
+- `JourneyMachine.tsx`: the client renderer. Reads the layout, draws sketch
   outlines, animates the walking dot, owns the before/after toggle.
 
 `JourneyViewer.tsx` (hash-routed act viewer) and `user-journeys.module.css` come
@@ -14,7 +14,7 @@ along for a full microsite; the machine works standalone without them.
 
 **The box is fixed, the text fits itself.**
 
-Every node of a kind is the same size — the grid stays regular, rows have a set
+Every node of a kind is the same size: the grid stays regular, rows have a set
 height, and the text block is middle-aligned inside the shape. Labels then step
 down in size to stay on **one line**, wrapping only when even the floor cannot
 fit. One line at a smaller size always beats two lines at a larger one.
@@ -36,7 +36,7 @@ Knobs, all in `machine-layout.ts`:
 Two geometry facts the code encodes, worth not rediscovering:
 
 - A rhombus contains a centred rectangle only where `tw/a + th/b <= 1`. Width
-  must therefore be measured **at the true block height** — a sub-line placed
+  must therefore be measured **at the true block height**; a sub-line placed
   naively sits where the shape has already tapered to nothing. That was the
   original overflow bug.
 - The SVG is capped at its own viewBox width (`style={{ maxWidth: w }}`) so it
@@ -70,7 +70,7 @@ Diagrams need room, so the machine breaks out of the prose column:
 }
 ```
 
-Pair it with `overflow-x: clip` on the page root — **clip, not hidden**. `hidden`
+Pair it with `overflow-x: clip` on the page root: **clip, not hidden**. `hidden`
 turns the root into a scroll container and unsticks a sticky header.
 
 ## Theming
@@ -82,12 +82,12 @@ its sketches.
 
 ## Required tripwires
 
-Copy these into the host's test suite — they are what keep the rule enforced:
+Copy these into the host's test suite; they are what keep the rule enforced:
 
-1. **Text fits its shape** — `textFitsInShape(node)` for every node of every graph.
-2. **Labels never truncate** — `node.lines.join(" ") === node.label`.
-3. **Shapes stay uniform** — at most two distinct boxes per graph (rect + diamond).
-4. **Type stays in range** — `LABEL_MIN <= labelSize <= LABEL_BASE`.
-5. **No overlaps** — no two nodes' boxes intersect.
-6. **Graphs are valid** — unique ids, no two nodes in one grid cell, every walk id
+1. **Text fits its shape**: `textFitsInShape(node)` for every node of every graph.
+2. **Labels never truncate**: `node.lines.join(" ") === node.label`.
+3. **Shapes stay uniform**: at most two distinct boxes per graph (rect + diamond).
+4. **Type stays in range**: `LABEL_MIN <= labelSize <= LABEL_BASE`.
+5. **No overlaps**: no two nodes' boxes intersect.
+6. **Graphs are valid**: unique ids, no two nodes in one grid cell, every walk id
    and edge endpoint exists, the walk starts on a `start` node.

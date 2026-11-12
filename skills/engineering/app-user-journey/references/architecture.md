@@ -36,7 +36,7 @@ apps/<web>/app/rnd/user-journeys/
 `JourneyPageData` = `{ slug, name, icon, prd, machine, acts }`.
 
 `JourneyMachineData` = `{ current, proposed, currentLabel, proposedLabel }`. The
-labels **must** be computed — `` `Today · ${graph.walk.length} stops` `` — so the
+labels **must** be computed (`` `Today · ${graph.walk.length} stops` ``) so the
 headline number can never drift from the diagram.
 
 `JourneyGraph` = `{ nodes, edges, walk }`:
@@ -49,5 +49,5 @@ headline number can never drift from the diagram.
 
 `JourneySection` fields are all optional except `id`/`title`: `lede`, `svg`,
 `caption`, `machine`, `table`, `chips`, `quote`, `lists`, `detail`. `detail`
-renders as a collapsed "From the PRD" list — put the evidence there, with file
+renders as a collapsed "From the PRD" list; put the evidence there, with file
 paths, so a reviewer can check any claim.

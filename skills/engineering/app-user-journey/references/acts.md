@@ -20,7 +20,7 @@ Everything the app hands them the moment onboarding ends.
 - A phone-shell mockup of the real day-one home, labelled with real defaults.
 - A table of every feature/module with its default on/off for this role.
 - Chips for whatever is scoped to them (regions, fellowships, teams, plans).
-- Chips for the always-on set — the things with no toggle at all.
+- Chips for the always-on set, the things with no toggle at all.
 - Close on the cost, in the app's own terms: all of it arrives before the person
   has hit the problem the app exists to solve.
 
@@ -28,19 +28,19 @@ Everything the app hands them the moment onboarding ends.
 
 The leaner path. Three moves, in this order:
 
-1. **Bare bones** — a home seeded only by what they told you. The empty space is
+1. **Bare bones**: a home seeded only by what they told you. The empty space is
    the point.
-2. **A pathfinder ending** — onboarding ends with one real question that leads to
+2. **A pathfinder ending**: onboarding ends with one real question that leads to
    one concrete next step, and every follow-up question ships with its answer
    already attached. Never ask something you cannot act on.
-3. **Weeks one and two** — features arrive one at a time, each triggered by where
+3. **Weeks one and two**: features arrive one at a time, each triggered by where
    the person actually is.
 
 Then re-render the machine in `proposed` mode so the collapse is visible.
 
 ## Writing rules
 
-- Plain strings, no i18n keys — R&D pages must not touch the host's translation
+- Plain strings, no i18n keys; R&D pages must not touch the host's translation
   gate.
 - Sentences, not fragments. This is an argument a stakeholder reads, not a spec
   they parse.

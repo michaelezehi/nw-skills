@@ -1,184 +1,125 @@
 ---
 name: frontend-design
 description: >
-  THE frontend/UI skill for this machine — use this one, not the frontend-design
-  plugin. Create distinctive, production-grade frontend interfaces with high craft:
-  typography, layout, color, and purposeful motion that avoid generic AI aesthetics.
-  Merges Emil Kowalski animation craft, taste-skill anti-slop direction, and Impeccable
-  craft-floor standards, and routes to the right companion skill (never more than two).
-  Use whenever the user asks to build, redesign, restyle, or elevate any web UI —
-  pages, landing pages, dashboards, components, modals, forms, visual systems — or
-  says fed, /fed, --fd, "make it look good", "design this". Alias: fed.
+  Designs and builds production web UI that belongs in the product it ships in:
+  app pages, components, flows, dashboards, landing and marketing pages. Names a
+  track first (Extend, Direct or Refine), builds from the shared design system and
+  sibling pages, and gates motion. Use to build, redesign, restyle or polish any web
+  UI, or on fed, /fed, --fd, /fd-ch, "make it look good", "design this".
 license: Apache 2.0. Based on Anthropic's frontend-design skill plus Emil Kowalski,
   Leonxlnx/taste-skill, and pbakaus/impeccable. See NOTICE.md for attribution.
 ---
-# Frontend Design (FED)
+# Frontend design
 
-This is the merged design skill. Invoking **frontend-design** or **fed** runs the same workflow.
+This skill decides how every interface you ship looks. `fed`, `/fed`, `--fd` and `/fd-ch` all run it. The house rules below hold even when you are a sub-agent that cannot see the user's global rules.
 
-You are the design lead: bold direction, anti-slop discipline, and motion that feels right — not templated, not bland, not over-animated.
+## House rules
 
-## Precedence for "build / redesign this UI"
+They hold on every track and outrank every companion skill. Project rules (the project `CLAUDE.md`, `DESIGN.md`) can add to them, never relax them.
 
-This skill is the top of the stack. Order of authority when several apply:
+- Copy, in the UI, in code comments and in your report: no em or en dash, and no hyphen or parentheses standing in for one; split the sentence or use a comma. Compound hyphens (`read-only`) and CLI flags stay. Straight quotes, sentence-case headings and labels, no decorative emoji.
+- Never write "AI" in user-facing copy (labels, buttons, tooltips, empty states, marketing). Say "smart" or "intelligent". Code names are fine.
+- Text that fits its container on one line renders on one line. Labels, eyebrows, meta rows, badges, stats and numbers get `white-space: nowrap`. When text wraps that the width allows, fix the cause: a `max-width` cap, a flex or grid track that is too narrow, or a sibling taking the width. When a string cannot fit, break it on purpose at a clause boundary or step the size down; never leave the break to whichever word the browser reaches.
+- Reuse what the project already has. Take the layout, components, data and wording from the way the app already does it; never invent a layout when one exists.
+- Shared design system first. Install it from its release and never copy a component, token, icon or sketch into the app. A component two apps could use, and every new icon or illustration, goes into the design system first.
+- Any multi-step flow or wizard shows step navigation with a progress bar.
+- Files stay under 600 lines. Extract a module before adding to a longer file.
+- The user verifies the running app. Do not start a dev server, open a browser, take screenshots or run Lighthouse unless asked. Check by reading the code (see Finish).
+- Size the task: S and M tasks need no gates ledger; L and XL keep one at `gates/<task-slug>.md`, never a root `GATES.md`, whatever a companion skill says.
+- Every summary ends with a `Storybook` section (see Finish).
 
-1. **Project rules** — project `CLAUDE.md`, `DESIGN.md`, existing tokens (e.g. square corners in app UI). Always win.
-2. **frontend-design** (this file) — process, dials, motion gate, slop test.
-3. **impeccable** — craft floor + per-verb passes (`polish`, `bolder`, `quieter`, `typeset`, `animate`, `harden`, `onboard`, …). Read `impeccable/reference/<verb>.md` for a focused pass; do not look for standalone skills of those names — they were retired.
-4. **design-taste-frontend** — only for landing / portfolio / marketing redesign.
-5. `21st-ui-build` — only if the project has `.21st/design.json`.
-6. `vercel-react-best-practices` — perf review after the build, not a design source.
+## Step 1: name the track
 
-## Companion skills — load at most TWO per task
+Before reading further, decide which of three jobs this is, and write it as the first line of your reply.
 
-Every companion is 200–1,200 lines of overlapping prose. Loading several at once averages them into bland output and burns context. Pick the two the brief needs, name them, stop.
+- **Extend.** The surface lives inside an existing app or site: a new page, a section, a component, a state, a flow. The app's shell, design system and sibling pages already decide how it looks. Your job is to find those decisions and apply them. You do not choose a palette, a typeface, a corner style, a tone or a "signature".
+- **Direct.** There is no visual system yet, or the user asked for a new look: a fresh landing page, a marketing site, a portfolio, a new brand. Your job is to set a direction and build it.
+- **Refine.** The user named a pass on existing UI (polish, quieter, bolder, harden, clarify, adapt, onboard). Keep the current look; fix what the pass names.
 
-| Skill | When to load |
-|---|---|
-| `design-taste-frontend` | Landing/portfolio/marketing redesign — full anti-slop pre-flight (§14), dials, AI-tell bans |
-| `emil-design-eng` | Motion-heavy work: springs, gestures, drawers/sheets/toasts, clip-path, Sonner-level polish |
-| `impeccable` (`reference/<verb>.md`) | A focused verb pass on existing UI |
-| `animation-vocabulary` | Name a motion effect the user described vaguely |
-| `find-animation-opportunities` | Where motion should (and should not) exist on an existing surface |
-| `improve-animations` / `review-animations` | Motion audit / motion diff review |
-| `apple-design` | Gesture-driven, physical, fluid product UI |
-| `redesign-existing-projects` | Preserve-vs-overhaul protocol for an existing site |
-| `minimalist-ui` / `industrial-brutalist-ui` | Only when the user names that aesthetic (opt-in presets) |
-| `brandkit` | Brand-board / logo-system imagery |
+A marketing page for an app that already has a brand in the shared design system is Direct for layout and Extend for tokens: use the brand's fonts, colours and corners, and set only composition and motion.
 
-Full routing notes: [reference/skill-stack.md](reference/skill-stack.md).
+If you cannot tell, it is Extend. Write: `Track: Extend. Matching <sibling page> with <components>.` or `Track: Direct. Reading this as <page kind> for <audience>, <direction>.` If the read genuinely forks, ask one question; otherwise proceed.
 
-## Reconnaissance (existing projects, before Phase 0)
+## Extend
 
-On an existing project the work has to match what is already there, so read this first:
+### Read what already decides the look
 
+Do these in order and stop adding your own taste once they answer the question.
 
-1. Read the token source: `globals.css` / `tailwind.config.*` / `DESIGN.md` / theme file. Absorb every token, radius, font, keyframe.
-2. List reusable components under `components/` relevant to the task.
-3. Read the target file and one sibling page so the work matches the shell.
-4. Note project rules (radius, copy bans, "no AI in copy", fonts). They override every default below.
+1. Project rules: the project `CLAUDE.md`, `DESIGN.md`, any copy or radius rules. They outrank everything in this skill.
+2. The shared design system. If `package.json` installs one, read its README and the type declarations of what the installed version exports, then list which of its components cover this task (shell, page frame, header, table, stat, empty state, modal, form fields, tabs, badges). Use them as they are, with their props. Style app-local layout only with the system's utility classes. A system installed as a package keeps its tokens in `node_modules`, so a near-empty `globals.css` does not mean there is no system. With no shared system, read the token source (`globals.css`, `tailwind.config.*`, the theme file) and the components under `components/`. Either way, never write a colour, radius, shadow or font by hand, and never write a dark-mode value: the tokens already carry it.
+3. The closest sibling page: the same entity seen by another role, the admin view, the neighbouring app. Take its layout, components, data shape and wording. A page for a new person type is that page, fed with their data.
+4. The shell: menu, page frame and header stay exactly as they are. Never regroup or rename navigation.
 
-If the project has tokens, **you do not choose a palette** — you extend theirs.
+If the system lacks a component two apps could use, stop and say so in one line ("the design system has no <X>; proposing it there"). Do not build a one-off copy in the app. A component only this app will ever use stays in the app, built from system primitives.
 
----
+The brand's choices are correct by definition. If a brand uses pills, Inter, glass cards or large stat tiles, those are the right answer here, whatever any companion skill says about them.
 
-## Phase 0 — Design Read (before any code)
+### Product rules
 
-Infer the brief. Do not jump to a default aesthetic.
+Product UI succeeds when a user fluent in the category trusts it at once and the tool disappears into the task. Depth for each line: [reference/product-ui.md](reference/product-ui.md), read it for any table, form, settings page, dashboard, filter or wizard.
 
-1. **Page kind** — landing, portfolio, product UI, marketing section, redesign, editorial
-2. **Audience + job** — who, in what context, what one job this surface does
-3. **Vibe words / references** — Linear, Apple-y, editorial, brutalist, trust-first, etc.
-4. **Incumbent truth** — existing tokens, brand, DESIGN.md / PRODUCT.md if present
-5. **Constraints** — a11y, regulated, performance, framework
+- Type: one family, a fixed rem scale with steps of 1.125 to 1.2, no fluid `clamp` sizes. Display faces stay out of labels, buttons and data.
+- Colour: Restrained. The accent marks the primary action, the current selection and state, nothing decorative.
+- Figures: right-aligned, `tabular-nums`, nowrap (the project's number class, such as `.num`, when it has one). Text columns left-aligned; each header aligns with its column.
+- Tables scroll inside their own wrapper; the page never scrolls sideways.
+- Forms: visible label above, helper and error below joined by `aria-describedby`, validate on blur. Match the sibling's save model (explicit save or autosave).
+- Inline or progressive disclosure before a modal. Undo before a confirm; confirm in place for what cannot be undone.
+- Same button shape, control vocabulary and icon style on every screen. Standard affordances, never reinvented for flavour.
+- Charts, stat tiles and KPI rows: use the `dataviz` skill, inside the system's colours.
+- Motion: 150 to 250 ms, state changes only, no page-load sequence (see the motion gate).
 
-State one line before building:
+## Direct
 
-> **Reading this as:** \<page kind> for \<audience>, \<vibe> language, leaning \<system/aesthetic>.
+### Set the direction from the subject
 
-If the read genuinely forks, ask **one** clarifying question. Otherwise proceed.
+Decide in this order, one line each:
 
-### Three dials (set from the read)
+1. Scene: who uses this, where, under what light. This decides light or dark.
+2. Colour strategy: Restrained (neutrals plus one accent), Committed (one colour owns 30 to 60 percent of the surface), Full (three or four named roles) or Drenched (the surface is the colour). Then name 4 to 6 values in oklch. Neutrals carry a trace of the brand hue.
+3. Type: one family for an app, a display face plus a body face for a marketing page. Pick the face for a reason the subject supplies (its era, its material, its trade), not for its category.
+4. Layout: one sentence and the first viewport in words: what sits where, at what scale, and where the primary action is.
+5. Signature: the one element a visitor would describe an hour later.
 
-| Dial | 1 … 10 | Default |
-|---|---|---|
-| `DESIGN_VARIANCE` | Perfect symmetry → artsy chaos | 7–8 marketing / 4–5 product |
-| `MOTION_INTENSITY` | Static → cinematic | 5–7 marketing / 2–4 product |
-| `VISUAL_DENSITY` | Art gallery → cockpit | 3–4 marketing / 5–7 product |
+Then run the self-check. If someone could guess your result from the category alone, rework it. The usual guesses are: a cream ground with a serif display and a terracotta accent; near-black with one neon accent and glow; a centred hero over a gradient blob; three equal icon cards; a big-number stats strip under the hero; an italic serif word inside a sans headline; small tracked mono labels above every section; a Geist and zinc page with one emerald button. Each is fine when the brief or brand asks for it. Landing on one when nothing asked for it means the decisions above were skipped.
 
-Overrides from the brief always win. If `MOTION_INTENSITY > 4`, the page must actually move — claim without motion is failure. If you cannot ship working motion, drop the dial and ship clean static.
+A reference image or a named aesthetic pins the look: follow it inside the house rules and any brand tokens. Depth on colour strategy, choosing faces and density per surface: [reference/direction.md](reference/direction.md).
 
----
+### Marketing mechanics
 
-## Phase 1 — Direction
+For any landing, marketing or portfolio page read [reference/marketing.md](reference/marketing.md). The lines that most change the result:
 
-Commit to a bold, brief-specific direction:
+- The hero fits the first viewport: headline at most two lines, at most four text elements, the primary action visible without scrolling, and one real visual.
+- Navigation is one line at desktop, 64 to 72 px tall, never over 80 px.
+- One label per call-to-action intent across the page; labels fit one line.
+- No layout family twice on a page. Eyebrows at most one per three sections.
+- Real images or labelled placeholder slots, never `div`-built fake screenshots.
+- One theme for the whole page. Motion only where it explains or directs; there is no motion quota.
 
-- **Tone** — one extreme executed well (minimal, editorial, luxury, industrial, playful, …)
-- **Palette** — 4–6 named hex/oklch values; tint neutrals toward brand hue; one accent locked page-wide
-- **Type** — characterful display (restrained) + complementary body (+ utility if needed). Prefer distinctive faces; avoid Inter/Roboto/Arial/Open Sans as defaults
-- **Layout concept** — one sentence + mental wireframe; asymmetry when variance > 4
-- **Signature** — the single memorable element this page earns
+## Refine
 
-**Anti-default:** warm cream + terracotta serif, purple-on-white / purple-indigo gradients, broadsheet hairline newspaper, dark mode + acid neon glow, three equal icon cards, hero-metric template. Legitimate when the brief pins them; never as free-axis defaults.
+Keep the current look: tokens, layout, type and corners stay. Fix only what the pass names. Read `~/.claude/skills/impeccable/reference/<verb>.md` for the named verb (polish, quieter, bolder, distill, clarify, harden, adapt, onboard, typeset, layout, colorize, delight, animate, critique, audit, optimize). Those files were written for another setup: skip any step that serves a page, opens a browser, takes screenshots or runs `node .agents/...` scripts, and never use `new-work.md` on product UI. A pass that would change the brand's fonts, colours or corners is a Direct task; ask first.
 
-Match complexity to vision. Maximalism needs elaborate execution; minimalism needs precision.
+## Motion gate
 
-Consult references as needed:
-- [typography](reference/typography.md)
-- [color-and-contrast](reference/color-and-contrast.md)
-- [spatial-design](reference/spatial-design.md)
-- [motion-design](reference/motion-design.md) ← Emil-hardened
-- [interaction-design](reference/interaction-design.md)
-- [responsive-design](reference/responsive-design.md)
-- [ux-writing](reference/ux-writing.md)
-
-For landing/portfolio pre-flight depth, Read `design-taste-frontend`. For craft-floor bans, Read `impeccable/reference/craft-floor.md`.
-
----
-
-## Phase 2 — Build with craft floor
-
-Ship real working code. Quality floor:
-
-### Typography
-- Modular / fluid scale (`clamp`); clear hierarchy via weight, size, tracking
-- Display with restraint; body measure ~65–75ch
-- No lazy monospace-as-"technical"; no oversized icon-above-every-heading pattern
-- Serif only when the brief/aesthetic truly earns it — not as creative costume
-- Italic display with descenders (`y g j p q`): enough line-height / padding so glyphs do not clip
-
-### Color & theme
-- Dominant color + sharp accent > timid even distribution
-- Prefer `oklch` / `color-mix` / semantic tokens
-- Never gray text on colored backgrounds — tint from the surface hue
-- No pure `#000` / `#fff` — always tint
-- One accent locked across the whole page; one corner-radius system
-
-### Layout & space
-- Visual rhythm: tight groups, generous separations; more space above headings than below
-- Fluid spacing; break the grid intentionally when variance is high
-- Cards only when elevation communicates hierarchy — never hero cards, rarely nested cards
-- Hero: brand + one headline + one short support + CTA group + one dominant visual. No stats strips, pill clusters, or secondary marketing in the first viewport
-- No detached badges / stickers overlaid on hero media
-- Mobile: adapt, do not amputate; prefer `min-h-[100dvh]` over `h-screen`
-
-### Interaction
-- Full state cycles: hover, active, focus, loading, empty, error
-- Press feedback: `transform: scale(0.97)` (~100–160ms ease-out) on pressable surfaces
-- Optimistic UI where safe; progressive disclosure for complexity
-- Every CTA: WCAG AA contrast; labels fit one line at desktop; one label per intent page-wide
-
-### Copy
-- Specific > clever; active voice; product language not system language
-- Errors name the problem and the fix; empty states invite action
-- No filler verbs (elevate, unleash, seamless, next-gen) unless brand voice demands them
-- No em dashes (`—`) in copy. Use a period or a comma, not a hyphen standing in for a dash
-
----
-
-## Phase 3 — Motion (Emil decision framework)
-
-Motion is where bland pages die and over-animated pages also die. Run this gate before writing animation code.
+Motion is where bland pages die and over-animated pages also die. Run this gate before writing animation code. Depth and recipes: [reference/motion-design.md](reference/motion-design.md).
 
 ### 1. Should this animate at all?
 
 | Frequency | Decision |
 |---|---|
-| 100+/day (keyboard, command palette) | No animation |
-| Tens/day (hover, list nav) | Remove or near-imperceptible |
+| 100+ times a day (keyboard, command palette) | No animation |
+| Tens of times a day (hover, list navigation) | Remove, or near-imperceptible |
 | Occasional (modals, drawers, toasts) | Standard |
-| Rare / first-time (onboarding, success) | Delight budget lives here |
+| Rare or first-time (onboarding, success) | The delight budget lives here |
 
 Never animate keyboard-initiated actions.
 
 ### 2. Purpose (required)
 
-Valid: spatial consistency · state indication · explanation · feedback · preventing jarring change · delight (rare tier only).
+Valid: spatial consistency, state indication, explanation, feedback, preventing a jarring change, delight (rare tier only). "It looks cool" on a frequent surface means do not animate.
 
-"It looks cool" on a frequent surface → do not animate.
-
-### 3. Easing & duration
+### 3. Easing and duration
 
 ```css
 --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
@@ -186,55 +127,81 @@ Valid: spatial consistency · state indication · explanation · feedback · pre
 --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
 ```
 
-- Enter/exit → ease-out (custom). No ease-in on UI; it feels sluggish
-- On-screen move → ease-in-out
-- Hover/color → ease; marquee/progress → linear
-- UI under **300ms** (press 100–160 · tooltip 125–200 · dropdown 150–250 · modal/drawer 200–500)
-- Exit faster than enter; press slow when deliberate, release snappy
-- Prefer CSS transitions over keyframes for interruptible UI
-- Animate **transform + opacity** only (height via `grid-template-rows` or clip-path)
-- Never `scale(0)` — start `scale(0.95)+opacity:0`
-- Popovers: origin-aware (`transform-origin` at trigger); modals stay centered
-- Stagger 30–80ms; never block interaction
-- Springs for gestures / alive decorative motion; bounce 0.1–0.3 max, rare
-- Gate hover behind `@media (hover: hover) and (pointer: fine)`
-- Honor `prefers-reduced-motion` — gentler (opacity/color), not necessarily zero
-- Orchestrate one high-impact load/reveal moment over scattering micro-effects
+- Enter and exit: ease-out (custom). No ease-in on UI; it feels sluggish.
+- On-screen move: ease-in-out. Hover and colour: ease. Marquee and progress: linear.
+- UI under 300 ms: press 100 to 160, tooltip 125 to 200, dropdown 150 to 250, modal or drawer 200 to 500.
+- Product UI: 150 to 250 ms, state changes only, no page-load sequence.
+- Exit faster than enter. A deliberate press can be slow; the release is snappy.
+- Prefer CSS transitions over keyframes for interruptible UI.
+- Animate transform and opacity only (height through `grid-template-rows` or `clip-path`). Name the properties; never `transition: all`.
+- Never `scale(0)`: start from `scale(0.95)` with `opacity: 0`. Press feedback is `scale(0.97)`.
+- Popovers grow from their trigger (`transform-origin`); modals stay centred.
+- Stagger 30 to 80 ms, and never block interaction while it plays.
+- Springs for gestures and alive decorative motion; bounce 0.1 to 0.3 at most, and rare.
+- Gate hover behind `@media (hover: hover) and (pointer: fine)`.
+- Honour `prefers-reduced-motion`: gentler (opacity and colour), not necessarily zero.
+- Marketing pages: one orchestrated load or reveal moment beats scattered micro-effects.
 
-Deep recipes: [reference/motion-design.md](reference/motion-design.md) or Read `emil-design-eng`.
+## Floor for every track
 
-If hunting opportunities on existing UI → `find-animation-opportunities`.  
-If auditing broken motion → `improve-animations` / `review-animations`.
+- Every control is reachable by keyboard in reading order and shows a `:focus-visible` ring; never `outline: none` without a replacement.
+- Icon-only buttons carry an `aria-label`; informative images carry alt text, decorative ones `alt=""`.
+- Contrast AA: 4.5:1 for body text and placeholders, 3:1 for large text, icons and control borders.
+- Colour is never the only signal; pair it with text or an icon.
+- Async results (imports, syncs, saves) announce through `aria-live`.
+- The layout holds at 200 percent zoom; type in rem; zoom never disabled.
+- Touch targets 44 px, through padding or a pseudo-element when the visual is smaller.
+- Every data view has loading (a skeleton shaped like the result), empty (what goes here and the action that fills it), error (what happened and the fix), and disabled or read-only where the data can be locked.
+- Responsive, checked in code: flex children holding text get `min-w-0`, grids use `minmax(0, 1fr)`, no fixed pixel widths on content, `min-h-[100dvh]` over `h-screen`, and every multi-column layout states its fallback below 768 px in the same component.
+- Check `package.json` before importing a library. Keep motion in client leaves (`'use client'`). Never animate from a `scroll` listener; use `useScroll`, ScrollTrigger, IntersectionObserver or CSS scroll-driven animation.
 
----
+## Finish
 
-## Phase 4 — AI slop test + pre-flight
+The user checks the running app. Do not start a dev server, open a browser, take screenshots or run Lighthouse unless asked. Check by reading the code, once, then fix everything you found in one batch:
 
-**Test:** If someone said "AI made this," would they believe it immediately? If yes, revise.
+- Fit: every label, button, nav item, table cell, stat and meta row that must stay on one line has `white-space: nowrap` and the room for it at 375, 768 and 1280 px. Flex children holding text have `min-w-0`; grids use `minmax(0, 1fr)`; wide tables scroll inside their own wrapper. Where a string cannot fit, break it on purpose at a clause boundary or step the size down.
+- System: no hand-written colour, radius, shadow or font; no component that duplicates one the design system or the app already has.
+- States: loading, empty, error, disabled, and locked or read-only where the data can be locked.
+- Floor: focus visible on every control, icon buttons named, contrast AA, reduced motion honoured, targets 44 px on touch.
+- Copy: no em or en dash, no hyphen or parentheses used as a dash, straight quotes, sentence case, no "AI" (say "smart"), no decorative emoji.
+- Typecheck and tests if they are cheap.
 
-Hard fails unless the brief explicitly earns them:
-- Inter/Roboto/Arial defaults · purple/indigo glow gradients · three equal feature cards
-- Hero-metric template · glassmorphism everywhere · gradient text for "impact"
-- Section-number eyebrows (`01 / Capabilities`) · eyebrow spam (max ~1 per 3 sections on marketing)
-- Div-based fake product screenshots · Jane Doe / Acme / "Quietly trusted by"
-- Scroll cues (`Scroll to explore`) · decoration marquee spam (max one marquee per page)
-- Cream or off-white page background as the unexamined default · one italic (often serif) accent word inside a sans headline
-- Monospace eyebrows and labels as "technical" decoration · pill buttons as the default button shape
-- `transition: all` · `ease-in` on UI · animation on keyboard actions
+Report in under ten lines: what changed, anything not built, and one line per string or layout you could not prove fits. End with a `Storybook` section: one line per changed or added component, linking the design system's Storybook for system components, the app's Storybook when it has one, and "no story" when it has neither.
 
-Landing/portfolio: run the mechanical pre-flight inside `design-taste-frontend` §14 before declaring done.
+## Companions
 
-Verify in bounded passes: build fully, check against this list by reading the code, fix in one batch, stop. Rendering desktop and mobile in a browser is the user's call (they have the app open); do it only when they ask. Open-ended self-QA burns budget.
+Load at most two per task and name them. Several at once average into bland output. Hidden skills cannot be invoked: read their file. Where a companion asks for screenshots, a browser, a root `GATES.md`, a table report, curly quotes, a hyphen as a dash, or bans step labels and progress bars, the house rules win.
 
----
+| Need | Companion |
+|---|---|
+| Any chart, graph, stat tile or KPI row | the `dataviz` skill |
+| Illustration or doodle icons | `sketches`; in an app with a shared design system use its art package first, and new sketches go into the system |
+| A Refine pass | `~/.claude/skills/impeccable/reference/<verb>.md` (read the one file) |
+| Gesture-heavy motion: drag, sheets, toasts, springs | `emil-design-eng` |
+| Physical, momentum-driven product UI | `apple-design` |
+| Naming an effect the user described | `animation-vocabulary` |
+| Where motion should or should not exist | `find-animation-opportunities`, then `improve-animations` |
+| Reviewing a motion diff | read `~/.claude/skills/review-animations/SKILL.md` |
+| An aesthetic the user named | read `~/.claude/skills/minimalist-ui/SKILL.md` or `~/.claude/skills/industrial-brutalist-ui/SKILL.md` |
+| Choosing a component library, only with no design system | read `~/.claude/skills/pick-ui-library/SKILL.md` |
+| Brand boards and logo systems | `brandkit` |
+| Performance after the build | `vercel-react-best-practices` |
 
-## Implementation principles
+`design-taste-frontend` and `redesign-existing-projects` are not routed by default: [reference/marketing.md](reference/marketing.md) carries what they add. Load one only when the user names it.
 
-- Match implementation complexity to the aesthetic vision
-- Isolate motion in client leaves (`'use client'`) when using RSC
-- Prefer Motion (`motion/react`) for UI; GSAP ScrollTrigger only for pin/scrub storytelling — never mix both in one component tree
-- Never `window.addEventListener('scroll')` for animation — use `useScroll`, ScrollTrigger, IntersectionObserver, or CSS scroll-driven animations
-- Check `package.json` before importing libraries; install first if missing
-- Existing project design system / tokens win over inventing a parallel one
-- Vary across projects — never converge on the same safe look twice in a row
-- Commit fully to the chosen vision; restraint around the signature, boldness in one place. Every flourish still has to pass the Phase 3 frequency and purpose gate
+## Working with a shared design system
+
+When several apps share one design system, it is the source of every component, token, icon and illustration. Read what the installed version exports before building anything, use its theme settings (brand, mode, density, corners) as the app already sets them, and never write a dark-mode value or restyle a component away from its brand. Brands may use pills, glass surfaces or fonts that some skill calls overused; for that app they are right. Link system components to the system's Storybook: the hosted one when it exists, otherwise `http://localhost:6006/?path=/docs/<id>`.
+
+## References
+
+- [reference/product-ui.md](reference/product-ui.md): any app screen with tables, forms, settings, filters, dashboards, wizards or locked states.
+- [reference/marketing.md](reference/marketing.md): landing, marketing and portfolio pages.
+- [reference/direction.md](reference/direction.md): Direct track, before naming colours or faces.
+- [reference/typography.md](reference/typography.md): type scale, pairing, font loading, numerals.
+- [reference/color-and-contrast.md](reference/color-and-contrast.md): building a palette, contrast ratios, dark mode without a token system.
+- [reference/spatial-design.md](reference/spatial-design.md): spacing scale, grids, hierarchy, container queries.
+- [reference/motion-design.md](reference/motion-design.md): motion recipes past the gate.
+- [reference/interaction-design.md](reference/interaction-design.md): states, focus, modals, popovers, keyboard patterns.
+- [reference/responsive-design.md](reference/responsive-design.md): breakpoints, input method, safe areas, images, checks by reading code.
+- [reference/ux-writing.md](reference/ux-writing.md): button labels, errors, empty states, terminology.

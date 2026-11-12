@@ -6,11 +6,11 @@ Start with base styles for mobile, use `min-width` queries to layer complexity. 
 
 ## Breakpoints: Content-Driven
 
-Don't chase device sizes—let content tell you where to break. Start narrow, stretch until design breaks, add breakpoint there. Three breakpoints usually suffice (640, 768, 1024px). Use `clamp()` for fluid values without breakpoints.
+Don't chase device sizes; let content tell you where to break. Start narrow, stretch until design breaks, add breakpoint there. Three breakpoints usually suffice (640, 768, 1024px). Use `clamp()` for fluid values without breakpoints.
 
 ## Detect Input Method, Not Just Screen Size
 
-**Screen size doesn't tell you input method.** A laptop with touchscreen, a tablet with keyboard—use pointer and hover queries:
+**Screen size doesn't tell you input method.** A laptop with touchscreen, a tablet with keyboard: use pointer and hover queries.
 
 ```css
 /* Fine pointer (mouse, trackpad) */
@@ -87,18 +87,21 @@ When you need different crops/compositions (not just resolutions):
 
 ## Layout Adaptation Patterns
 
-**Navigation**: Three stages—hamburger + drawer on mobile, horizontal compact on tablet, full with labels on desktop. **Tables**: Transform to cards on mobile using `display: block` and `data-label` attributes. **Progressive disclosure**: Use `<details>/<summary>` for content that can collapse on mobile.
+**Navigation**: in an app, the shell's own responsive behaviour decides; never rebuild it. On a marketing site, three stages: a menu button and drawer on mobile, compact horizontal on tablet, full labels on desktop. **Tables**: scroll inside their own wrapper (`overflow-x: auto` on a container) so the page never scrolls sideways. Turn rows into cards (`display: block` with `data-label` attributes) only when each row is read on its own, not when figures are compared down a column. **Progressive disclosure**: Use `<details>/<summary>` for content that can collapse on mobile.
 
-## Testing: Don't Trust DevTools Alone
+## Checking by Reading the Code
 
-DevTools device emulation is useful for layout but misses:
+The user checks the running app on real devices. Your check is a read of the code at 375, 768 and 1280 px:
 
-- Actual touch interactions
-- Real CPU/memory constraints
-- Network latency patterns
-- Browser chrome/keyboard appearances
+- **Overflow**: every flex child that holds text has `min-w-0`; grid tracks use `minmax(0, 1fr)`, not bare `1fr`, when they hold text or tables. A missing `min-w-0` is the usual cause of a page that scrolls sideways at 375.
+- **Fixed widths**: flag any `w-[NNNpx]`, `min-w-[NNNpx]` or `width: NNNpx` on content. Over 343 px (375 less a 16 px gutter each side) it overflows a phone.
+- **Tables and code**: wide content scrolls inside its own wrapper.
+- **One-line strings**: for each label, button, nav item, stat and meta row that must not wrap, add up the widths it shares a row with at each breakpoint. If the sum can exceed the container, fix the cause (a `max-width` cap, a narrow track, a greedy sibling) or plan the break.
+- **Viewport height**: `min-h-[100dvh]`, never `h-screen`, so the mobile browser bar does not cut the content.
+- **Every multi-column layout** declares what happens below 768 px in the same component.
+- **Hover**: nothing works by hover alone; hover styles sit inside `@media (hover: hover)`.
 
-**Test on at least**: One real iPhone, one real Android, a tablet if relevant. Cheap Android phones reveal performance issues you'll never see on simulators.
+List in the report any layout you could not prove fits, so the user knows where to look.
 
 ---
 

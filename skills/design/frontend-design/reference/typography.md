@@ -4,7 +4,7 @@
 
 ### Vertical Rhythm
 
-Your line-height should be the base unit for ALL vertical spacing. If body text has `line-height: 1.5` on `16px` type (= 24px), spacing values should be multiples of 24px. This creates subconscious harmony—text and space share a mathematical foundation.
+Your line-height should be the base unit for ALL vertical spacing. If body text has `line-height: 1.5` on `16px` type (= 24px), spacing values should be multiples of 24px. This creates subconscious harmony: text and space share a mathematical foundation.
 
 ### Modular Scale & Hierarchy
 
@@ -20,11 +20,13 @@ The common mistake: too many font sizes that are too close together (14px, 15px,
 | lg | 1.25-1.5rem | Subheadings, lead text |
 | xl+ | 2-4rem | Headlines, hero text |
 
-Popular ratios: 1.25 (major third), 1.333 (perfect fourth), 1.5 (perfect fifth). Pick one and commit.
+Popular ratios for marketing pages: 1.25 (major third), 1.333 (perfect fourth), 1.5 (perfect fifth). Pick one and commit.
+
+**Product UI takes a tighter, fixed scale**: steps of 1.125 to 1.2 in rem, no fluid sizes. Product screens hold more type elements than a landing page, so wide contrast between steps becomes noise. In a design-system app the type tokens already set this.
 
 ### Readability & Measure
 
-Use `ch` units for character-based measure (`max-width: 65ch`). Line-height scales inversely with line length—narrow columns need tighter leading, wide columns need more.
+Use `ch` units for character-based measure (`max-width: 65ch`). Line-height scales inversely with line length: narrow columns need tighter leading, wide columns need more.
 
 **Use modern wrapping by default** (both Baseline): `text-wrap: balance` on headings evens out ragged lines; `text-wrap: pretty` on body text prevents orphans.
 
@@ -32,15 +34,11 @@ Use `ch` units for character-based measure (`max-width: 65ch`). Line-height scal
 
 ## Font Selection & Pairing
 
-### Choosing Distinctive Fonts
+### Choosing Fonts
 
-**Avoid the invisible defaults**: Inter, Roboto, Open Sans, Lato, Montserrat. These are everywhere, making your design feel generic. They're fine for documentation or tools where personality isn't the goal—but if you want distinctive design, look elsewhere.
+**On the Extend track the brand's faces are right by definition.** Use the families the design system or the app's tokens set, whatever they are.
 
-**Better Google Fonts alternatives**:
-- Instead of Inter → **Instrument Sans**, **Plus Jakarta Sans**, **Outfit**
-- Instead of Roboto → **Onest**, **Figtree**, **Urbanist**
-- Instead of Open Sans → **Source Sans 3**, **Nunito Sans**, **DM Sans**
-- For editorial/premium feel → **Fraunces**, **Newsreader**, **Lora**
+**On the Direct track, choose from the subject, not from a list.** A swap list ("instead of X, use Y") only moves everyone to the same second choice. Pick the face for a reason the subject supplies (its era, its material, its trade) and write that reason down. The method is in [direction.md](direction.md).
 
 **System fonts are underrated**: `-apple-system, BlinkMacSystemFont, "Segoe UI", system-ui` looks native, loads instantly, and is highly readable. Consider this for apps where performance > personality.
 
@@ -88,17 +86,17 @@ Tools like [Fontaine](https://github.com/unjs/fontaine) calculate these override
 
 ### Fluid Type
 
-Use `clamp(min, preferred, max)` for fluid typography. The middle value (e.g., `5vw + 1rem`) controls scaling rate—higher vw = faster scaling. Add a rem offset so it doesn't collapse to 0 on small screens.
+Use `clamp(min, preferred, max)` for fluid typography. The middle value (e.g., `5vw + 1rem`) controls scaling rate: higher vw means faster scaling. Add a rem offset so it doesn't collapse to 0 on small screens.
 
-**When NOT to use fluid type**: Button text, labels, UI elements (should be consistent), very short text, or when you need precise breakpoint control.
+**When not to use fluid type**: product UI as a whole, button text, labels, UI elements (they should be consistent), very short text, or when you need precise breakpoint control. Fluid type is for marketing headlines.
 
 ### OpenType Features
 
 Most developers don't know these exist. Use them for polish:
 
 ```css
-/* Tabular numbers for data alignment */
-.data-table { font-variant-numeric: tabular-nums; }
+/* Tabular numbers for data alignment; figures also never wrap */
+.data-table td.num { font-variant-numeric: tabular-nums; white-space: nowrap; text-align: right; }
 
 /* Proper fractions */
 .recipe-amount { font-variant-numeric: diagonal-fractions; }
@@ -120,7 +118,7 @@ Beyond contrast ratios (which are well-documented), consider:
 
 - **Never disable zoom**: `user-scalable=no` breaks accessibility. If your layout breaks at 200% zoom, fix the layout.
 - **Use rem/em for font sizes**: This respects user browser settings. Never `px` for body text.
-- **Minimum 16px body text**: Smaller than this strains eyes and fails WCAG on mobile.
+- **Minimum 16px for reading text**: paragraphs, articles, form help on mobile. Smaller strains eyes. Dense UI (table cells, labels, meta rows) can sit below it when the design system's density sets the size.
 - **Adequate touch targets**: Text links need padding or line-height that creates 44px+ tap targets.
 
 ---

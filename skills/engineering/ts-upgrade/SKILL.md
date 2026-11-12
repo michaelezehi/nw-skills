@@ -1,6 +1,6 @@
 ---
 name: ts-upgrade
-description: Move a repo's type checking to TypeScript 7 (the native Go compiler, about 3 to 10x faster) without breaking ESLint, tsup, Next, Expo, Remotion, Convex, CI or Docker builds. Detects each package's tools and install layout, installs TS 7 directly or beside 5.x/6.x, fixes the tsconfig options TS 7 removed, and measures before and after. Use when the user runs /ts-upgrade, asks to upgrade TypeScript, move to TS 7 / tsgo / the native compiler, or make type checking faster in a repo.
+description: Moves a repo's type checking to TypeScript 7 (native Go tsc, 3 to 10x faster) per package, direct or beside 5.x/6.x, without breaking ESLint, tsup, Next, Expo, Remotion, Convex, CI or Docker; fixes removed tsconfig options and measures before and after. Use on /ts-upgrade, "upgrade TypeScript", TS 7, tsgo, the native compiler, or faster type checking.
 argument-hint: "[repo path, default: the current repo]"
 ---
 

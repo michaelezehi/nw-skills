@@ -1,6 +1,6 @@
 # Palettes (themes)
 
-A theme maps the 5 tokens to hex. One sketch body serves every brand — recolour,
+A theme maps the 5 tokens to hex. One sketch body serves every brand: recolour,
 never redraw. Stored in `repertoire/library.json` under `themes`.
 
 | token | role | founders-align | renovyn |

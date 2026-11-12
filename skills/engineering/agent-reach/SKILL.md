@@ -1,16 +1,12 @@
 ---
 name: agent-reach
-description: >
-  AgentReach. See, hear and read what a link points at when built-in fetch or
-  search can't: YouTube videos and Shorts, Instagram reels and posts, TikTok,
-  X/Twitter, LinkedIn video and posts, Reddit, GitHub, Facebook, Bilibili,
-  podcasts, Loom, Vimeo and any web page. Gets the title, caption, chapters and
-  a full transcript (subtitles, or local Whisper when a video has none).
-  Use whenever the user pastes a video or social link to watch, scope, study or
-  improve from; when WebFetch or WebSearch returns "can't access", a login wall,
-  a page shell or no body; or when the user says "look at this video", "watch
-  this", "what does this reel say", "transcribe", "AgentReach" or /agent-reach.
-  Never answer "I can't see this video" before running this skill.
+description: >-
+  Reads what built-in fetch cannot open: a video's title, caption, chapters and
+  full transcript (YouTube, reels, TikTok, Loom, podcasts) and posts on X,
+  LinkedIn, Instagram, Reddit, Facebook or any page. Use when the user pastes a
+  video or social link, says "watch this", "transcribe" or /agent-reach, or
+  WebFetch hits a login wall or an empty shell. Run it before saying "I can't
+  see this".
 ---
 
 # AgentReach

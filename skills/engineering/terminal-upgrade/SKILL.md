@@ -1,6 +1,6 @@
 ---
 name: terminal-upgrade
-description: Turn `pnpm dev` / `npm run dev` / `yarn dev` / `bun dev` in every repo on this machine into Devdeck, a calm live terminal dashboard, and every other package script into a run deck with progress, memory and prompts answered by key or click. It shows each dev server with port, memory and hot reloads, streams Convex calls, keeps errors to one line until opened, and has a log pane, colour palettes and copy-to-clipboard. One global install plus a shell hook, with nothing written inside any repo. Use when the user runs /terminal-upgrade, or asks to upgrade, prettify or dashboard their dev terminal.
+description: Turns `pnpm dev` (npm, yarn, bun) in every repo on the machine into Devdeck, a live terminal dashboard of dev servers with ports, memory, hot reloads, Convex calls and one-line errors, and every other package script into a run deck with progress and prompts. One global install plus a shell hook, nothing written in any repo. Use on /terminal-upgrade or to upgrade or dashboard the dev terminal.
 argument-hint: "[install | uninstall | plan | update | repo]"
 disable-model-invocation: true
 ---

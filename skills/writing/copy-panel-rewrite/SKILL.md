@@ -1,16 +1,11 @@
 ---
 name: copy-panel-rewrite
 description: >-
-  Rewrite every string a person reads in a product (questionnaires, answer
-  options, screens, emails, website) in plain human language, then hand every
-  change to three independent, research-backed judge panels that decide blind.
-  Two of three wins; splits go to a blind ranking round. The verdicts are
-  applied in code, tested and committed, and the owner gets a tabbed HTML
-  report with a TL;DR instead of reviewing line by line. Optional: narration
-  audio pipeline and a questionnaire data reset, both built but never run
-  without the owner. Use for "/copy-panel-rewrite", "rewrite all our copy in
-  plain language", "let judges decide the wording", "humanize and unslop every
-  page", "the wording is too technical", "copy sweep before release".
+  Rewrites every string a person reads in a product in plain language, then
+  three blind research-backed judge panels decide each change (two of three
+  wins); verdicts are applied, tested, committed and reported in one HTML
+  page. Use on /copy-panel-rewrite, "rewrite all our copy in plain language",
+  "let judges decide the wording", "copy sweep before release".
 argument-hint: "[scope: questionnaires | app | site | emails | all] [--audio] [--reset] [--exclude <path,...>]"
 ---
 
@@ -31,6 +26,19 @@ side effects (audio spend, data resets, production).
 Every word this skill writes, including the report and chat replies, passes
 `~/.claude/skills/unslop/SKILL.md`. Writers also run
 `~/.claude/skills/humanizer/SKILL.md` on their own output.
+
+## Rules that do not bend
+
+- Panels are blind and independent. No version labels, no writer names, no
+  other panel's verdict, no owner preference, ever.
+- The owner is not asked to approve wording. They approve spend, data and
+  production.
+- Never run paid audio, a data reset, or a deploy. Build, test, document.
+- Never ship reworded scored options to an environment with saved answers
+  before, or without, its reset or legacy mapping.
+- Option count and order never change outside a winning call.
+- Every count in the report and the closing message comes from FINAL.json or
+  a command run at report time.
 
 ## The run
 
@@ -293,19 +301,6 @@ reset tab lists the order.
 5. Set ACCOUNTABILITY to COMPLETE, delete the gates files.
 6. Close with `[!DONE]` (link, the counts, tests) and one `[!ACTION]` per
    owner-only step (listen to presets, run the reset, ship to production).
-
-## Rules that do not bend
-
-- Panels are blind and independent. No version labels, no writer names, no
-  other panel's verdict, no owner preference, ever.
-- The owner is not asked to approve wording. They approve spend, data and
-  production.
-- Never run paid audio, a data reset, or a deploy. Build, test, document.
-- Never ship reworded scored options to an environment with saved answers
-  before, or without, its reset or legacy mapping.
-- Option count and order never change outside a winning call.
-- Every count in the report and the closing message comes from FINAL.json or
-  a command run at report time.
 
 ## Lessons from the first run
 

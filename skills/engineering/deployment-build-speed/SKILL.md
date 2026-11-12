@@ -1,15 +1,12 @@
 ---
 name: deployment-build-speed
-description: >
-  Install the house fast-ship pattern in a Docker project that deploys to a
-  server with `pnpm ship`, `bun ship` or a deploy script: rebuild only the
-  images whose inputs changed, pull CI-built images instead of compiling on
-  the server, fall back to the on-server build when the registry has nothing,
-  and never keep a registry token on the server. Use when the user says
-  /deployment-build-speed, /dbs, "make ship faster", "ship is not using the
-  cache", "only deploy what changed", or asks to roll the ship fix out to a
-  repo. Alias: dbs. For a first audit with measurements, build-speed is the
-  checklist; this skill is the fix that audit usually ends in.
+description: >-
+  Installs the house fast-ship pattern in a Docker project that ships with
+  `pnpm ship`, `bun ship` or a deploy script: rebuild only changed images, pull
+  CI-built images with an on-server fallback, keep no registry token on the
+  server. Use on /deployment-build-speed, /dbs, "make ship faster", "ship is not
+  using the cache", "only deploy what changed", or rolling the ship fix out to
+  a repo.
 ---
 
 # Deployment build speed
@@ -22,6 +19,9 @@ image input skips the image step entirely.
 The pattern has five parts. Install the ones the repo is ready for, in this
 order, and stop where the next part has nothing to stand on. Snippets for
 every part are in [references/snippets.md](references/snippets.md).
+
+For a first audit with measurements, use `/build-speed`; this skill is the
+fix that audit usually ends in. `/dbs` is an alias of this skill.
 
 ## Before you edit
 

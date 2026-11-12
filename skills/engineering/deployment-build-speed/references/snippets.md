@@ -4,6 +4,13 @@ Adapt names to the repo. `<reg>` is the lowercase registry path
 (`ghcr.io/<org>/<repo>`), `<ns>` a label namespace the project owns, and
 `BACKEND_URL` whichever public URL the web build inlines.
 
+Contents
+- Change map rows
+- Fixture and guard tests
+- CI workflow steps
+- Deploy script: flags, registry precheck with fallback, label check after the pull, login for one ship
+- package.json
+
 ## Change map rows (bash `case`, inside the per-file loop)
 
 ```bash

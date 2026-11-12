@@ -1,12 +1,14 @@
 ---
 name: gtm
-description: Go-to-market toolkit for any project. Twelve sub-commands that validate an idea, test whether a new feature or offer earns its place in an existing product, write a product brief, map competitors, draft personas and interview scripts, triage an MVP, set pricing, plan a launch, pick metrics, prepare a raise and outline a pitch deck. Each run reads what the project already knows, sources every outside claim, saves the analysis and hands back a black-and-white PDF report with a cover designed by Fable 5.1. `/gtm on [repo]` runs the whole review on any repo and returns one shareable PDF. Use when the user types /gtm, "GTM:", "gtm pricing", "gtm on", or asks what to charge, who the competitors are, how to launch, whether an idea or a new feature holds up, or how to prepare a raise or a deck.
+description: Go-to-market toolkit with twelve sub-commands (validate an idea or new feature, brief, competitors, personas, interviews, MVP, pricing, launch plan, metrics, fundraise, pitch deck), each a sourced black-and-white PDF report. Use on /gtm, "GTM:", "gtm on <repo>" for the whole review, or when asked what to charge, who competes, how to launch or how to raise.
 argument-hint: "[on <repo>|validate|feature|brief|competitors|personas|interviews|mvp|pricing|plan|metrics|fundraise|deck] [what you want looked at]"
 ---
 
 # /gtm
 
 Input: $ARGUMENTS
+
+Landing-page and email copy are not sub-commands here.
 
 ## Route
 
@@ -45,8 +47,6 @@ Then show what `<gtm>/` already holds in this project (per `references/conventio
 4. Save `<gtm>/<skill-name>.md`, append new user-stated facts to `facts.md`.
 5. Write the report JSON per `references/report-spec.md`, have Fable 5.1 design the cover per `references/cover.md`, render HTML and PDF with `scripts/render-report.mjs`, open the PDF.
 6. Reply with the verdict in one or two lines, the PDF path, and up to two next sub-commands.
-
-Landing-page and email copy are not sub-commands here.
 
 ## Licence
 

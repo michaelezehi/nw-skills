@@ -1,9 +1,8 @@
 ---
-name: research
-description: Deep research on any topic — produces RESEARCH.md with verified findings, source hierarchy, and confidence levels
+description: Researches a topic in depth and writes RESEARCH.md under _r&d/research, every claim sourced through a docs-first hierarchy with an honest confidence level. Use on /research, "research X", "deep dive on", or before choosing a library or approach.
 argument-hint: [topic or question]
 ---
-# Deep Research Mode
+# Deep research mode
 
 **Progress panel:** on by default. Before planning, follow `~/.claude/references/progress-panel.md`: load the savvy-progress tools if not loaded, then report this run's steps and sub-agents to the bar. If a bar is already running, carry on with it: add your rows, no second bar, no duplicate rows.
 
@@ -27,10 +26,10 @@ Unslop applies. These are the research-specific additions.
 - Vague → specific: "some libraries" → name them; "recent versions" → state the version
 
 **Format rules:**
-- Tables over prose for comparisons — always
+- Tables over prose for comparisons, always
 - Bullets only for true lists; never bullet a single item
 - No section that exists only to introduce the next section
-- Omit sections with nothing to say — a missing section beats a padded one
+- Omit sections with nothing to say: a missing section beats a padded one
 
 ## Protocol
 
@@ -41,9 +40,9 @@ work however the topic needs.
 ### Scope
 
 Extract from prompt:
-- **Topic** — what to research
-- **Scope** — broad survey vs. narrow deep-dive (default: deep)
-- **Angle** — e.g. technical, strategic, comparative, "how to build X"
+- **Topic**: what to research
+- **Scope**: broad survey vs. narrow deep-dive (default: deep)
+- **Angle**: e.g. technical, strategic, comparative, "how to build X"
 
 If topic is ambiguous, ask before proceeding.
 
@@ -57,9 +56,9 @@ mkdir -p "_r&d/research/${SLUG}/${DATE_PATH}"
 
 ### Sources
 
-Treat training knowledge as hypothesis — verify before asserting. Follow source hierarchy in order:
+Treat training knowledge as hypothesis; verify before asserting. Follow source hierarchy in order:
 
-#### Source Hierarchy
+#### Source hierarchy
 
 | Priority | Source | When | Confidence |
 |----------|--------|------|------------|
@@ -69,23 +68,23 @@ Treat training knowledge as hypothesis — verify before asserting. Follow sourc
 | 4 | **WebSearch + verified** | Community patterns cross-checked with official source | MEDIUM |
 | 5 | **WebSearch only** | Ecosystem discovery, single sources | LOW |
 
-#### Research Domains (adapt to topic)
+#### Research domains (adapt to topic)
 
 For each relevant domain:
 
-**Landscape** — What exists? What's current state of the art? What do practitioners actually use?
+**Landscape**: What exists? What's current state of the art? What do practitioners actually use?
 
-**Deep Dive** — How does it work? Core concepts, mechanisms, tradeoffs.
+**Deep dive**: How does it work? Core concepts, mechanisms, tradeoffs.
 
-**Patterns & Best Practices** — Established approaches, architecture, what experts recommend.
+**Patterns and best practices**: Established approaches, architecture, what experts recommend.
 
-**Pitfalls** — What goes wrong? Common mistakes, gotchas, failure modes.
+**Pitfalls**: What goes wrong? Common mistakes, gotchas, failure modes.
 
-**Alternatives** — What else exists? Tradeoffs vs. standard approach.
+**Alternatives**: What else exists? Tradeoffs vs. standard approach.
 
-**Cutting Edge** — Recent developments, emerging approaches, what's changing.
+**Cutting edge**: Recent developments, emerging approaches, what's changing.
 
-#### Tool Strategy
+#### Tool strategy
 
 ```
 Official docs (for libraries/frameworks):
@@ -99,7 +98,7 @@ Official docs (for libraries/frameworks):
 
 WebFetch (for official sources):
   - Use exact URLs from official docs, GitHub, changelogs
-  - Check publication dates — prefer recent
+  - Check publication dates, prefer recent
 
 WebSearch (for discovery + verification):
   - Include current year in queries
@@ -107,13 +106,13 @@ WebSearch (for discovery + verification):
   - Verify with official sources before marking MEDIUM+
 ```
 
-#### Verification Protocol
+#### Verification protocol
 
 For every significant claim:
 1. Verified against official docs / source for the pinned version? → HIGH confidence
 2. Can official docs verify? → MEDIUM-HIGH
 3. Multiple sources agree? → Upgrade one level
-4. WebSearch only? → LOW — flag for validation
+4. WebSearch only? → LOW, flag for validation
 
 Never present LOW confidence as fact. "I couldn't find X" is a valid finding.
 
@@ -129,20 +128,20 @@ Output to `_r&d/research/<slug>/<MM-DD>/<HH-MM>/RESEARCH.md`.
 
 ---
 
-## RESEARCH.md Template
+## RESEARCH.md template
 
 ```markdown
 # Research: [Topic]
 
 **Date:** [YYYY-MM-DD]
-**Scope:** [broad/narrow — what angle]
+**Scope:** [broad/narrow, what angle]
 **Overall confidence:** [HIGH / MEDIUM / LOW]
 
 ---
 
 ## TL;DR
 
-[3–5 bullet executive summary. Most important findings only.]
+[3 to 5 bullet executive summary. Most important findings only.]
 
 **Bottom line:** [One sentence actionable conclusion.]
 
@@ -224,12 +223,12 @@ Things that couldn't be fully resolved:
 ## Sources
 
 ### Primary (HIGH confidence)
-- [Context7 library ID / official URL] — [topics covered]
+- [Context7 library ID / official URL], [topics covered]
 
 ### Secondary (MEDIUM confidence)
 - [WebSearch verified with official source]
 
-### Tertiary (LOW confidence — validate before using)
+### Tertiary (LOW confidence, validate before using)
 - [WebSearch only]
 
 ---
@@ -241,7 +240,7 @@ Things that couldn't be fully resolved:
 | [Domain 1] | HIGH/MED/LOW | [why] |
 | [Domain 2] | HIGH/MED/LOW | [why] |
 
-**Valid until:** [date estimate — 30 days for stable domains, 7 for fast-moving]
+**Valid until:** [date estimate, 30 days for stable domains, 7 for fast-moving]
 ```
 
 ---
@@ -249,6 +248,6 @@ Things that couldn't be fully resolved:
 ## Completion
 
 When RESEARCH.md is written:
-1. Print key findings summary (3–5 bullets) to the conversation
+1. Print key findings summary (3 to 5 bullets) to the conversation
 2. State overall confidence and any critical LOW-confidence gaps
 3. Suggest follow-up angles if scope warrants

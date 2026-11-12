@@ -5,12 +5,12 @@ description: >-
   opacity only, no animated blur). Use when the user asks for click-burst, burst
   on click, color burst transition, burst overlay, or wants the Perspiva-style
   navigation burst in React/Next.js with motion/react.
-user-invokable: true
+user-invocable: true
 ---
 
 # Click Burst
 
-A GPU-composited color burst that expands from a click origin and fills the viewport before navigation or state change. **Click only — never on hover.**
+A GPU-composited color burst that expands from a click origin and fills the viewport before navigation or state change. **Click only, never on hover.**
 
 ## When to use
 
@@ -46,11 +46,11 @@ Use these unless the user or project specifies otherwise:
 
 ## Implementation workflow
 
-1. **Detect stack** — React + `motion/react` (Framer Motion v12). If the project uses `framer-motion`, swap the import only.
-2. **Add component** — Copy from [reference.md](reference.md) into `components/shared/BurstOverlay.tsx` (or project-equivalent path). Extend props from `BurstConfig` when the user wants custom pace/color.
-3. **Wire the hook** — Prefer `useBurstController({ ...config })` at the page or feature root; render `{burstNode}` once near the root of the client tree.
-4. **Fire on click** — Use `fireBurstFromElement(event.currentTarget, color, onNavigate)` or manual `(x, y, color, onNavigate)`.
-5. **Tune per surface** — Override `color` and `navigateDelayMs` per button/card; keep animation physics on defaults unless asked.
+1. **Detect stack**: React + `motion/react` (Framer Motion v12). If the project uses `framer-motion`, swap the import only.
+2. **Add component**: Copy from [reference.md](reference.md) into `components/shared/BurstOverlay.tsx` (or project-equivalent path). Extend props from `BurstConfig` when the user wants custom pace/color.
+3. **Wire the hook**: Prefer `useBurstController({ ...config })` at the page or feature root; render `{burstNode}` once near the root of the client tree.
+4. **Fire on click**: Use `fireBurstFromElement(event.currentTarget, color, onNavigate)` or manual `(x, y, color, onNavigate)`.
+5. **Tune per surface**: Override `color` and `navigateDelayMs` per button/card; keep animation physics on defaults unless asked.
 
 ## Quick integration
 
@@ -80,20 +80,20 @@ return (
 | Faster/slower burst | `durationMs` |
 | Navigate sooner/later | `navigateDelayMs` (760 ≈ burst mostly filled) |
 | Stronger/weaker flash | `initialOpacity`, `finalScale` |
-| Brand color | `color` only — keep rgba alpha ~0.5–0.7 |
+| Brand color | `color` only, keep rgba alpha ~0.5 to 0.7 |
 | Instant action, burst cosmetic | `navigateDelayMs: 0` |
-| Softer edge | Widen gradient stops in `background` string — do not add blur |
+| Softer edge | Widen gradient stops in `background` string, do not add blur |
 
 ## Anti-patterns (do not reintroduce)
 
 ```tsx
-// BAD — hover burst
+// BAD: hover burst
 onMouseEnter={() => fireBurst(x, y, color)}
 
-// BAD — choppy full-viewport blur
+// BAD: choppy full-viewport blur
 animate={{ filter: "blur(40px)" → "blur(108px)", clipPath: "circle(...)" }}
 
-// BAD — animating flex/blur on sibling content during burst
+// BAD: animating flex/blur on sibling content during burst
 transition: "filter 220ms ease"
 ```
 

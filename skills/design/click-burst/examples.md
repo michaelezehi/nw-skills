@@ -1,4 +1,4 @@
-# Click Burst — Examples
+# Click burst: examples
 
 ## 1. Button with delayed navigation (default pace)
 
@@ -32,7 +32,7 @@ export function ContinueButton() {
 }
 ```
 
-## 2. Card picker — burst from icon center on click only
+## 2. Card picker: burst from icon center on click only
 
 ```tsx
 const clickingRef = useRef(false);
@@ -57,7 +57,7 @@ const handleCardClick = () => {
   );
 };
 
-// Hover may expand cards — but must NOT call fireBurst
+// Hover may expand cards, but must not call fireBurst
 ```
 
 ## 3. Instant action + cosmetic burst

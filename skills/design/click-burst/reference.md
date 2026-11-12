@@ -1,4 +1,4 @@
-# Click Burst — Reference Implementation
+# Click burst: reference implementation
 
 Copy into `components/shared/BurstOverlay.tsx` (adjust import alias to match the project).
 
@@ -240,13 +240,13 @@ export function BurstTrigger({
 
 - The soft edge is **gradient falloff + GPU scale**, not CSS blur.
 - `willChange: transform, opacity` hints compositor promotion for the burst disc only.
-- Keep hover interactions on sibling UI to opacity/transform — never `filter: blur()` on expanding panels.
+- Keep hover interactions on sibling UI to opacity/transform, never `filter: blur()` on expanding panels.
 
 ## Pace presets
 
 ```ts
 export const BURST_PACE = {
-  /** Default — masks route change */
+  /** Default: masks route change */
   navigation: { durationMs: 2000, navigateDelayMs: 760 },
   /** Cosmetic feedback only, action runs immediately */
   instant: { durationMs: 1400, navigateDelayMs: 0 },

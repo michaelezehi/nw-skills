@@ -1,5 +1,5 @@
 ---
-description: Full audit and fix pass on the current task's changes. Finds gaps, fixes blockers, adds tests for critical paths, and pulls in any review skills installed on this machine.
+description: Runs a full audit and fix pass on the current task's own paths and commits, fixes blockers and gaps, adds tests for critical paths, and pulls in any review skills installed here. Use on /reviewer, "review this", or after finishing a feature.
 argument-hint: [paths, commits or context]
 ---
 

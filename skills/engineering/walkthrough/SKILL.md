@@ -1,7 +1,7 @@
 ---
 name: walkthrough
-description: Add a guided walkthrough to any web app, one story per user role plus feature stories for the standout pages, gated by role and by the company's own setup, with the house design. A story bar (play, pause, previous and next step, start over, arrow keys, a picker when the viewer has several stories), a focus light that dims the page round the one control a step is about and clicks the tab it names, a journey reader that moves clear of whatever the step is about (its usual side, the other side, or a panel along the bottom) with the picture, what happened, why it matters, the journey in icons, a 30 second pausable countdown, and "Show me how to get there", which rings the real menu item and clicks it, split prompt cards that stand in for emails, a loader so a switch never shows a blank page, and a spoken narrator for every step that the viewer can mute (pre-generated clips, sound on by default, M key). --director adds a server-held demo run that writes demo data, switches persona and steps back by undo and replay. On an app that already has a walkthrough, adds the narration to it. Use when the user asks for a walkthrough, product tour, onboarding tour, guided demo, "show users how to use the app", or wants audio, narration or a voice added to an existing tour.
-argument-hint: [--roles a,b] [--director] [--theme host|fa] [--no-narration] [--narrate] [--audit]
+description: Adds a guided walkthrough to a web app in the house design, one story per role plus feature stories, with story bar, focus light, journey reader, menu guide and spoken narration; --director adds a server-held demo run. Use for a walkthrough, product tour, onboarding tour, guided demo, "show users how to use the app", or to add audio, narration or a voice to an existing tour.
+argument-hint: "[--roles a,b] [--director] [--theme host|fa] [--no-narration] [--narrate] [--audit]"
 ---
 
 # walkthrough: a guided tour of the app, one story per role
@@ -13,6 +13,8 @@ those files and pass their ported tests (`templates/react/walkthrough/__tests__`
 A second host (an HR and an ATS app, English and Arabic voice, 11 text
 locales) added the focus light, reader placement, opener close, story
 picker, feature stories and company gating; its bugs are pitfalls 26 to 39.
+
+Not for a mapped journey microsite of every role (use `/app-user-journey`) or a manual QA plan (use `/qa-cases`).
 
 Arguments: `$ARGUMENTS`
 
@@ -147,7 +149,7 @@ Follow `references/architecture.md` "Director tier":
 1. **Allowlist:** `WALKTHROUGH_DIRECTOR_EMAILS` on the server, checked
    against the real user on every call.
 2. **Acting-as:** in the auth resolver, return the persona only when every
-   check passes, else the real user; cover it with tests BEFORE any UI.
+   check passes, else the real user; cover it with tests before any UI.
 3. **Tables and run module:** `templates/convex/` (`schema.ts`, `_story.ts`,
    `_ledger.ts`, `walkthrough_run.ts`). Port to the host backend if it is
    not Convex, keeping every rule in the comments.

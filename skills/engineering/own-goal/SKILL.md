@@ -1,6 +1,6 @@
 ---
 name: own-goal
-description: Run a goal or a whole PRD to completion, our way. A verifiable completion condition worked in a loop until met, an accountability document created up front, every PRD phase implemented by specialised sub-agents on tiered models (Fable drives and does the final check, Opus designs and verifies, Sonnet does mechanical work), rejected work redone by the driver, each unit committed as it verifies, and a mandatory /reviewer pass before the goal is declared complete.
+description: Runs a goal or a whole PRD to completion. Locks a verifiable completion condition, writes ACCOUNTABILITY.md up front, delegates each PRD phase to sub-agents on tiered models, redoes rejected work in the driver, commits each unit as it verifies, and ends with a /reviewer pass and the driver's final check. Use on /own-goal with a goal statement or a PRD.md path.
 argument-hint: <goal statement | path to PRD.md>
 disable-model-invocation: true
 ---

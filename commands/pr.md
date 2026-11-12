@@ -1,26 +1,25 @@
 ---
-name: pr
-description: Review PR comments from AI agents and code reviewers, fix issues, and reply to every actionable comment
+description: Fetches a PR's review comments from bots and people, fixes what they raise, replies to every actionable comment, fixes failing CI and pushes. Use on /pr with a PR number, URL or branch; add quick to fix blockers only.
 argument-hint: [PR number or URL]
 ---
 
-# PR Review & Fix Mode
+# PR review and fix mode
 
 ## Task
 
 $ARGUMENTS
 
-## Argument Parsing
+## Argument parsing
 
 Parse from prompt:
 - **PR identifier**: branch name, PR number, or PR URL (required)
 - **Mode**: `detailed` (default) or `quick`
-  - `detailed` — fix every issue, reply to every comment with rationale, review full diff context
-  - `quick` — fix critical/blocker issues only, batch-reply to minor comments, skip nits
+  - `detailed`: fix every issue, reply to every comment with rationale, review full diff context
+  - `quick`: fix critical/blocker issues only, batch-reply to minor comments, skip nits
 
 ## Process
 
-### 1. Fetch PR & Comments
+### 1. Fetch PR and comments
 
 ```bash
 # Get PR number from branch name if needed
@@ -36,7 +35,7 @@ gh api repos/{owner}/{repo}/issues/{pr_number}/comments --paginate
 gh api repos/{owner}/{repo}/pulls/{pr_number}/reviews --paginate
 ```
 
-### 2. Categorize Comments
+### 2. Categorize comments
 
 Sort every comment into one of these buckets:
 
@@ -50,7 +49,7 @@ Sort every comment into one of these buckets:
 
 **Rule: no silent ignores.** Every comment that references code (suggestions, warnings, questions, nits) gets a reply, so the reviewer can see each point was read and resolved. The only comments that don't need replies are purely descriptive ones that summarize the PR or describe the project.
 
-### 3. Fix Issues
+### 3. Fix issues
 
 For each code-related comment:
 1. Read the file and line referenced in the comment
@@ -60,7 +59,7 @@ For each code-related comment:
 Group related fixes into logical commits using conventional commit format,
 committed by path (`git commit -m "..." -- <paths>`), never `git add -A`.
 
-### 4. Reply to Comments
+### 4. Reply to comments
 
 For **every** actionable comment, reply using `gh api`:
 
@@ -76,12 +75,12 @@ gh api repos/{owner}/{repo}/issues/{pr_number}/comments \
 
 Reply templates:
 - **Fixed**: `✅ Fixed in <commit-sha>. <brief explanation of what changed>`
-- **Won't fix (with reason)**: `👀 Reviewed — not applying this change because: <specific reason>. The current approach <explanation>.`
+- **Won't fix (with reason)**: `👀 Reviewed, not applying this change because: <specific reason>. The current approach <explanation>.`
 - **Acknowledged**: `👀 Noted. <brief response>`
 
 Never reply with just "noted" or "acknowledged". Include the context, so the thread records what was decided.
 
-### 5. Fix CI/CD Failures
+### 5. Fix CI/CD failures
 
 After committing fixes, check if CI is passing:
 
@@ -94,14 +93,14 @@ If any checks are failing:
 1. Read the failing check logs: `gh run view <run_id> --log-failed`
 2. Identify the root cause (typecheck, lint, test, build, etc.)
 3. Fix the issue in code
-4. Commit with `fix: resolve CI failure — <description>`
+4. Commit with `fix: resolve CI failure, <description>`
 5. Push and re-check. Repeat until CI is green or you've identified an infrastructure issue outside your control.
 
 **CI fix priority order:** typecheck > lint > tests > build > other checks.
 
 If a CI failure is caused by an infrastructure/environment issue (e.g., flaky third-party service, expired secret, runner issue), note it in the summary and flag it to the user instead of attempting a code fix.
 
-### 6. Push & Summarize
+### 6. Push and summarize
 
 ```bash
 git push
@@ -128,7 +127,7 @@ Output a summary table:
 - **Preserve intent.** If a fix conflicts with the PR's purpose, flag it instead of blindly applying.
 - **Atomic commits.** Group related fixes, don't lump everything into one commit.
 - **Test after fixing.** If the project has tests, run them before pushing.
-- In `quick` mode, still reply to every comment — just batch minor ones into a single reply thread.
+- In `quick` mode, still reply to every comment; batch minor ones into a single reply thread.
 
 ## Start
 

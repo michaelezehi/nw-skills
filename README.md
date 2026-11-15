@@ -130,6 +130,8 @@ claude plugin install savvy-progress@nw-skills
 
 The skills and commands report to the progress panel by the rules in [`references/progress-panel.md`](references/progress-panel.md). Copy it to `~/.claude/references/`. Without savvy-progress installed they skip it.
 
+Any video skill that shows software on screen (a screen recording, product walkthrough or UI demo) moves the camera by [`references/video-zoom-flow.md`](references/video-zoom-flow.md): push in on a click now and then, pan between nearby clicks, hold, ease back out, blur only while the camera moves. It carries the tuned numbers and recipes for ffmpeg, Remotion and Hyperframes. Copy it to `~/.claude/references/`.
+
 ## Handoff hooks (optional)
 
 `/ch`, `/fd-ch` and `/prd-ch` hand work over to a fresh session when context runs low. That needs three hooks in `hooks/`:

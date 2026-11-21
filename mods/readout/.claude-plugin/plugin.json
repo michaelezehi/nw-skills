@@ -1,6 +1,6 @@
 {
   "name": "readout",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Draws a reply's runs of **label:** lines as a framed readout, each row in its own colour",
   "author": {
     "name": "Michael Ezehi"

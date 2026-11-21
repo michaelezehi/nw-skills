@@ -11,7 +11,7 @@ $ARGUMENTS
 
 ## Skills
 
-Always invoke `writing-clearly-and-concisely`. For frontend work, also invoke `vercel-react-best-practices` and `vercel-composition-patterns`.
+Always invoke `writing-clearly-and-concisely` and `unslop`; every reply, commit and ACCOUNTABILITY.md entry passes the unslop gate. Progress and final replies lead with the result, give one `**name:** what happened` line per task or area, and put callouts last. For frontend work, also invoke `vercel-react-best-practices` and `vercel-composition-patterns`.
 
 ## Protocol
 

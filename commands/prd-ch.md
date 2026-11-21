@@ -202,6 +202,9 @@ PRD is checked before it is handed over.
 
 ## Step 4: Finish
 
+Run the reply through `unslop`: lines below as `**name:** what happened`,
+callouts last.
+
 - One line with size, file count, phase count, and the 2 or 3 biggest open
   questions.
 - What the Step 3 check changed, in one line.

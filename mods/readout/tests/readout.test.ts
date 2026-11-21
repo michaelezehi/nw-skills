@@ -40,7 +40,7 @@ describe('parse', () => {
 })
 
 describe('draw', () => {
-  test('the reply draws a framed readout, each row its own colour, text left to the engine', async ($, on) => {
+  test('the reply draws each label as a chip in its own colour, text left to the engine', async ($, on) => {
     const drawn: string[] = []
     on('ui.render', ($, e) => {
       const text = (e.props as { text?: string }).text
@@ -48,10 +48,9 @@ describe('draw', () => {
       return { type: 'Box', props: { key: 'engine-own' } }
     })
     const msg = await $.ui.mount({ plugin: 'readout', surface: 'terminal', component: 'AssistantMessage', props: { text: REPLY, isFirstOfReply: true } } as never)
-    expect(await msg.find({ type: 'Text', text: '◢ R E A D O U T' })).toBeDefined()
-    expect((await msg.find({ type: 'Text', text: 'perspiva, crush-crm' }))?.props.color).toBe(NEON[0])
-    expect((await msg.find({ type: 'Text', text: /^crush-crm$/ }))?.props.color).toBe(NEON[1])
-    expect((await msg.find({ type: 'Text', text: 'Not shipped' }))?.props.color).toBe('#f87171')
+    expect((await msg.find({ type: 'Text', text: ' perspiva, crush-crm ' }))?.props.backgroundColor).toBe(NEON[0])
+    expect((await msg.find({ type: 'Text', text: /^ crush-crm $/ }))?.props.backgroundColor).toBe(NEON[1])
+    expect((await msg.find({ type: 'Text', text: ' Not shipped ' }))?.props.backgroundColor).toBe('#f87171')
     expect(drawn).toContain('optic-qa-ai was already on 16.4.6.')
     expect(drawn).toContain('Six projects now run next 16.4.6.')
   })

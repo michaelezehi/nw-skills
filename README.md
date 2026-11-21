@@ -127,7 +127,7 @@ claude plugin install savvy-progress@nw-skills
 | [`guard-rails`](mods/guard-rails/hooks/register.tsx) | Denies git commands that sweep other agents' work (`git add -A`, `commit -a`, stash, reset, clean, restore, checkout) and dashes in commit or PR text. | Original |
 | [`session-pane`](mods/session-pane/hooks/register.tsx) | `/session-pane` opens a pane with the files changed this session as a tree and the latest 50 tool calls. | Original |
 | [`turn-chime`](mods/turn-chime/hooks/register.tsx) | A toast and a chime when a turn that ran a minute or longer finishes. | Original |
-| [`readout`](mods/readout/hooks/register.tsx) | Draws two or more `**label:** text` lines in a reply as one framed table, each row in its own colour, misses in red and skips muted. | Original |
+| [`readout`](mods/readout/hooks/register.tsx) | Draws two or more `**label:** text` lines in a reply as spaced rows, each label a chip in its own colour, misses in red and skips muted. | Original |
 
 The skills and commands report to the progress panel by the rules in [`references/progress-panel.md`](references/progress-panel.md). Copy it to `~/.claude/references/`. Without savvy-progress installed they skip it.
 

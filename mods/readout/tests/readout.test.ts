@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'claude-code/testing'
 
-import { parseReadouts, toneOf } from '../hooks/parse'
-import { NEON } from '../hooks/register'
+import { parseReadouts, summaryOf, toneOf } from '../hooks/parse'
+import { NEON, ZINC } from '../hooks/register'
 
 const REPLY = [
   'Six projects now run next 16.4.6.',
@@ -40,18 +40,43 @@ describe('parse', () => {
 })
 
 describe('draw', () => {
-  test('the reply draws each label as a chip in its own colour, text left to the engine', async ($, on) => {
+  const mount = ($: Parameters<Parameters<typeof test>[1]>[0], on: Parameters<Parameters<typeof test>[1]>[1]) => {
     const drawn: string[] = []
     on('ui.render', ($, e) => {
       const text = (e.props as { text?: string }).text
       if (text !== undefined) drawn.push(text)
       return { type: 'Box', props: { key: 'engine-own' } }
     })
-    const msg = await $.ui.mount({ plugin: 'readout', surface: 'terminal', component: 'AssistantMessage', props: { text: REPLY, isFirstOfReply: true } } as never)
-    expect((await msg.find({ type: 'Text', text: ' perspiva, crush-crm ' }))?.props.backgroundColor).toBe(NEON[0])
+    return { drawn, msg: $.ui.mount({ plugin: 'readout', surface: 'terminal', component: 'AssistantMessage', props: { text: REPLY, isFirstOfReply: true } } as never) }
+  }
+
+  test('rows draw as folded cards: chip, one-line summary, the rest hidden until opened', async ($, on) => {
+    const { drawn, msg: m } = mount($, on)
+    const msg = await m
     expect((await msg.find({ type: 'Text', text: /^ crush-crm $/ }))?.props.backgroundColor).toBe(NEON[1])
-    expect((await msg.find({ type: 'Text', text: ' Not shipped ' }))?.props.backgroundColor).toBe('#f87171')
-    expect(drawn).toContain('optic-qa-ai was already on 16.4.6.')
+    expect(await msg.find({ key: 'fold-1-1' })).toBeUndefined()
+    expect(await msg.find({ type: 'Button', label: /^convex 1\.51 changed the client method types, so src\/lib\/client\.ts needed a fix to match\.$/ })).toBeUndefined()
     expect(drawn).toContain('Six projects now run next 16.4.6.')
+    expect(drawn).not.toContain('optic-qa-ai was already on 16.4.6.')
+  })
+
+  test('a failure label gets a warning icon and a red border', async ($, on) => {
+    const msg = await mount($, on).msg
+    expect(await msg.find({ type: 'Text', text: '⚠' })).toBeDefined()
+    expect(await msg.find({ key: 'card-1-3' })).toBeDefined()
+  })
+
+  test('opening a card draws its text and quiets the others in zinc', async ($, on) => {
+    const reply = '**a:** First line. More detail here.\n**b:** Second one. And more.'
+    const drawn: string[] = []
+    on('ui.render', ($, e) => {
+      const text = (e.props as { text?: string }).text
+      if (text !== undefined) drawn.push(text)
+      return { type: 'Box', props: { key: 'engine-own' } }
+    })
+    const msg = await $.ui.mount({ plugin: 'readout', surface: 'terminal', component: 'AssistantMessage', requestId: 'm1', props: { text: reply, isFirstOfReply: true } } as never)
+    await msg.press({ key: 'fold-0-0' })
+    expect(drawn).toContain('First line. More detail here.')
+    expect((await msg.find({ type: 'Text', text: ' b ' }))?.props.backgroundColor).toBe(ZINC.line)
   })
 })

@@ -59,3 +59,15 @@ export function toneOf(label: string): 'error' | 'muted' | null {
   if (/\b(not changed|skipped|unchanged|left alone)\b/i.test(label)) return 'muted'
   return null
 }
+
+/** The first sentence, plain: markdown marks dropped, so it reads as one calm line. */
+export function plainOf(text: string): string {
+  return text.replace(/`([^`]*)`/g, '$1').replace(/\*\*([^*]*)\*\*/g, '$1').trim()
+}
+
+export function summaryOf(text: string): string {
+  const plain = plainOf(text)
+  const cut = /[.!?](\s|$)/.exec(plain)
+  const first = cut ? plain.slice(0, cut.index + 1) : plain
+  return first.length > 110 ? `${first.slice(0, 109).trimEnd()}…` : first
+}

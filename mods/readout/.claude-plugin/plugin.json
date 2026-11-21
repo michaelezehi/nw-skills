@@ -1,7 +1,7 @@
 {
   "name": "readout",
-  "version": "0.2.0",
-  "description": "Draws a reply's runs of **label:** lines as a framed readout, each row in its own colour",
+  "version": "0.3.0",
+  "description": "Draws a reply's **label:** lines as folded cards: a coloured chip and one-line summary, a click opens the rest and quiets the others",
   "author": {
     "name": "Michael Ezehi"
   },

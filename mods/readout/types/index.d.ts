@@ -9,3 +9,12 @@ export type Row = {
 }
 
 export type Segment = { kind: 'markdown'; text: string } | { kind: 'readout'; rows: Row[] }
+
+declare module 'claude-code' {
+  interface PluginState {
+    readout: {
+      /** Cards the person opened, as `<run>-<row>` keys, per message. */
+      open: string[]
+    }
+  }
+}

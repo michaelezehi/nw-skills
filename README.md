@@ -128,7 +128,7 @@ claude plugin install savvy-progress@nw-skills
 | [`session-pane`](mods/session-pane/hooks/register.tsx) | `/session-pane` opens a pane with the files changed this session as a tree and the latest 50 tool calls. | Original |
 | [`turn-chime`](mods/turn-chime/hooks/register.tsx) | A toast and a chime when a turn that ran a minute or longer finishes. | Original |
 | [`readout`](mods/readout/hooks/register.tsx) | Draws two or more `**label:** text` lines in a reply as spaced rows, each label a chip in its own colour, misses in red and skips muted. | Original |
-| [`paste-view`](mods/paste-view/hooks/register.tsx) | A log pasted into a prompt draws as a card with its kind, line and error counts, coloured lines and the middle folded; your own words sit under it as a chat line with a cyan bar. | Original |
+| [`paste-view`](mods/paste-view/hooks/register.tsx) | A log pasted into a prompt draws as a card with its kind, line and error counts, coloured lines and the middle folded; your words sit under it as a chat line with a cyan bar. Bash output lines take error and warning colours, a strip lifts out errors hidden in the fold with the exit code, and task and agent notices draw as one row with a status bar. | Original |
 
 The skills and commands report to the progress panel by the rules in [`references/progress-panel.md`](references/progress-panel.md). Copy it to `~/.claude/references/`. Without savvy-progress installed they skip it.
 

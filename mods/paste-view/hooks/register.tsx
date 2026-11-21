@@ -1,9 +1,12 @@
-// paste-view: a pasted log in your prompt draws as a log card (what it is, how long, where it
+// paste-view: reads logs for you. A pasted log in your prompt draws as a log card (what it is, how long, where it
 // failed) and your own words draw under it as a chat line with a cyan bar, so the question is
 // the first thing you find. A prompt with no paste gets the same chat line.
 import type { Register } from 'claude-code'
 
+import { noticeRow, readNotice } from './notice'
 import { errorCount, fit, parsePrompt, planRows, segmentsOf, wrapWords, type Paste, type Tone } from './parse'
+import { readShell, retone, summarize, type Node } from './shell'
+import { shellStrip } from './shell-view'
 
 export const ACCENT = '#67e8f9'
 export const FG = '#f0fdff'
@@ -25,10 +28,17 @@ const GLYPH: Record<Paste['kind'], string> = { log: '▤', 'stack trace': '≡',
 // The prompts a person wrote, as against a task's notice or another agent's message.
 const TYPED = new Set(['composer', 'bridge', 'sdk'])
 const INDENT = 2
+const SHELLS = new Set(['Bash', 'PowerShell'])
 
 export const register: Register = on => {
   on('ui.render', { component: 'UserMessage' }, async ($, e, next) => {
-    if (e.surface !== 'terminal' || !TYPED.has(e.props.origin.kind)) return next(e)
+    if (e.surface !== 'terminal') return next(e)
+    if (!TYPED.has(e.props.origin.kind)) {
+      // ctrl+o keeps the engine's full row; the compact one is for the transcript.
+      const notice = e.props.isExpanded ? null : readNotice(e.props)
+      if (notice === null) return next(e)
+      return noticeRow($.ui.resolve(e) as never, notice, Math.max(30, (e.viewport?.columns ?? 100) - 6))
+    }
     const prompt = parsePrompt(e.props.text)
     const isEmpty = prompt.pastes.length === 0 && !prompt.words && prompt.images.length === 0 && prompt.folded.length === 0
     if (isEmpty) return next(e)
@@ -114,6 +124,29 @@ export const register: Register = on => {
       <Box key="paste-view" flexDirection="column" paddingLeft={INDENT}>
         {prompt.pastes.map(card)}
         {bubble}
+      </Box>
+    )
+  })
+
+  // A shell result keeps the card beneath (the skin's, or Claude Code's own). This only adds:
+  // its lines take their tones, and a strip above says how it failed and what the fold hides.
+  on('ui.render', { component: 'ToolResult' }, async ($, e, next) => {
+    if (e.surface !== 'terminal' || !SHELLS.has(e.props.tool)) return next(e)
+    const shell = readShell(e.props.output, e.props.isErrored)
+    if (shell === null || shell.lines.length === 0) return next(e)
+    const beneath = await next(e)
+    const sum = summarize(shell.lines, e.props.isErrored)
+    if (!e.props.isErrored && sum.errors === 0) return beneath
+    const ui = $.ui.resolve(e)
+    const { Box } = ui
+    const room = Math.max(30, (e.viewport?.columns ?? 100) - 6)
+    const card = retone(beneath as Node, shell.lines, TONES, e.props.isErrored) as typeof beneath
+    const strip = shellStrip(ui as never, shell, sum, e.props.isErrored, e.props.isExpanded === true, room, TONES)
+    if (strip === null) return card
+    return (
+      <Box key="paste-view-result" flexDirection="column">
+        {strip}
+        {card}
       </Box>
     )
   })

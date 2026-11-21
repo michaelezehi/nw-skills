@@ -1,7 +1,7 @@
 {
   "name": "paste-view",
-  "version": "0.1.0",
-  "description": "Draws a pasted log in your prompt as a collapsed, coloured log card and your own words as a chat line under it",
+  "version": "0.2.0",
+  "description": "Reads logs for you: a pasted log draws as a collapsed, coloured card with your words under it as a chat line, a shell result gets its error lines coloured and lifted out of the fold, and task notices and agent messages draw as one compact row",
   "author": {
     "name": "Michael Ezehi"
   }

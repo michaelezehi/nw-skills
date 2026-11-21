@@ -183,10 +183,10 @@ describe('draw', () => {
     expect(await ui.find({ type: 'Text', text: /\[Image/ })).toBeUndefined()
   })
 
-  test("a task's notice and another agent's message stay the engine's", async ($, on) => {
+  test('a row nobody wrote, such as an automatic continuation, stays the engine own', async ($, on) => {
     let engineDrew = 0
     on('ui.render', () => (engineDrew++, { type: 'Box', props: { key: 'engine-own' } }))
-    const ui = await mount($ as never, 'Agent "build" finished', 'task-notification')
+    const ui = await mount($ as never, 'Continue from where you left off.', 'auto-continuation')
 
     expect(await ui.find({ type: 'Text', text: /^you$/ })).toBeUndefined()
     expect(engineDrew).toBe(1)

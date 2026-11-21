@@ -4,6 +4,7 @@ Our fork of [johnnyvizz/claude-kit](https://github.com/johnnyvizz/claude-kit) sa
 
 A Claude Code mod: a progress bar above the prompt and a live panel of subagents. Made for the [savvy-flow](https://github.com/johnnyvizz/claude-kit) skill, and useful with any subagents.
 
+- **Now**: the agents pane opens with the session. Its top section says what the main thread is doing in the words of its own tool calls (a Bash call's description, an edit's path), how long the turn has run, and the last few calls, ticking once a second while it works.
 - **Progress bar**: the flow's title, phase, accepted tasks out of planned, and a button with the crew size that opens the panel. It appears once something reports progress (savvy-flow does) or a `savvy-*` worker starts.
 - **Agents panel** (`/agents-info` toggles it): running, finished and planned subagents with model, effort, task progress, context, estimated cost and time. Working crabs walk, and each savvy tier animates its prop: the astronaut floats, the detective sweeps the magnifier, the engineer turns the wrench, the chef tosses the omelette, the racer runs with a fluttering flag. `prefers-reduced-motion` stops them.
 - **Finishing**: a crab whose run is done turns green and plants a flag in its tier's colour; for three seconds it waves a claw and the pennant flutters, then it rests. When the flow closes, the band's crab waves and one sparkle sweeps the green bar.

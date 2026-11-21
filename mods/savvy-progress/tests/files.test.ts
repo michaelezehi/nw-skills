@@ -17,11 +17,11 @@ describe('files', () => {
     await clock.settle()
 
     const panel = await mountPane($)
-    expect(await panel.find({ type: 'Text', text: /src\/app\.ts/ })).toBeDefined()
+    expect(await panel.find({ type: 'Text', text: /✎ src\/app\.ts/ })).toBeDefined()
     expect(await panel.find({ type: 'Text', text: /1 edited/ })).toBeDefined()
 
     await clock.advance(9_000)
-    expect(await panel.find({ type: 'Text', text: /src\/app\.ts/ })).toBeUndefined()
+    expect(await panel.find({ type: 'Text', text: /✎ src\/app\.ts/ })).toBeUndefined()
   })
 
   test('a failed commit shows as failed, and hide closes the strip until the next touch', async ($, on) => {

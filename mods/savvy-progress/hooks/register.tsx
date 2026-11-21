@@ -10,6 +10,7 @@ import { digestRows } from './summary'
 import { H, agentSvg, compactSvg, headerHeight, headerSvg, plannedSvg, rowSvg } from './svg'
 import { costOf, windowOf } from './pricing'
 import { filesUnder, keepFilesShut, noteFiles } from './files'
+import { NOW_ROWS, mainCallDone, mainCallStart, mainTurnDone, nowOver, registerNow } from './now'
 import { paneRows, terminalBand, terminalPane } from './terminal'
 import type { Look } from './terminal'
 
@@ -322,7 +323,7 @@ async function openPane($: EngineInterface): Promise<void> {
     isDoneCollapsed: p.isDoneCollapsed,
     open: list.filter(a => isFinished(a) && (p.expanded ?? []).includes(a.id)).reduce((n, a) => n + digestRows(a), 0),
   })
-  await $.ui.open({ id: PANE, title: tr().pane, rows })
+  await $.ui.open({ id: PANE, title: tr().pane, rows: rows + NOW_ROWS })
 }
 
 // Opens the agents pane, or closes it when it is up; true when it ends up open.
@@ -428,8 +429,10 @@ export const register: Register = (on, options) => {
       draw: async at => void (await update($, now, () => at)),
     })
     kick()
+    void openPane($).catch(() => undefined)
     return started
   })
+  registerNow(on)
 
   on('command.run', { command: 'agents-info' }, async $ => {
     const isOpen = await togglePane($)
@@ -599,19 +602,21 @@ export const register: Register = (on, options) => {
       )
       await update($, now, () => at)
       kick()
-    }
+    } else await mainTurnDone($)
     return result
   })
 
   on('tool.call', async ($, e, next) => {
+    const call = await mainCallStart($, e)
     const result = await next(e)
+    await mainCallDone($, call, result)
     void noteFiles($, e, result)
     return result
   })
 
   on('ui.open', async ($, e, next) => ((await keepFilesShut($, next.origin.plugin, e.focus, PANE)) ? undefined : next(e)))
 
-  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => filesUnder($, e, await (async () => {
+  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => filesUnder($, e, await nowOver($, e, await (async () => {
     const s = tr()
     const ui = $.ui.resolve(e)
     const { Box, Text, Button } = ui
@@ -796,7 +801,7 @@ export const register: Register = (on, options) => {
         )}
       </Box>
     )
-  })()))
+  })())))
 
   on('ui.render', { component: 'AbovePrompt' }, async ($, e, next) => {
     const f = await read($, flow)

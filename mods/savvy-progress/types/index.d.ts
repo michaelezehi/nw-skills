@@ -71,6 +71,26 @@ export type FilesStrip = {
   tick: number
 }
 
+/** One main-thread tool call, as the Now section at the top of the pane lists it. */
+export type MainCall = {
+  id: string
+  tool: string
+  label: string
+  at: number
+  ms: number
+  isError: boolean
+  isWrite: boolean
+}
+
+export type MainThread = {
+  isBusy: boolean
+  turnAt: number
+  lastTurnMs: number
+  active: MainCall[]
+  log: MainCall[]
+  tick: number
+}
+
 declare module 'claude-code' {
   interface PluginState {
     'savvy-progress': {
@@ -79,6 +99,7 @@ declare module 'claude-code' {
       panel: Panel
       now: number
       files: FilesStrip
+      main: MainThread
     }
   }
 }

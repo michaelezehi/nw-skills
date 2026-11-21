@@ -80,7 +80,8 @@ describe('terminal', () => {
 
     // At the first spawn: header 5, gap 1, running 1 + one card of 5,
     // planned 1 + two of 3 (task 1 is done, task 3 is running).
-    expect(opens[0]?.rows).toBe(19)
+    // 19 for the cards, 7 for the Now section above them.
+    expect(opens[0]?.rows).toBe(26)
     const row = await $.ui.mount({ plugin: 'savvy-progress', surface: 'terminal', component: 'AbovePrompt', props: band })
     expect(await row.find({ key: 'band-a-Build the landing page' })).toBeDefined()
     expect(await row.find({ key: 'band-a-Design the launch graphics' })).toBeDefined()

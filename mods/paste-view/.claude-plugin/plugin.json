@@ -1,0 +1,8 @@
+{
+  "name": "paste-view",
+  "version": "0.1.0",
+  "description": "Draws a pasted log in your prompt as a collapsed, coloured log card and your own words as a chat line under it",
+  "author": {
+    "name": "Michael Ezehi"
+  }
+}

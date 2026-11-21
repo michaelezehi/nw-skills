@@ -1,6 +1,6 @@
-// How callouts look: a yellow card in the transcript for what blocks the person, a violet card
-// for a question, a violet outline for something worth a look, a finished banner for DONE,
-// and the band above the prompt that holds the open ones with their answers.
+// How callouts look: one coloured line in the reply for each open item (yellow when it blocks
+// the person, violet for a question or a look), a finished banner for DONE, and the band above
+// the prompt that holds the open ones with their answers.
 import type { Elements } from 'claude-code'
 
 import type { Callout, CalloutKind, Palette } from '../types'
@@ -40,56 +40,32 @@ export function calloutBlock(ui: Table, c: Callout, palette: Palette, key: strin
       </Box>
     )
   }
-  if (c.kind === 'review') {
-    return (
-      <Box key={key} flexDirection="column" marginTop={1} paddingX={1} borderStyle="round" borderColor={VIOLET}>
-        <Text key={`${key}-label`} color={VIOLET} bold>
-          {LABELS.review}
-        </Text>
-        <Text key={`${key}-title`} color={palette.text} bold>
-          {c.title}
-        </Text>
-        {c.body.map((line, i) => (
-          <Text key={`${key}-body-${i}`} color={palette.text}>
-            {line || ' '}
-          </Text>
-        ))}
-        <Text key={`${key}-hint`} color={palette.muted} italic>
-          Mark it seen above the prompt
-        </Text>
-      </Box>
-    )
-  }
-  const fill = fillOf(c.kind, palette)
-  const hint =
-    c.kind === 'action'
-      ? 'Answer above the prompt: Done'
-      : c.kind === 'ask'
-        ? 'Pick an answer above the prompt'
-        : c.kind === 'secret'
-          ? 'Paste it above the prompt. It goes into the file, never into the chat.'
-          : 'Type it above the prompt'
+  // Every other kind stays pinned above the prompt with its buttons, so the reply holds one
+  // line for it: the kind's glyph in its colour, the title, and the quoted lines under it.
+  const color = c.kind === 'review' ? VIOLET : fillOf(c.kind, palette)
   return (
-    <Box key={key} flexDirection="column" marginTop={1} paddingX={1} backgroundColor={fill}>
-      <Text key={`${key}-label`} color={INK} backgroundColor={fill} bold>
-        {LABELS[c.kind]}
-      </Text>
-      <Text key={`${key}-title`} color={INK} backgroundColor={fill} bold>
-        {c.title}
-      </Text>
+    <Box key={key} flexDirection="column" marginTop={1}>
+      <Box key={`${key}-head`} flexDirection="row" gap={1}>
+        <Text key={`${key}-glyph`} color={color} bold>
+          {LABELS[c.kind].charAt(0)}
+        </Text>
+        <Box flexShrink={1}>
+          <Text key={`${key}-title`} color={palette.text} bold>
+            {c.title}
+          </Text>
+        </Box>
+        <Box flexShrink={0}>
+          <Text key={`${key}-where`} color={palette.muted}>
+            · above the prompt
+          </Text>
+        </Box>
+      </Box>
       {c.body.map((line, i) => (
-        <Text key={`${key}-body-${i}`} color={INK} backgroundColor={fill}>
+        <Text key={`${key}-body-${i}`} color={palette.text}>
+          {'  '}
           {line || ' '}
         </Text>
       ))}
-      {c.options.map((option, i) => (
-        <Text key={`${key}-opt-${i}`} color={INK} backgroundColor={fill}>
-          {`  ${String.fromCharCode(97 + i)}  ${option}`}
-        </Text>
-      ))}
-      <Text key={`${key}-hint`} color={INK} backgroundColor={fill} italic>
-        {hint}
-      </Text>
     </Box>
   )
 }

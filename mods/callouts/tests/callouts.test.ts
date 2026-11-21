@@ -97,32 +97,30 @@ describe('parse', () => {
 })
 
 describe('transcript', () => {
-  test('draws a yellow card for the action and a banner for done, markdown left to the engine', async ($, on) => {
+  test('draws the action as one yellow-marked line and a banner for done, markdown left to the engine', async ($, on) => {
     const { drawn } = world(on, JSON.stringify({ colors: { accent: '#facc15' } }))
     await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
     const msg = await $.ui.mount({ plugin: 'callouts', surface: 'terminal', component: 'AssistantMessage', props: { text: REPLY, isFirstOfReply: true } })
     expect(drawn).toEqual(['The staging ship is on its i18n gate.\n\n| Change | Impact |\n|---|---|\n| MUI removed | None |'])
     expect(await msg.find({ key: 'engine-own' })).toBeDefined()
-    const card = await msg.find({ key: 'callout-1' })
-    expect(card?.props.backgroundColor).toBe('#facc15')
-    expect(await msg.find({ type: 'Text', text: '⚑  N E E D S   Y O U' })).toBeDefined()
+    expect(await msg.find({ key: 'callout-1' })).toBeDefined()
+    expect((await msg.find({ type: 'Text', text: '⚑' }))?.props.color).toBe('#facc15')
+    expect(await msg.find({ type: 'Text', text: '⚑  N E E D S   Y O U' })).toBeUndefined()
     expect(await msg.find({ type: 'Text', text: 'Start pnpm dev and tell me after about 4 minutes.' })).toBeDefined()
     expect(await msg.find({ type: 'Text', text: '✓  D O N E' })).toBeDefined()
     expect(await msg.find({ type: 'Text', text: 'The work is done.' })).toBeDefined()
   })
 
-  test('an ASK card fills violet and a REVIEW draws as a violet outline with no fill', async ($, on) => {
+  test('an ASK and a REVIEW each draw as one violet-marked line, the options left to the band', async ($, on) => {
     world(on)
     await $.session.start({ cwd: '/repo', surface: 'terminal', isInteractive: true })
     const text = '> [!ASK] Ship to?\n> - staging\n\n> [!REVIEW] The new header copy\n> Check desktop.'
     const msg = await $.ui.mount({ plugin: 'callouts', surface: 'terminal', component: 'AssistantMessage', props: { text, isFirstOfReply: true } })
-    expect((await msg.find({ key: 'callout-0' }))?.props.backgroundColor).toBe(VIOLET)
-    const review = await msg.find({ key: 'callout-1' })
-    expect(review?.props.borderStyle).toBe('round')
-    expect(review?.props.borderColor).toBe(VIOLET)
-    expect(review?.props.backgroundColor).toBeUndefined()
-    expect(await msg.find({ type: 'Text', text: '◇  W O R T H   A   L O O K' })).toBeDefined()
-    expect(await msg.find({ type: 'Text', text: 'Mark it seen above the prompt' })).toBeDefined()
+    expect((await msg.find({ type: 'Text', text: '?' }))?.props.color).toBe(VIOLET)
+    expect((await msg.find({ type: 'Text', text: '◇' }))?.props.color).toBe(VIOLET)
+    expect(await msg.find({ key: 'callout-1' })).toBeDefined()
+    expect(await msg.find({ type: 'Text', text: /staging/ })).toBeUndefined()
+    expect(await msg.find({ type: 'Text', text: /Check desktop\./ })).toBeDefined()
   })
 
   test('a reply with no callouts is the engine drawing alone', async ($, on) => {

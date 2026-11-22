@@ -1,5 +1,5 @@
 ---
-description: "Writes a PRD sized S, M or L with parallel Explore investigation and a feature validator, one write per file, no plan mode. Outputs INVESTIGATION.md, FILES.md, PRD.md (PRD.html with --html) and ACCOUNTABILITY.md. Use on /prd-ch, \"write a PRD\", \"size this\", --teams, --worktree."
+description: "Writes a PRD sized S, M or L with parallel Explore investigation and, for new features only, a feature validator, one write per file, no plan mode. Outputs INVESTIGATION.md, FILES.md, PRD.md (PRD.html with --html) and ACCOUNTABILITY.md. Use on /prd-ch, \"write a PRD\", \"size this\", --teams, --worktree."
 argument-hint: "[feature] [--size S|M|L] [--html] [--teams|--worktree]"
 ---
 # PRD creation
@@ -38,7 +38,7 @@ A PRD is a document, not an implementation, so the run is bounded:
 ## Step 0: Parse flags, size the job
 
 Flags: `--size S|M|L` · `--html`/`-h` · `--teams`/`-t` · `--worktree`/`-w` ·
-`--loop` · `--no-validate` (skip the feature validator).
+`--loop` · `--validate` (force the feature validator) · `--no-validate` (skip it).
 
 If `--size` is absent, infer it from the task and **state your pick in one line**:
 
@@ -80,8 +80,15 @@ narrow brief and `"medium"` thoroughness (`"very thorough"` only for L):
 Each agent returns raw findings only, at most 40 lines each. **Do not re-read
 what they read**; cite their paths.
 
-**Feature validator: always, when the PRD adds to a product that already
-exists.** In the same launch, dispatch one more agent (`model: "opus"`, not
+**Feature validator: only when the PRD adds a new feature to a product that
+already exists.** A new feature is something a user or customer will see or
+use that the product does not do today. Skip the validator for everything
+else: tech debt, performance and cost work, refactors, migrations, bug fixes,
+build, deploy and infra work, security hardening, dependency upgrades and
+internal tooling. Those are not go-to-market questions, and a GTM score on
+them is noise. Put the call in the Step 0 size line (`validator: run` or
+`validator: skipped, <kind>`). `--validate` forces it on; `--no-validate`
+forces it off. When it runs, dispatch it in the same launch, dispatch one more agent (`model: "opus"`, not
 Explore, because it searches the web) to run the `/gtm feature` sub-command
 on the feature: it follows `~/.claude/skills/gtm/references/feature.md` and
 `references/conventions.md` (skip the HTML report; keep the facts step), uses
@@ -93,8 +100,8 @@ team uses this surface live, and anything the user said about how they work
 in it. The validator fills the reference's `Own use` section from production
 counts and repo workarounds, and scores on them. It returns the score out of
 35, the verdict (build it, test first, park it, kill it), every point of
-pushback, and the cheapest test it proposes. Skip it only for a brand-new
-product with nothing live, or when the user passes `--no-validate`. The point
+pushback, and the cheapest test it proposes. Skip it too for a brand-new
+product with nothing live. The point
 is to see the pushback before the PRD commits to building: do not soften it,
 and do not let it block the PRD. Not softening cuts both ways: measured own
 use is evidence, and a brief that leaves it out gets a wrong park.
@@ -123,7 +130,7 @@ Write files in this order, each **once**:
 2. **FILES.md** (M and L): table of path · modify/create/reference · what
    changes.
 3. **PRD.md**: sections, in order: Summary (5 lines at most) · Problem ·
-   Goals / Non-goals · Validation (the feature validator's score, verdict and
+   Goals / Non-goals · Validation (only when the validator ran: its score, verdict and
    every pushback point, each answered: accepted and changed in this PRD, or
    rejected with the reason; link `<gtm>/feature-<slug>.md`) · Requirements
    (numbered `R1…`) · Technical design (data, backend, frontend, config; reuse
@@ -208,7 +215,7 @@ callouts last.
 - One line with size, file count, phase count, and the 2 or 3 biggest open
   questions.
 - What the Step 3 check changed, in one line.
-- The validator's verdict in one line. If it said park it or kill it, end with
+- The validator's verdict in one line, or why it was skipped. If it said park it or kill it, end with
   an `> [!ASK]` asking whether to go ahead anyway, test first, or drop it.
 - `<promise>PRD_COMPLETE</promise>`
 

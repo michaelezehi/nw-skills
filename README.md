@@ -29,7 +29,7 @@ Copy any folder under `skills/<category>/` into `~/.claude/skills/`, and any fil
 
 Several skills point at `~/.claude/skills/unlazy/scripts/gate-check.mjs` and `~/.claude/skills/unslop/SKILL.md`. Install unlazy and unslop first if you take only a few.
 
-## Skills (40)
+## Skills (41)
 
 ### Engineering
 
@@ -43,6 +43,7 @@ Several skills point at `~/.claude/skills/unlazy/scripts/gate-check.mjs` and `~/
 | [`deployment-build-speed`](skills/engineering/deployment-build-speed/SKILL.md) | Install the fast-ship pattern in a Docker project: rebuild only the images whose inputs changed, pull CI-built images, fall back to the on-server build, keep no registry token on the server. | Original |
 | [`og`](skills/engineering/og/SKILL.md) | Install a dynamic Open Graph / Twitter social card route into a Next.js project. | Original |
 | [`own-goal`](skills/engineering/own-goal/SKILL.md) | Run a goal or a whole PRD to completion: a verifiable completion condition worked in a loop until met, with an accountability record and a /reviewer gate. | Original |
+| [`pr-review`](skills/engineering/pr-review/SKILL.md) | Review any GitHub pull request with proof: isolate in a git worktree, run tests and the app, verify bug fixes with base reproduction and revert checks, deduplicate against review bots, render an optional HTML report, and post only the findings you pick. | Original |
 | [`project-optimisation`](skills/engineering/project-optimisation/SKILL.md) | Find and fix why a JS/TS monorepo is slow, from dev server memory to first-load JS per route: measure, fan out by cause, fix in parallel, re-measure, ship through staging. | Original |
 | [`qa-cases`](skills/engineering/qa-cases/SKILL.md) | Generate a shareable QA test case .md document for the current project. | Original |
 | [`rea`](skills/engineering/rea/SKILL.md) | Guided first look at REA (Reverse Engineer Anything): check the install, pin the MCP to a supported Node, run a static demo on an Electron app, binary or site, and explain what came back. | Original, for [morluto/rea](https://github.com/morluto/rea) |
@@ -107,6 +108,7 @@ Several skills point at `~/.claude/skills/unlazy/scripts/gate-check.mjs` and `~/
 | `/ch` | Handoff continuity mode: numbered task list, accountability record with every question and decision, optional HTML summary. |
 | `/fd-ch` | Frontend design run with reconnaissance, a quality gate and an accountability record, built on the frontend-design skill. |
 | `/pr` | Read every PR review comment, fix what is actionable, and reply to each one. |
+| `/pr-review` | Review any GitHub PR in a worktree with tests, live app checks, bug-fix revert proof, bot deduplication, optional HTML report, and user-gated posting. |
 | `/prd-ch` | Create a PRD fast and well. |
 | `/research` | Deep research on any topic. |
 | `/reviewer` | Full audit and fix pass on the current task's changes, using any review skills installed on your machine (never Greptile or CodeRabbit). |
